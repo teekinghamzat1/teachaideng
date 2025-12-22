@@ -25,14 +25,11 @@ const verifyPayment = asyncHandler(async (req, res) => {
         let amountPaid = 0;
 
         if (secretKey) {
-            console.log(`Verifying payment ref: ${reference}`);
             try {
                 const response = await axios.get(`https://api.paystack.co/transaction/verify/${reference}`, {
                     headers: { Authorization: `Bearer ${secretKey}` }
                 });
 
-                console.log("Paystack Response Status:", response.data.status);
-                console.log("Paystack Data Status:", response.data.data.status); // success, abandoned, etc.
 
                 if (response.data.status && response.data.data.status === 'success') {
                     isValid = true;
@@ -84,7 +81,6 @@ const verifyPayment = asyncHandler(async (req, res) => {
                         }
                     });
 
-                    console.log(`School created for user ${updatedUser.email}: ${schoolName}`);
                 }
             }
 

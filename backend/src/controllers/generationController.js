@@ -31,7 +31,6 @@ const generateLesson = asyncHandler(async (req, res) => {
   // Enforce dynamic generation limit BEFORE calling GenAI
   const canGen = await usageService.canGenerateLesson(userId);
   if (!canGen.canGenerate) {
-    console.log(`generateLesson: blocking user=${userId} - ${canGen.reason}`);
     res.status(403);
     return res.json(formatResponse(false, canGen.reason || 'Generation limit reached. Upgrade to continue.'));
   }
@@ -172,34 +171,7 @@ const generateAssessment = asyncHandler(async (req, res) => {
   }));
 });
 
-// @route GET /api/generate/debug
-// Protected debug endpoint to return counts used by the weekly limit check
-const getGenerationDebug = asyncHandler(async (req, res) => {
-  const userId = req.user.id;
-  const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-
-  const [usageCount, noteCount] = await Promise.all([
-    prisma.usageLog.count({
-      where: { userId, action: 'LESSON_GENERATION', createdAt: { gte: since } }
-    }),
-    prisma.lessonNote.count({
-      where: { userId, createdAt: { gte: since } }
-    })
-  ]);
-
-  const recentCount = Math.max(usageCount, noteCount);
-
-  res.json(formatResponse(true, 'Generation debug data', {
-    usageCount,
-    noteCount,
-    recentCount,
-    since: since.toISOString(),
-    subscriptionPlan: req.user.subscriptionPlan
-  }));
-});
-
 module.exports = {
   generateLesson,
   generateAssessment,
-  getGenerationDebug
 };

@@ -14,7 +14,14 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 const allowedOrigins = process.env.ALLOWED_ORIGINS
     ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
-    : ['http://localhost:5173', 'http://localhost:3000', 'https://teachaide.ai'];
+    : [
+        'http://localhost:5173',
+        'http://127.0.0.1:5173',
+        'http://localhost:5174',
+        'http://127.0.0.1:5174',
+        'http://localhost:3000',
+        'https://teachaide.ai'
+    ];
 
 app.use(cors({
     origin: (origin, callback) => {
@@ -72,23 +79,9 @@ const PORT = process.env.PORT || 5000;
 
 
 const { seedDefaultCurriculum } = require('./src/controllers/curriculumController');
-const { startMonthlyReset } = require('./src/cron/monthlyReset');
-const { initializeUsageResetCron } = require('./src/jobs/resetUsage');
 
 app.listen(PORT, async () => {
     await seedDefaultCurriculum(); // Ensure defaults exist
-    try {
-        startMonthlyReset();
-    } catch (e) {
-        console.warn('Monthly reset not started', e.message || e);
-    }
-
-    // Initialize usage tracking cron job
-    try {
-        initializeUsageResetCron();
-    } catch (e) {
-        console.warn('Usage reset cron not started', e.message || e);
-    }
 
     console.log(`Server running on port ${PORT}`);
 });

@@ -75,7 +75,6 @@ async function createUsageLog(userId, action, metaData = null) {
         meta: metaData ? JSON.stringify(metaData) : null
       },
     });
-    console.log(`UsageLog created for user=${userId} action=${action} id=${log.id}`);
     return log;
   } catch (err) {
     // Don't block main flow on logging errors; surface in logs

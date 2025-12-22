@@ -73,7 +73,7 @@ async function recordLessonGeneration(userId, inputTokens = 0, outputTokens = 0)
         }
     });
 
-    console.log(`Usage recorded: user=${userId} lessons=+1 tokens=+${totalTokens}`);
+    // Usage recorded
 }
 
 /**
@@ -152,7 +152,7 @@ async function checkAndResetUsage(userId) {
                 lastUsageReset: now
             }
         });
-        console.log(`Monthly usage reset for user=${userId}`);
+        // Monthly usage reset performed
     }
 }
 
@@ -176,7 +176,6 @@ async function resetMonthlyUsage() {
         }
     });
 
-    console.log(`Monthly reset completed: ${result.count} users reset`);
     return result.count;
 }
 
@@ -195,7 +194,7 @@ async function setUserLimits(userId, lessonLimit, tokenLimit) {
         }
     });
 
-    console.log(`Custom limits set: user=${userId} lessons=${lessonLimit} tokens=${tokenLimit}`);
+    // Custom limits set
 }
 
 /**
