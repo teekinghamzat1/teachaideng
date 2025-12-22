@@ -22,6 +22,18 @@ const updateProfileSchema = z.object({
     }),
 });
 
+const emailNoteSchema = z.object({
+    body: z.object({
+        lessonNote: z.object({
+            topic: z.string().min(1),
+            subtopic: z.string().optional(),
+            classLevel: z.string().optional(),
+            subject: z.string().optional(),
+            lessonContent: z.string().min(1),
+        }).passthrough(),
+    }),
+});
+
 router.route('/profile')
     .get(protect, getUserProfile)
     .patch(protect, validate(updateProfileSchema), updateUserProfile)
@@ -30,6 +42,6 @@ router.route('/profile')
 router.get('/orders', protect, getUserOrders);
 router.get('/transactions', protect, getUserTransactions);
 router.get('/usage', protect, getUsageStats);
-router.post('/email-note', protect, emailLessonNote);
+router.post('/email-note', protect, validate(emailNoteSchema), emailLessonNote);
 
 module.exports = router;
