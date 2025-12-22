@@ -6,21 +6,23 @@ const formatResponse = require('../utils/formatResponse');
 // @route   POST /api/timetable
 // @access  Private
 const saveTimetable = asyncHandler(async (req, res) => {
-    const { className, slots } = req.body;
+    const { className, boardName, title, configuration, slots } = req.body;
 
-    // Creating a new timetable entry. 
-    // Assuming 'slots' is an array of objects { day, time, subject }
-
-    // Check if user already has a timetable? 
-    // The prompt says "save", could mean update. 
-    // Mongoose implementation was creating new one.
-    // Let's create new one but maybe we want to delete old ones if it's a replacement?
-    // Let's just create new one for now as per Mongoose logic.
+    // Delete existing timetable for user to replace it with fresh data (including fresh slots)
+    await prisma.timetableSlot.deleteMany({
+        where: { timetable: { userId: req.user.id } }
+    });
+    await prisma.timetable.deleteMany({
+        where: { userId: req.user.id }
+    });
 
     const timetable = await prisma.timetable.create({
         data: {
             userId: req.user.id,
             className: className || 'Default Class',
+            boardName: boardName || '',
+            title: title || '',
+            configuration: configuration || '{}',
             slots: {
                 create: slots && Array.isArray(slots) ? slots.map(slot => ({
                     day: slot.day,

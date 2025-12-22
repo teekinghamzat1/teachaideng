@@ -3,16 +3,22 @@ import { Link, useNavigate } from 'react-router-dom';
 import { BookOpen, Sparkles, Trash, FileText, Loader2, Edit } from '../components/Icons';
 import { LessonNote } from '../types';
 import { db } from '../database';
+import { showAlert } from '../utils/alerts';
 
 const Dashboard: React.FC = () => {
   const [savedNotes, setSavedNotes] = useState<LessonNote[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
-  const user = db.auth.getCurrentUser();
+  const [user, setUser] = useState<any | null>(null); // State to hold user info
+  const [usage, setUsage] = useState<{ used: number; limit: number; remaining: number } | null>(null);
+  const [stats, setStats] = useState<any | null>(null); // State to hold admin stats
 
   useEffect(() => {
+    const currentUser = db.auth.getCurrentUser();
+    setUser(currentUser); // Set user state
+
     // Check if user is logged in
-    if (!user) {
+    if (!currentUser) {
       navigate('/login');
       return;
     }
@@ -28,18 +34,45 @@ const Dashboard: React.FC = () => {
       }
     };
 
+    const loadStats = async () => {
+      try {
+        // Only fetch stats if user is a System Admin
+        if (currentUser?.role === 'Admin' || currentUser?.role === 'SuperAdmin') {
+          const statsData = await db.admin.getStats();
+          setStats(statsData);
+        }
+      } catch (e) {
+        console.error('Failed to load stats', e);
+      }
+    };
+
+    const checkUsage = async () => {
+      try {
+        if (currentUser) {
+          const usageData = await db.auth.getUsage();
+          setUsage(usageData);
+        }
+      } catch (e) {
+        console.error('Failed to load usage stats', e);
+      }
+    };
+
     loadNotes();
-  }, [navigate, user]);
+    loadStats();
+    checkUsage();
+  }, [navigate]); // Depend on navigate, as it's used for redirection
 
   const handleDelete = async (id: string, e: React.MouseEvent) => {
     e.preventDefault(); // Prevent navigation
-    if (window.confirm('Are you sure you want to delete this note?')) {
+    if (await showAlert.confirm('Delete Note', 'Are you sure you want to delete this lesson note?')) {
       try {
         await db.notes.delete(id);
         const updatedNotes = savedNotes.filter(note => note.id !== id);
         setSavedNotes(updatedNotes);
+        showAlert.success('Deleted', 'Lesson note removed successfully.');
       } catch (err) {
         console.error("Failed to delete note", err);
+        showAlert.error('Delete Failed', 'Failed to delete note.');
       }
     }
   };
@@ -80,8 +113,7 @@ const Dashboard: React.FC = () => {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div>
-              <p className="text-sm opacity-75 mb-1">Plan Price</p>
-                <p className="text-sm opacity-75 mb-1 dark:text-slate-300">Plan Price</p>
+              <p className="text-sm opacity-75 mb-1 dark:text-slate-300">Plan Price</p>
               <p className="text-3xl font-bold">
                 {user?.subscriptionPlan === 'Pro' ? '₦2,500' : user?.subscriptionPlan === 'School' ? '₦20,000' : '₦0'}
               </p>
@@ -90,8 +122,7 @@ const Dashboard: React.FC = () => {
               </p>
             </div>
             <div>
-              <p className="text-sm opacity-75 mb-1">Status</p>
-                <p className="text-sm opacity-75 mb-1 dark:text-slate-300">Status</p>
+              <p className="text-sm opacity-75 mb-1 dark:text-slate-300">Status</p>
               <div className="flex items-center mt-2">
                 {user?.subscriptionPlan !== 'Free' ? (
                   <>
@@ -122,7 +153,8 @@ const Dashboard: React.FC = () => {
                   Upgrade Plan →
                 </Link>
               ) : user?.subscriptionPlan === 'School' ? (
-                user?.isSchoolAdmin ? (
+                /* Only show Manage Subscription if user is the school owner OR a promoted teacher admin */
+                (user?.isSchoolAdmin) ? (
                   <Link
                     to="/pricing"
                     className="w-full bg-white/10 backdrop-blur-sm text-white px-6 py-3 rounded-lg text-sm font-semibold hover:bg-white/20 transition-colors text-center border border-white/20"
@@ -137,15 +169,33 @@ const Dashboard: React.FC = () => {
                   </div>
                 )
               ) : (
-                // Other paid plans (Pro etc.)
-                !user?.schoolId && (
-                  <Link
-                    to="/pricing"
-                    className="w-full bg-white/10 backdrop-blur-sm text-white px-6 py-3 rounded-lg text-sm font-semibold hover:bg-white/20 transition-colors text-center border border-white/20"
-                  >
-                    Manage Subscription
-                  </Link>
-                )
+                /* Non-school paid plans (Pro, etc.) */
+                <Link
+                  to="/pricing"
+                  className="w-full bg-white/10 backdrop-blur-sm text-white px-6 py-3 rounded-lg text-sm font-semibold hover:bg-white/20 transition-colors text-center border border-white/20"
+                >
+                  Manage Subscription
+                </Link>
+              )}
+              {/* Usage Display for All Plans */}
+              {usage && (
+                <div className="mt-4 w-full bg-white/10 backdrop-blur-sm px-4 py-3 rounded-lg border border-white/20">
+                  <div className="flex justify-between items-center text-white mb-2">
+                    <span className="text-sm font-medium">Monthly Usage</span>
+                    <span className="text-sm font-bold">
+                      {usage.used} / {usage.limit}
+                    </span>
+                  </div>
+                  <div className="w-full bg-white/20 rounded-full h-2">
+                    <div
+                      className={`h-2 rounded-full ${usage.remaining === 0 ? 'bg-red-400' : 'bg-green-400'}`}
+                      style={{ width: `${Math.min(100, (usage.used / usage.limit) * 100)}%` }}
+                    ></div>
+                  </div>
+                  <p className="text-xs text-white/80 mt-2 text-center">
+                    {usage.remaining} generations remaining this month
+                  </p>
+                </div>
               )}
             </div>
           </div>
@@ -181,7 +231,7 @@ const Dashboard: React.FC = () => {
             </div>
           </div>
         ) : (
-                <ul role="list" className="divide-y divide-slate-200 dark:divide-slate-700">
+          <ul role="list" className="divide-y divide-slate-200 dark:divide-slate-700">
             {savedNotes.map((note) => (
               <li key={note.id || Math.random()}>
                 <Link
@@ -191,7 +241,7 @@ const Dashboard: React.FC = () => {
                 >
                   <div className="px-4 py-4 sm:px-6">
                     <div className="flex items-center justify-between">
-                        <p className="text-sm font-medium text-brand-600 truncate">{note.topic} <span className="text-slate-400 dark:text-slate-400 font-normal">- {note.subtopic}</span></p>
+                      <p className="text-sm font-medium text-brand-600 truncate">{note.topic} <span className="text-slate-400 dark:text-slate-400 font-normal">- {note.subtopic}</span></p>
                       <div className="ml-2 flex-shrink-0 flex items-center">
                         <button
                           onClick={(e) => handleEdit(note, e)}
@@ -232,7 +282,7 @@ const Dashboard: React.FC = () => {
           </ul>
         )}
       </div>
-    </div>
+    </div >
   );
 };
 

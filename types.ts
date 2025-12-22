@@ -52,17 +52,7 @@ export interface LessonNote {
   status?: 'Approved' | 'Flagged' | 'Pending'; // For moderation
 }
 
-export interface User {
-  id: string;
-  name: string;
-  email: string;
-  subscriptionPlan: 'Free' | 'Pro' | 'School';
-  role: string;
-  gender: string;
-  schoolName?: string;
-  status?: 'Active' | 'Suspended';
-  lastActive?: string;
-}
+
 
 export interface Question {
   id: string;
@@ -103,6 +93,9 @@ export interface Timetable {
   id: string;
   userId: string;
   className: string;
+  boardName?: string;
+  title?: string;
+  configuration?: string; // JSON string for full flexibility
   slots: TimetableSlot[];
 }
 
@@ -132,6 +125,49 @@ export interface SystemSettings {
   smtpPassword?: string;
   smtpFromEmail?: string;
   smtpFromName?: string;
+  googleGeminiApiKey?: string;
+  cloudinaryCloudName?: string;
+  cloudinaryApiKey?: string;
+  cloudinaryApiSecret?: string;
+  paystackSecretKey?: string;
+  paystackPublicKey?: string;
+  jwtSecret?: string;
+  jwtExpire?: string;
+  databaseUrl?: string;
+  port: number;
+  nodeEnv: string;
+
+  // Site Customization & Branding
+  siteName?: string;
+  siteTagline?: string;
+  siteLogo?: string;
+  siteLogoDark?: string;
+  siteFavicon?: string;
+  brandPrimaryColor?: string;
+  brandSecondaryColor?: string;
+  brandAccentColor?: string;
+  brandFont?: string;
+  lessonGenerationCost?: number;
+  assessmentGenerationCost?: number;
+  freePlanLessonLimit?: number;
+  proPlanLessonLimit?: number;
+  schoolPlanLessonLimit?: number;
+  freePlanTokenLimit?: number;
+  proPlanTokenLimit?: number;
+  schoolPlanTokenLimit?: number;
+
+  // Plan Pricing
+  freePlanName?: string;
+  freePlanPrice?: number;
+  freePlanDuration?: string;
+
+  proPlanName?: string;
+  proPlanPrice?: number;
+  proPlanDuration?: string;
+
+  schoolPlanName?: string;
+  schoolPlanPrice?: number;
+  schoolPlanDuration?: string;
 }
 
 export interface Curriculum {
@@ -164,6 +200,9 @@ export interface Teacher {
   email: string;
   teacherStatus: string; // 'Invited', 'Active', 'Suspended'
   schoolId?: string;
+  isSchoolAdmin?: boolean;
+  monthlyLessonLimit?: number;
+  lessonsUsedThisMonth?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -174,14 +213,32 @@ export interface User {
   name: string;
   email: string;
   role: string;
-  subscriptionPlan?: string;
+  subscriptionPlan: 'Free' | 'Pro' | 'School';
+  gender?: string;
+  schoolName?: string;
+  status?: 'Active' | 'Suspended';
+  lastActive?: string;
   avatar?: string;
   token?: string;
   schoolId?: string;
   isSchoolAdmin?: boolean;
+  usage?: { used: number; limit: number; remaining: number };
   teacherStatus?: string;
   teacherLimit?: number;
   accountType?: 'individual' | 'school';
+
+  // Lesson usage tracking (USER-FACING)
+  monthlyLessonLimit?: number;
+  lessonsUsedThisMonth?: number;
+  lastUsageReset?: string;
+}
+
+// Lesson usage statistics (USER-FACING ONLY - no tokens exposed)
+export interface UsageStats {
+  lessonsUsed: number;
+  lessonsRemaining: number;
+  monthlyLimit: number;
+  resetDate: string;
 }
 
 export interface Testimonial {

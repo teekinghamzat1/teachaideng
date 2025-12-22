@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { db } from '../database';
 import { Curriculum } from '../types';
 import { BookOpen, Trash, CheckCircle } from '../components/Icons';
+import { showAlert } from '../utils/alerts';
 
 const AdminCurriculum: React.FC = () => {
     const [data, setData] = useState<Curriculum>({ subjects: [], classLevels: [] });
@@ -26,7 +27,7 @@ const AdminCurriculum: React.FC = () => {
             setData(newData);
             await db.admin.saveCurriculum(newData);
         } catch (error: any) {
-            alert(error.message || 'Failed to save curriculum');
+            showAlert.error('Save Failed', error.message || 'Failed to save curriculum');
             // Revert on failure (could improve by re-fetching)
             const res = await db.admin.getCurriculum();
             setData(res);
@@ -41,7 +42,7 @@ const AdminCurriculum: React.FC = () => {
     };
 
     const removeSubject = async (sub: string) => {
-        if (window.confirm(`Delete subject "${sub}"?`)) {
+        if (await showAlert.confirm('Remove Subject', `Are you sure you want to delete the subject "${sub}"?`)) {
             await save({ ...data, subjects: data.subjects.filter(s => s !== sub) });
         }
     };
@@ -54,7 +55,7 @@ const AdminCurriculum: React.FC = () => {
     };
 
     const removeClass = async (cls: string) => {
-        if (window.confirm(`Delete class "${cls}"?`)) {
+        if (await showAlert.confirm('Remove Class', `Are you sure you want to delete the class "${cls}"?`)) {
             await save({ ...data, classLevels: data.classLevels.filter(c => c !== cls) });
         }
     };

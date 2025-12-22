@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { db } from '../database';
 import { Trash, Edit, Plus, CheckCircle, X } from '../components/Icons';
+import { showAlert } from '../utils/alerts';
 
 const getAuthHeader = () => {
   const userStr = localStorage.getItem('teachaide_session');
@@ -8,7 +9,7 @@ const getAuthHeader = () => {
     try {
       const user = JSON.parse(userStr as string);
       if (user.token) return { Authorization: `Bearer ${user.token}` };
-    } catch(e) {
+    } catch (e) {
       return {};
     }
   }
@@ -78,16 +79,19 @@ const AdminTestimonials: React.FC = () => {
       }
       setShowForm(false);
       load();
-    } catch (e) {
+      showAlert.success('Success', `Testimonial ${editing ? 'updated' : 'created'} successfully.`);
+    } catch (e: any) {
       console.error(e);
-      alert('Failed to save');
+      showAlert.error('Error', e.message || 'Failed to save testimonial');
     }
   };
 
   const remove = async (id: string) => {
-    if (!confirm('Delete this testimonial?')) return;
-    await db.admin.deleteTestimonial(id);
-    load();
+    if (await showAlert.confirm('Delete Testimonial', 'Are you sure you want to delete this testimonial?')) {
+      await db.admin.deleteTestimonial(id);
+      showAlert.success('Deleted', 'Testimonial removed.');
+      load();
+    }
   };
 
   const toggleActive = async (id: string) => {
@@ -151,7 +155,7 @@ const AdminTestimonials: React.FC = () => {
                     setUploading(true);
                     setUploadError('');
                     try {
-                      const headers: Record<string,string> = {};
+                      const headers: Record<string, string> = {};
                       const auth = getAuthHeader();
                       if (auth && (auth as any).Authorization) headers.Authorization = (auth as any).Authorization;
 

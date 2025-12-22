@@ -6,21 +6,22 @@ const {
     updateTeacherStatus,
     removeTeacher,
     toggleTeacherAdmin,
-    updateSchoolSettings
+    updateSchoolSettings,
+    updateTeacherLimit
 } = require('../controllers/schoolController');
 const { protect } = require('../middlewares/authMiddleware');
 const { isSchoolAdmin } = require('../middlewares/isSchoolAdmin');
 
-// All routes require authentication and school admin role
+// All school routes require authentication
 router.use(protect);
-router.use(isSchoolAdmin);
 
-// School management routes
+// School management routes - most require isSchoolAdmin
 router.get('/', getSchoolDetails);
-router.post('/teachers', addTeacher);
-router.patch('/teachers/:id', updateTeacherStatus);
-router.delete('/teachers/:id', removeTeacher);
-router.patch('/teachers/:id/admin', toggleTeacherAdmin);
-router.patch('/settings', updateSchoolSettings);
+router.post('/teachers', isSchoolAdmin, addTeacher);
+router.patch('/teachers/:id', isSchoolAdmin, updateTeacherStatus);
+router.delete('/teachers/:id', isSchoolAdmin, removeTeacher);
+router.patch('/teachers/:id/admin', isSchoolAdmin, toggleTeacherAdmin);
+router.patch('/teachers/:id/limit', isSchoolAdmin, updateTeacherLimit);
+router.patch('/settings', isSchoolAdmin, updateSchoolSettings);
 
 module.exports = router;

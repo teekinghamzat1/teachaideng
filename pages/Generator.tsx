@@ -9,16 +9,18 @@ const Generator: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [loading, setLoading] = useState(false);
-  
+
   const [error, setError] = useState<string | null>(null);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [subjects, setSubjects] = useState<string[]>(Object.values(Subject));
   const [classLevels, setClassLevels] = useState<string[]>(Object.values(ClassLevel));
+  const [usage, setUsage] = useState<{ used: number; limit: number; remaining: number } | null>(null);
 
   const [formData, setFormData] = useState({
-    subject: '', // Default to empty, will be set after load
+    subject: '',
     classLevel: '',
     topic: '',
+    subtopic: '',
     duration: '40 minutes'
   });
 
@@ -28,7 +30,7 @@ const Generator: React.FC = () => {
     window.addEventListener('online', handleStatus);
     window.addEventListener('offline', handleStatus);
 
-    // Fetch curriculum
+    // Fetch curriculum and usage
     const loadCurriculum = async () => {
       try {
         const data = await db.admin.getCurriculum();
@@ -55,7 +57,23 @@ const Generator: React.FC = () => {
       }
     };
 
+
+
+    const checkUsage = async () => {
+      try {
+        const user = db.auth.getCurrentUser();
+        if (user) {
+          const stats = await db.auth.getUsage();
+          // Only set usage if we got valid stats
+          if (stats) setUsage(stats);
+        }
+      } catch (e) {
+        console.error('Failed to load usage stats', e);
+      }
+    };
+
     loadCurriculum();
+    checkUsage();
 
     return () => {
       window.removeEventListener('online', handleStatus);
@@ -77,6 +95,7 @@ const Generator: React.FC = () => {
         formData.subject,
         formData.classLevel,
         formData.duration,
+        formData.subtopic,
         userPlan,
         limitReached
       );
@@ -88,8 +107,9 @@ const Generator: React.FC = () => {
       }
       // Navigate to result page with the data
       navigate('/result', { state: { lessonNote: result } });
-    } catch (err) {
-      setError("Failed to generate lesson note. Please check your connection and try again.");
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || "Failed to generate lesson note. Please check your connection and try again.");
     } finally {
       setLoading(false);
     }
@@ -158,6 +178,7 @@ const Generator: React.FC = () => {
         formData.subject,
         formData.classLevel,
         formData.duration,
+        formData.subtopic,
         userPlan,
         limitReached
       );
@@ -169,8 +190,9 @@ const Generator: React.FC = () => {
       }
       // Navigate to result page with the data
       navigate('/result', { state: { lessonNote: result } });
-    } catch (err) {
-      setError("Failed to generate lesson note. Please check your connection and try again.");
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || "Failed to generate lesson note. Please check your connection and try again.");
     } finally {
       setLoading(false);
     }
@@ -191,7 +213,7 @@ const Generator: React.FC = () => {
         </div>
 
         <div className="px-6 py-8 sm:px-10">
-          
+
           {error && (
             <div className="mb-6 bg-red-50 dark:bg-red-900 border border-red-200 dark:border-red-700 text-red-700 dark:text-red-200 px-4 py-3 rounded-lg relative flex items-start" role="alert">
               <span className="block sm:inline">{error}</span>
@@ -202,6 +224,22 @@ const Generator: React.FC = () => {
             <div className="mb-6 bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 px-4 py-3 rounded-lg relative flex items-center">
               <WifiOff className="w-5 h-5 mr-2 text-slate-500 dark:text-slate-300" />
               <span>You are offline. Generation requires an internet connection.</span>
+            </div>
+          )}
+
+          {usage && (
+            <div className={`mb-6 border px-4 py-3 rounded-lg relative flex items-center justify-between ${usage.remaining === 0 ? 'bg-red-50 border-red-200 text-red-700' : 'bg-blue-50 border-blue-200 text-blue-700'}`}>
+              <div className="flex items-center">
+                <span className="font-semibold mr-2">
+                  {usage.limit > 100 ? 'Plan Usage:' : (usage.remaining === 0 ? 'Monthly Limit Reached' : 'Free Plan Usage:')}
+                </span>
+                <span>
+                  {usage.limit > 100 ? 'Unlimited' : `${usage.used} / ${usage.limit} generated this month`}
+                </span>
+              </div>
+              {usage.remaining === 0 && usage.limit <= 100 && (
+                <button onClick={() => navigate('/pricing')} className="text-sm font-bold underline hover:no-underline">Upgrade Now</button>
+              )}
             </div>
           )}
 
@@ -239,7 +277,7 @@ const Generator: React.FC = () => {
             </div>
 
             <div>
-              <label htmlFor="topic" className="block text-sm font-medium text-slate-700">Topic</label>
+              <label htmlFor="topic" className="block text-sm font-medium text-slate-700">Topic Area / Main Subject</label>
               <div className="mt-1">
                 <input
                   type="text"
@@ -247,8 +285,23 @@ const Generator: React.FC = () => {
                   id="topic"
                   required
                   className="shadow-sm focus:ring-brand-500 focus:border-brand-500 block w-full sm:text-sm border-slate-300 rounded-lg py-3 px-4 border bg-slate-50 dark:bg-slate-700 dark:text-slate-100 dark:border-slate-700"
-                  placeholder="e.g., Simple Fractions, The Solar System, Verbs"
+                  placeholder="e.g., Noun, Solar System, Fractions"
                   value={formData.topic}
+                  onChange={handleChange}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor="subtopic" className="block text-sm font-medium text-slate-700">Sub-topic (Optional)</label>
+              <div className="mt-1">
+                <input
+                  type="text"
+                  name="subtopic"
+                  id="subtopic"
+                  className="shadow-sm focus:ring-brand-500 focus:border-brand-500 block w-full sm:text-sm border-slate-300 rounded-lg py-3 px-4 border bg-slate-50 dark:bg-slate-700 dark:text-slate-100 dark:border-slate-700"
+                  placeholder="e.g., Types of Nouns, The Planets, Addition of Fractions"
+                  value={formData.subtopic}
                   onChange={handleChange}
                 />
               </div>

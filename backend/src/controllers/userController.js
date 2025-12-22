@@ -2,6 +2,8 @@ const asyncHandler = require('express-async-handler');
 const bcrypt = require('bcryptjs');
 const prisma = require('../config/db');
 const formatResponse = require('../utils/formatResponse');
+const usageService = require('../services/usageService');
+const { sendLessonNoteEmail } = require('../utils/emailService');
 
 // @desc    Get user profile
 // @route   GET /api/users/profile
@@ -22,6 +24,7 @@ const getUserProfile = asyncHandler(async (req, res) => {
                 subscriptionPlan: user.subscriptionPlan,
                 isSchoolAdmin: user.isSchoolAdmin,
                 avatar: user.avatar,
+                accountType: user.accountType || 'individual',
             })
         );
     } else {
@@ -62,7 +65,9 @@ const updateUserProfile = asyncHandler(async (req, res) => {
                 email: updatedUser.email,
                 role: updatedUser.role,
                 subscriptionPlan: updatedUser.subscriptionPlan,
+                isSchoolAdmin: updatedUser.isSchoolAdmin,
                 avatar: updatedUser.avatar,
+                accountType: updatedUser.accountType || 'individual',
             })
         );
     } else {
@@ -91,9 +96,83 @@ const getUserTransactions = asyncHandler(async (req, res) => {
     res.json(formatResponse(true, 'User transactions retrieved', transactions));
 });
 
+// @desc    Permanently delete current user and related data
+// @route   DELETE /api/users/profile
+// @access  Private
+const deleteOwnAccount = asyncHandler(async (req, res) => {
+    const userId = req.user.id;
+
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+        res.status(404);
+        throw new Error('User not found');
+    }
+
+    // Delete related data in a safe order
+    await prisma.$transaction([
+        prisma.notificationRead.deleteMany({ where: { userId } }),
+        prisma.timetableSlot.deleteMany({ where: { timetable: { userId } } }),
+        prisma.timetable.deleteMany({ where: { userId } }),
+        prisma.student.deleteMany({ where: { userId } }),
+        prisma.question.deleteMany({ where: { assessment: { userId } } }),
+        prisma.assessment.deleteMany({ where: { userId } }),
+        prisma.lessonNote.deleteMany({ where: { userId } }),
+        prisma.sharedContent.deleteMany({ where: { createdById: userId } }),
+        prisma.tokenUsage.deleteMany({ where: { userId } }),
+        prisma.transaction.deleteMany({ where: { userId } }),
+        prisma.orderItem.deleteMany({ where: { order: { userId } } }),
+        prisma.order.deleteMany({ where: { userId } }),
+        prisma.usageLog.deleteMany({ where: { userId } }),
+        prisma.user.delete({ where: { id: userId } })
+    ]);
+
+    res.json(formatResponse(true, 'Your account and related data have been permanently deleted'));
+});
+
+// @desc    Get user usage stats
+// @route   GET /api/users/usage
+// @access  Private
+const getUsageStats = asyncHandler(async (req, res) => {
+    // Use the unified usage service associated with monthly limits
+    const stats = await usageService.getUserUsage(req.user.id);
+
+    // Map usageService response (lessonsUsed, monthlyLimit, etc.)
+    // to the API contract expected by frontend (used, limit, remaining)
+    const usage = {
+        used: stats.lessonsUsed,
+        limit: stats.monthlyLimit,
+        remaining: stats.lessonsRemaining,
+        resetDate: stats.resetDate
+    };
+
+    res.json(formatResponse(true, 'Usage stats retrieved', usage));
+});
+
+// @desc    Email a lesson note to yourself
+// @route   POST /api/users/email-note
+// @access  Private
+const emailLessonNote = asyncHandler(async (req, res) => {
+    const { lessonNote } = req.body;
+    if (!lessonNote) {
+        res.status(400);
+        throw new Error('Lesson note data is required');
+    }
+
+    const success = await sendLessonNoteEmail(req.user.email, lessonNote);
+    if (success) {
+        res.json(formatResponse(true, 'Lesson note sent to your email successfully'));
+    } else {
+        res.status(500);
+        throw new Error('Failed to send email. Please check your SMTP settings.');
+    }
+});
+
 module.exports = {
     getUserProfile,
     updateUserProfile,
     getUserOrders,
     getUserTransactions,
+    deleteOwnAccount,
+    getUsageStats,
+    emailLessonNote,
 };

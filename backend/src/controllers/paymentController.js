@@ -53,12 +53,15 @@ const verifyPayment = asyncHandler(async (req, res) => {
         }
 
         if (isValid) {
+            // Normalize plan name
+            const normalizedPlan = plan.charAt(0).toUpperCase() + plan.slice(1).toLowerCase();
+
             // Update User Plan
             const updatedUser = await prisma.user.update({
                 where: { id: userId },
                 data: {
-                    subscriptionPlan: plan,
-                    isSchoolAdmin: plan === 'School' ? true : false
+                    subscriptionPlan: normalizedPlan,
+                    isSchoolAdmin: normalizedPlan === 'School' ? true : false
                 }
             });
 

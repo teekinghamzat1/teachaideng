@@ -4,6 +4,7 @@ import { generateAssessment } from '../services/geminiService';
 import { Assessment, Subject, ClassLevel } from '../types';
 import { Loader2, Clipboard, Save, CheckCircle, Share, WifiOff } from '../components/Icons';
 import { useNavigate } from 'react-router-dom';
+import { showAlert } from '../utils/alerts';
 
 const AssessmentGenerator: React.FC = () => {
     const navigate = useNavigate();
@@ -55,7 +56,7 @@ const AssessmentGenerator: React.FC = () => {
         e.preventDefault();
 
         if (!navigator.onLine) {
-            alert("You are offline. Please connect to the internet.");
+            showAlert.warning("Offline", "You are offline. Please connect to the internet to generate assessments.");
             return;
         }
 
@@ -64,8 +65,8 @@ const AssessmentGenerator: React.FC = () => {
         try {
             const data = await generateAssessment(formData.topic, formData.classLevel, formData.subject, formData.questionCount);
             setResult(data);
-        } catch (error) {
-            alert("Failed to generate assessment");
+        } catch (error: any) {
+            showAlert.error("Generation Failed", error.message || "Failed to generate assessment");
         } finally {
             setLoading(false);
         }
@@ -78,11 +79,9 @@ const AssessmentGenerator: React.FC = () => {
     };
 
     const handleShare = () => {
-        // Mock share - usually uses Web Share API or generates a file link
-        alert("Sharing feature: Exporting as Text/PDF...");
         const text = result?.questions.map((q, i) => `${i + 1}. ${q.question}\n`).join('');
         navigator.clipboard.writeText(text || '');
-        alert("Questions copied to clipboard!");
+        showAlert.success("Copied", "Assessment questions copied to clipboard!");
     }
 
     return (
@@ -171,19 +170,31 @@ const AssessmentGenerator: React.FC = () => {
                     </div>
 
                     <div className="space-y-6">
-                        {result.questions.map((q, idx) => (
-                            <div key={idx} className="bg-slate-50 p-4 rounded-lg">
-                                <p className="font-medium text-slate-900 mb-2">{idx + 1}. {q.question}</p>
-                                {q.type === 'MCQ' && (
-                                    <ul className="pl-4 list-[upper-alpha] space-y-1 text-slate-700">
-                                        {q.options?.map((opt, i) => <li key={i}>{opt}</li>)}
-                                    </ul>
-                                )}
-                                <div className="mt-3 text-xs text-green-700 bg-green-50 inline-block px-2 py-1 rounded">
-                                    Answer: {q.correctAnswer}
+                        {result.questions && Array.isArray(result.questions) && result.questions.length > 0 ? (
+                            result.questions.map((q, idx) => (
+                                <div key={idx} className="bg-slate-50 p-4 rounded-lg">
+                                    <p className="font-medium text-slate-900 mb-2">{idx + 1}. {q?.question || 'Untitled Question'}</p>
+                                    {q?.type === 'MCQ' && q?.options && Array.isArray(q.options) && (
+                                        <ul className="pl-4 list-[upper-alpha] space-y-1 text-slate-700">
+                                            {q.options.map((opt, i) => <li key={i}>{opt}</li>)}
+                                        </ul>
+                                    )}
+                                    <div className="mt-3 text-xs text-green-700 bg-green-50 inline-block px-2 py-1 rounded">
+                                        Answer: {q?.correctAnswer || 'Not provided'}
+                                    </div>
                                 </div>
+                            ))
+                        ) : (
+                            <div className="text-center py-12">
+                                <p className="text-slate-500 mb-4">No questions were generated successfully. Please try again.</p>
+                                <button
+                                    onClick={() => setResult(null)}
+                                    className="px-4 py-2 bg-brand-600 text-white rounded-lg hover:bg-brand-700 transition-colors"
+                                >
+                                    Try Another Topic
+                                </button>
                             </div>
-                        ))}
+                        )}
                     </div>
 
                     <div className="mt-8 pt-4 border-t flex justify-end">

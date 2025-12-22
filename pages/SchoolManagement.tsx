@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../database';
 import { School, Teacher } from '../types';
-import { Users, UserPlus, UserCheck, UserX, Trash, Loader2, AlertCircle, SettingsIcon } from '../components/Icons';
+import { Users, UserPlus, UserCheck, UserX, Trash, Loader2, AlertCircle, SettingsIcon, Zap, Edit, Save, X } from '../components/Icons';
+import { showAlert } from '../utils/alerts';
 
 const SchoolManagement: React.FC = () => {
     const [school, setSchool] = useState<School | null>(null);
@@ -11,6 +12,9 @@ const SchoolManagement: React.FC = () => {
     const [newTeacher, setNewTeacher] = useState({ name: '', email: '', gender: '' });
     const [adding, setAdding] = useState(false);
     const [tempPassword, setTempPassword] = useState('');
+    const [editingLimit, setEditingLimit] = useState<string | null>(null);
+    const [newLimitValue, setNewLimitValue] = useState<number>(0);
+    const [updatingLimit, setUpdatingLimit] = useState(false);
 
     useEffect(() => {
         loadSchoolData();
@@ -24,7 +28,7 @@ const SchoolManagement: React.FC = () => {
             setStats(data.stats);
         } catch (error: any) {
             console.error('Failed to load school data:', error);
-            alert(error.message || 'Failed to load school data');
+            showAlert.error('Load Error', error.message || 'Failed to load school data');
         } finally {
             setLoading(false);
         }
@@ -33,7 +37,7 @@ const SchoolManagement: React.FC = () => {
     const handleAddTeacher = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!newTeacher.name || !newTeacher.email) {
-            alert('Name and email are required');
+            showAlert.warning('Required Fields', 'Name and email are required to invite a teacher.');
             return;
         }
 
@@ -41,12 +45,12 @@ const SchoolManagement: React.FC = () => {
         try {
             const result = await db.school.addTeacher(newTeacher.name, newTeacher.email, newTeacher.gender);
             setTempPassword(result.tempPassword); // Temporary - will be sent via email in production
-            alert(`Teacher invited successfully! Temporary password: ${result.tempPassword}`);
+            showAlert.success('Teacher Invited', `Invitation sent! Temporary password: ${result.tempPassword}`);
             setNewTeacher({ name: '', email: '', gender: '' });
             setShowAddModal(false);
             loadSchoolData();
         } catch (error: any) {
-            alert(error.message || 'Failed to add teacher');
+            showAlert.error('Invite Failed', error.message || 'Failed to add teacher');
         } finally {
             setAdding(false);
         }
@@ -55,48 +59,64 @@ const SchoolManagement: React.FC = () => {
     const handleUpdateStatus = async (teacherId: string, newStatus: string) => {
         try {
             await db.school.updateTeacherStatus(teacherId, newStatus);
-            alert('Teacher status updated');
+            showAlert.success('Status Updated', `Teacher status moved to ${newStatus}.`);
             loadSchoolData();
         } catch (error: any) {
-            alert(error.message || 'Failed to update status');
+            showAlert.error('Update Failed', error.message || 'Failed to update status');
         }
     };
 
     const handleRemoveTeacher = async (teacherId: string, teacherName: string) => {
-        if (!window.confirm(`Remove ${teacherName} from your school?`)) return;
-
-        try {
-            await db.school.removeTeacher(teacherId);
-            alert('Teacher removed successfully');
-            loadSchoolData();
-        } catch (error: any) {
-            alert(error.message || 'Failed to remove teacher');
+        if (await showAlert.confirm('Remove Teacher', `Are you sure you want to remove ${teacherName} from your school?`)) {
+            try {
+                await db.school.removeTeacher(teacherId);
+                showAlert.success('Teacher Removed', 'The teacher has been removed from your school list.');
+                loadSchoolData();
+            } catch (error: any) {
+                showAlert.error('Removal Failed', error.message || 'Failed to remove teacher');
+            }
         }
     };
 
     const handleToggleAdmin = async (teacherId: string, teacherName: string, currentStatus: boolean) => {
         const action = currentStatus ? 'remove admin privileges from' : 'promote to admin';
-        if (!window.confirm(`Are you sure you want to ${action} ${teacherName}?`)) return;
-
-        try {
-            await db.school.toggleTeacherAdmin(teacherId, !currentStatus);
-            const message = currentStatus
-                ? `${teacherName} has been demoted from admin. They need to logout and login to see the changes.`
-                : `${teacherName} has been promoted to admin! They need to logout and login to access School Management.`;
-            alert(message);
-            loadSchoolData();
-        } catch (error: any) {
-            alert(error.message || 'Failed to update admin status');
+        if (await showAlert.confirm(currentStatus ? 'Demote Admin' : 'Promote to Admin', `Are you sure you want to ${action} ${teacherName}?`)) {
+            try {
+                await db.school.toggleTeacherAdmin(teacherId, !currentStatus);
+                const title = currentStatus ? 'Admin Removed' : 'Promoted to Admin';
+                const message = currentStatus
+                    ? `${teacherName} has been demoted. They must re-login to see changes.`
+                    : `${teacherName} is now an admin! They must re-login for dashboard access.`;
+                showAlert.success(title, message);
+                loadSchoolData();
+            } catch (error: any) {
+                showAlert.error('Update Failed', error.message || 'Failed to update admin status');
+            }
         }
     };
 
     const handleToggleAdminAccess = async (newValue: boolean) => {
         try {
             await db.school.updateSettings({ allowAdminAccess: newValue });
-            alert(`Teacher admin access ${newValue ? 'enabled' : 'disabled'} successfully`);
+            showAlert.success('Settings Updated', `Teacher admin access ${newValue ? 'enabled' : 'disabled'} successfully`);
             loadSchoolData();
         } catch (error: any) {
-            alert(error.message || 'Failed to update settings');
+            showAlert.error('Update Failed', error.message || 'Failed to update settings');
+        }
+    };
+
+    const handleUpdateLimit = async (teacherId: string) => {
+        if (newLimitValue < 0) return;
+        setUpdatingLimit(true);
+        try {
+            await db.school.updateTeacherLimit(teacherId, newLimitValue);
+            showAlert.success('Limit Updated', 'Teacher lesson limit has been updated.');
+            setEditingLimit(null);
+            loadSchoolData();
+        } catch (error: any) {
+            showAlert.error('Update Failed', error.message || 'Failed to update limit');
+        } finally {
+            setUpdatingLimit(false);
         }
     };
 
@@ -224,8 +244,9 @@ const SchoolManagement: React.FC = () => {
                                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Name</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Email</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Status</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Quota / Usage</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Joined</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Actions</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider text-right">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-slate-200">
@@ -246,11 +267,53 @@ const SchoolManagement: React.FC = () => {
                                                 {teacher.teacherStatus}
                                             </span>
                                         </td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            {editingLimit === teacher.id ? (
+                                                <div className="flex items-center gap-2">
+                                                    <input
+                                                        type="number"
+                                                        value={newLimitValue}
+                                                        onChange={(e) => setNewLimitValue(parseInt(e.target.value) || 0)}
+                                                        className="w-20 px-2 py-1 border border-brand-300 rounded text-sm focus:ring-2 focus:ring-brand-500 outline-none"
+                                                        autoFocus
+                                                    />
+                                                    <button
+                                                        onClick={() => handleUpdateLimit(teacher.id)}
+                                                        disabled={updatingLimit}
+                                                        className="p-1 text-green-600 hover:bg-green-50 rounded"
+                                                    >
+                                                        {updatingLimit ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                                                    </button>
+                                                    <button
+                                                        onClick={() => setEditingLimit(null)}
+                                                        className="p-1 text-slate-400 hover:bg-slate-100 rounded"
+                                                    >
+                                                        <X className="w-4 h-4" />
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <div className="flex items-center gap-3">
+                                                    <div className="text-sm font-semibold text-slate-700">
+                                                        {teacher.lessonsUsedThisMonth || 0} / {teacher.monthlyLessonLimit || 0}
+                                                    </div>
+                                                    <button
+                                                        onClick={() => {
+                                                            setEditingLimit(teacher.id);
+                                                            setNewLimitValue(teacher.monthlyLessonLimit || 0);
+                                                        }}
+                                                        className="p-1 text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded transition-colors"
+                                                        title="Edit Limit"
+                                                    >
+                                                        <Edit className="w-3.5 h-3.5" />
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
                                             {new Date(teacher.createdAt).toLocaleDateString()}
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm">
-                                            <div className="flex items-center gap-2">
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
+                                            <div className="flex items-center justify-end gap-2">
                                                 {teacher.teacherStatus === 'Active' && (
                                                     <button
                                                         onClick={() => handleUpdateStatus(teacher.id, 'Suspended')}

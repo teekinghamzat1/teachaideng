@@ -3,13 +3,31 @@ import { PaystackButton } from 'react-paystack';
 import { CheckCircle, Loader2 } from '../components/Icons';
 import { db } from '../database';
 import { useNavigate } from 'react-router-dom';
+import { showAlert } from '../utils/alerts';
+import { SystemSettings } from '../types';
 
 const Pricing: React.FC = () => {
     const navigate = useNavigate();
     const [loading, setLoading] = useState(false);
     const [showWarning, setShowWarning] = useState(false);
+    const [settings, setSettings] = useState<SystemSettings | null>(null);
     const [pendingPlan, setPendingPlan] = useState<'Pro' | 'School' | null>(null);
     const user = db.auth.getCurrentUser();
+
+    React.useEffect(() => {
+        const loadSettings = async () => {
+            try {
+                const response = await fetch(`${import.meta.env.VITE_API_URL || '/api'}/settings/pricing`);
+                const data = await response.json();
+                if (data.success) {
+                    setSettings(data.data);
+                }
+            } catch (error) {
+                console.error('Failed to load pricing settings:', error);
+            }
+        };
+        loadSettings();
+    }, []);
 
     // TO USER: Replace with your actual Paystack Public Key in .env
     const publicKey = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || "pk_test_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";
@@ -19,17 +37,19 @@ const Pricing: React.FC = () => {
         try {
             // Defensive client-side guard: ensure only school admins can subscribe to School License
             if (plan === 'School' && user?.schoolId && !user?.isSchoolAdmin) {
-                alert('Only school administrators can purchase or manage the School License. Please contact your school administrator.');
+                showAlert.error('Admin Access Required', 'Only school administrators can purchase or manage the School License. Please contact your school administrator.');
                 return;
             }
             await db.payment.verify(reference.reference, plan);
             // Refresh user data to get updated subscription plan
             await db.auth.refreshUser();
             // Navigate to success page with payment details
-            const amount = plan === 'Pro' ? '2,500' : '20,000';
+            const amount = plan === 'Pro'
+                ? (settings?.proPlanPrice || 2500).toLocaleString()
+                : (settings?.schoolPlanPrice || 20000).toLocaleString();
             navigate(`/payment/success?plan=${plan}&amount=${amount}&ref=${reference.reference}`);
         } catch (error) {
-            alert('Payment verification failed. Please contact support.');
+            showAlert.error('Payment Error', 'Payment verification failed. Please contact support if you were debited.');
             console.error(error);
         } finally {
             setLoading(false);
@@ -37,7 +57,7 @@ const Pricing: React.FC = () => {
     };
 
     const handleClose = () => {
-        alert("Payment cancelled.");
+        showAlert.info("Payment Cancelled", "Your transaction was not completed.");
     }
 
     const handleSubscribeClick = (plan: 'Pro' | 'School') => {
@@ -84,8 +104,8 @@ const Pricing: React.FC = () => {
         <>
             {/* Subscription Warning Modal */}
             {showWarning && (
-                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-md w-full p-6 animate-fadeIn">
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-md w-full p-6 animate-fadeIn">
                         <div className="flex items-center justify-center w-12 h-12 mx-auto bg-yellow-100 rounded-full mb-4">
                             <svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
@@ -111,7 +131,12 @@ const Pricing: React.FC = () => {
                             {pendingPlan && (
                                 <PaystackButton
                                     className="flex-1 px-4 py-3 bg-brand-600 text-white rounded-lg font-semibold hover:bg-brand-700 transition-colors"
-                                    {...componentProps(pendingPlan === 'Pro' ? 2500 : 20000, pendingPlan)}
+                                    {...componentProps(
+                                        pendingPlan === 'Pro'
+                                            ? (settings?.proPlanPrice || 2500)
+                                            : (settings?.schoolPlanPrice || 20000),
+                                        pendingPlan
+                                    )}
                                     text="Continue to Payment"
                                 />
                             )}
@@ -132,15 +157,15 @@ const Pricing: React.FC = () => {
                         </p>
                     </div>
 
-                        <div className="mt-16 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:gap-8">
+                    <div className="mt-16 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:gap-8">
                         {/* Free Plan */}
                         <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm divide-y divide-slate-200 dark:divide-slate-700 border border-slate-200 dark:border-slate-700">
                             <div className="p-6">
-                                <h3 className="text-lg font-medium text-slate-900">Free Starter</h3>
+                                <h3 className="text-lg font-medium text-slate-900">{settings?.freePlanName || 'Free Starter'}</h3>
                                 <p className="mt-4 text-sm text-slate-500">Perfect for trying out TeachAide.</p>
                                 <p className="mt-8">
-                                    <span className="text-4xl font-extrabold text-slate-900">₦0</span>
-                                    <span className="text-base font-medium text-slate-500">/mo</span>
+                                    <span className="text-4xl font-extrabold text-slate-900">₦{settings?.freePlanPrice || 0}</span>
+                                    <span className="text-base font-medium text-slate-500">/{settings?.freePlanDuration === 'term' ? 'term' : settings?.freePlanDuration === 'year' ? 'yr' : 'mo'}</span>
                                 </p>
                                 <button disabled className="mt-8 block w-full bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-md py-2 text-sm font-semibold text-slate-500 dark:text-slate-200 text-center cursor-default">Current Plan</button>
                             </div>
@@ -149,7 +174,7 @@ const Pricing: React.FC = () => {
                                 <ul className="mt-6 space-y-4">
                                     <li className="flex space-x-3">
                                         <CheckCircle className="flex-shrink-0 h-5 w-5 text-green-500" />
-                                        <span className="text-sm text-slate-500 dark:text-slate-300">2 Lesson Notes per week</span>
+                                        <span className="text-sm text-slate-500 dark:text-slate-300">{settings?.freePlanLessonLimit || 10} Lesson Notes per month</span>
                                     </li>
                                     <li className="flex space-x-3">
                                         <CheckCircle className="flex-shrink-0 h-5 w-5 text-green-500" />
@@ -167,11 +192,11 @@ const Pricing: React.FC = () => {
                         <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl divide-y divide-slate-200 dark:divide-slate-700 border-2 border-brand-500 relative">
                             <div className="absolute top-0 right-0 -mr-1 -mt-1 w-24 rounded-bl-lg rounded-tr-lg bg-brand-500 text-center text-xs font-semibold text-white py-1">POPULAR</div>
                             <div className="p-6">
-                                <h3 className="text-lg font-medium text-slate-900 dark:text-slate-100">Professional</h3>
+                                <h3 className="text-lg font-medium text-slate-900 dark:text-slate-100">{settings?.proPlanName || 'Professional'}</h3>
                                 <p className="mt-4 text-sm text-slate-500 dark:text-slate-300">For serious teachers.</p>
                                 <p className="mt-8">
-                                    <span className="text-4xl font-extrabold text-slate-900">₦2,500</span>
-                                    <span className="text-base font-medium text-slate-500">/mo</span>
+                                    <span className="text-4xl font-extrabold text-slate-900">₦{(settings?.proPlanPrice || 2500).toLocaleString()}</span>
+                                    <span className="text-base font-medium text-slate-500">/{settings?.proPlanDuration === 'term' ? 'term' : settings?.proPlanDuration === 'year' ? 'yr' : 'mo'}</span>
                                 </p>
 
                                 {user ? (
@@ -189,7 +214,7 @@ const Pricing: React.FC = () => {
                                         ) : (
                                             <PaystackButton
                                                 className="block w-full bg-brand-600 border border-brand-600 rounded-md py-2 text-sm font-semibold text-white text-center hover:bg-brand-700 transition-colors"
-                                                {...componentProps(2500, 'Pro')}
+                                                {...componentProps(settings?.proPlanPrice || 2500, 'Pro')}
                                             />
                                         )}
                                     </div>
@@ -203,7 +228,7 @@ const Pricing: React.FC = () => {
                                 <ul className="mt-6 space-y-4">
                                     <li className="flex space-x-3">
                                         <CheckCircle className="flex-shrink-0 h-5 w-5 text-green-500" />
-                                        <span className="text-sm text-slate-500 dark:text-slate-300">Unlimited Lesson Notes</span>
+                                        <span className="text-sm text-slate-500 dark:text-slate-300">{settings?.proPlanLessonLimit || 100} Lesson Notes per month</span>
                                     </li>
                                     <li className="flex space-x-3">
                                         <CheckCircle className="flex-shrink-0 h-5 w-5 text-green-500" />
@@ -224,11 +249,11 @@ const Pricing: React.FC = () => {
                         {/* School Plan */}
                         <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm divide-y divide-slate-200 dark:divide-slate-700 border border-slate-200 dark:border-slate-700">
                             <div className="p-6">
-                                <h3 className="text-lg font-medium text-slate-900 dark:text-slate-100">School License</h3>
+                                <h3 className="text-lg font-medium text-slate-900 dark:text-slate-100">{settings?.schoolPlanName || 'School License'}</h3>
                                 <p className="mt-4 text-sm text-slate-500 dark:text-slate-300">For Headmasters and Owners.</p>
                                 <p className="mt-8">
-                                    <span className="text-4xl font-extrabold text-slate-900">₦20,000</span>
-                                    <span className="text-base font-medium text-slate-500">/term</span>
+                                    <span className="text-4xl font-extrabold text-slate-900">₦{(settings?.schoolPlanPrice || 20000).toLocaleString()}</span>
+                                    <span className="text-base font-medium text-slate-500">/{settings?.schoolPlanDuration === 'term' ? 'term' : settings?.schoolPlanDuration === 'year' ? 'yr' : 'mo'}</span>
                                 </p>
                                 {user ? (
                                     <div className="mt-8">
@@ -248,14 +273,14 @@ const Pricing: React.FC = () => {
                                                 <button
                                                     className="block w-full bg-slate-500 border-slate-500 rounded-md py-2 text-sm font-semibold text-white text-center cursor-not-allowed"
                                                     title="Only school administrators can subscribe to School License"
-                                                    onClick={() => alert('Only school administrators can purchase or manage the School License. Please contact your school administrator.')}
+                                                    onClick={() => showAlert.error('Admin Access Required', 'Only school administrators can purchase or manage the School License.')}
                                                 >
                                                     School License (Contact Admin)
                                                 </button>
                                             ) : (
                                                 <PaystackButton
                                                     className="block w-full bg-slate-800 border-slate-800 rounded-md py-2 text-sm font-semibold text-white text-center hover:bg-slate-900 transition-colors"
-                                                    {...componentProps(20000, 'School')}
+                                                    {...componentProps(settings?.schoolPlanPrice || 20000, 'School')}
                                                 />
                                             )
                                         )}

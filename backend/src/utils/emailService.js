@@ -10,28 +10,27 @@ const getTransporter = async () => {
             where: { id: 1 }
         });
 
-        console.log('SMTP Settings from DB:', {
-            smtpHost: settings?.smtpHost,
-            smtpPort: settings?.smtpPort,
-            smtpUser: settings?.smtpUser,
-            hasPassword: !!settings?.smtpPassword,
-            smtpFromEmail: settings?.smtpFromEmail,
-            smtpFromName: settings?.smtpFromName
-        });
-
         if (!settings || !settings.smtpHost || !settings.smtpUser) {
             console.warn('SMTP not configured. Email will not be sent.');
             return null;
         }
 
+        // Sanitize settings to remove potential hidden characters/newlines
+        const host = (settings.smtpHost || '').trim().replace(/\n/g, '');
+        const user = (settings.smtpUser || '').trim();
+        const pass = (settings.smtpPassword || '').trim();
+        const port = settings.smtpPort || 587;
 
         const transporter = nodemailer.createTransport({
-            host: settings.smtpHost,
-            port: settings.smtpPort || 587,
-            secure: settings.smtpPort === 465, // true for 465, false for other ports
+            host: host,
+            port: port,
+            secure: port === 465,
             auth: {
-                user: settings.smtpUser,
-                pass: settings.smtpPassword
+                user: user,
+                pass: pass
+            },
+            tls: {
+                rejectUnauthorized: false
             }
         });
 
@@ -87,7 +86,7 @@ const sendPaymentReceipt = async (userEmail, userName, plan, amount, reference) 
                     <div class="container">
                         <div class="header">
                             <h1>🎉 Payment Successful!</h1>
-                            <p>Thank you for subscribing to TeachAide AI</p>
+                            <p>Thank you for subscribing to ${settings.siteName || 'TeachAide AI'}</p>
                         </div>
                         <div class="content">
                             <p>Dear ${userName},</p>
@@ -139,7 +138,7 @@ const sendPaymentReceipt = async (userEmail, userName, plan, amount, reference) 
 
                             <p>If you have any questions, feel free to contact our support team.</p>
                             
-                            <p>Best regards,<br><strong>The TeachAide AI Team</strong></p>
+                            <p>Best regards,<br><strong>The ${settings.siteName || 'TeachAide AI'} Team</strong></p>
                         </div>
                         <div class="footer">
                             <p>This is an automated email. Please do not reply.</p>
@@ -428,10 +427,190 @@ const sendTeacherRemovalNotification = async (teacherEmail, teacherName, schoolN
     }
 };
 
+/**
+ * Send welcome email to new user
+ */
+const sendWelcomeEmail = async (userEmail, userName) => {
+    try {
+        const transporter = await getTransporter();
+        if (!transporter) return false;
+
+        const settings = await prisma.systemSetting.findUnique({ where: { id: 1 } });
+        const fromEmail = settings.smtpFromEmail || settings.smtpUser;
+        const fromName = settings.smtpFromName || 'TeachAide AI';
+
+        const mailOptions = {
+            from: `"${fromName}" <${fromEmail}>`,
+            to: userEmail,
+            subject: `Welcome to ${settings.siteName || 'TeachAide AI'}! 🎓`,
+            html: `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <style>
+                        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+                        .content { background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; }
+                        .button { display: inline-block; background: #667eea; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; margin: 20px 0; font-weight: bold; }
+                        .footer { text-align: center; color: #6b7280; font-size: 12px; margin-top: 30px; }
+                        .feature-item { margin-bottom: 15px; }
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <div class="header">
+                            <h1>Welcome to TeachAide!</h1>
+                            <p>Your AI-powered teaching assistant</p>
+                        </div>
+                        <div class="content">
+                            <p>Hello <strong>${userName}</strong>,</p>
+                            <p>Thank you for joining ${settings.siteName || 'TeachAide AI'}! We're thrilled to have you as part of our community of innovative educators.</p>
+                            
+                            <p>TeachAide is designed to help you save hours of preparation time so you can focus on what matters most: <strong>teaching</strong>.</p>
+                            
+                            <h3>🚀 Here's how to get started:</h3>
+                            <div class="feature-item">
+                                <strong>✨ Generate Lesson Notes:</strong> Create professional, high-quality lesson plans in seconds.
+                            </div>
+                            <div class="feature-item">
+                                <strong>📝 Assessment Creator:</strong> Generate quizzes and assessments tailored to your topics.
+                            </div>
+                            <div class="feature-item">
+                                <strong>👥 Class Management:</strong> Keep your student lists and records organized.
+                            </div>
+
+                            <center>
+                                <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/dashboard" class="button">Go to your Dashboard</a>
+                            </center>
+
+                            <p>As a welcome gift, we've added <strong>2,000 free tokens</strong> to your account to help you get started!</p>
+
+                            <p>If you have any questions or need a hand, just reply to this email. We're here to help.</p>
+                            
+                            <p>Happy teaching!<br><strong>The ${settings.siteName || 'TeachAide AI'} Team</strong></p>
+                        </div>
+                        <div class="footer">
+                            <p>&copy; ${new Date().getFullYear()} TeachAide AI. All rights reserved.</p>
+                        </div>
+                    </div>
+                </body>
+                </html>
+            `
+        };
+
+        await transporter.sendMail(mailOptions);
+        return true;
+    } catch (error) {
+        console.error('Error sending welcome email:', error);
+        return false;
+    }
+};
+
+/**
+ * Send lesson note via email
+ */
+const sendLessonNoteEmail = async (userEmail, lessonNote) => {
+    try {
+        const { sanitizeObjectMarkdown } = require('./markdownUtils');
+        const cleanNote = sanitizeObjectMarkdown(lessonNote);
+
+        const transporter = await getTransporter();
+        if (!transporter) {
+            console.error('Failed to send lesson note: Transporter not created.');
+            return false;
+        }
+
+        const settings = await prisma.systemSetting.findUnique({ where: { id: 1 } });
+        const fromEmail = (settings.smtpFromEmail || settings.smtpUser || '').trim();
+        const fromName = (settings.smtpFromName || 'TeachAide AI').trim().replace(/["]/g, '');
+
+        // Ensure arrays exist for mapping
+        const objectives = Array.isArray(cleanNote.objectives) ? cleanNote.objectives : [];
+        const evaluation = Array.isArray(cleanNote.evaluation) ? cleanNote.evaluation : [];
+
+        const mailOptions = {
+            from: `"${fromName}" <${fromEmail}>`,
+            to: (userEmail || '').trim(),
+            subject: `Lesson Note: ${cleanNote.topic || 'Untitled'}`,
+            html: `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <style>
+                        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; background-color: #f4f7f6; }
+                        .container { max-width: 800px; margin: 20px auto; background: white; padding: 40px; border: 1px solid #e5e7eb; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+                        .header { border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px; text-align: center; }
+                        .header h1 { margin: 0; text-transform: uppercase; font-size: 24px; }
+                        .meta { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 30px; font-size: 14px; }
+                        .meta-item { border-bottom: 1px solid #eee; padding: 5px 0; }
+                        .label { font-weight: bold; width: 100px; display: inline-block; }
+                        h3 { background: #f8fafc; padding: 5px 10px; border-left: 4px solid #000; text-transform: uppercase; font-size: 16px; margin-top: 25px; }
+                        .content { white-space: pre-wrap; background: #fff; padding: 15px; border: 1px solid #f1f5f9; }
+                        .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #eee; font-size: 12px; color: #64748b; text-align: center; }
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <div class="header">
+                            <h1>Lesson Note</h1>
+                        </div>
+                        
+                        <div class="meta">
+                            <div class="meta-item"><span class="label">Subject:</span> ${cleanNote.subject || ''}</div>
+                            <div class="meta-item"><span class="label">Class:</span> ${cleanNote.classLevel || ''}</div>
+                            <div class="meta-item"><span class="label">Topic:</span> ${cleanNote.topic || ''}</div>
+                            <div class="meta-item"><span class="label">Sub-topic:</span> ${cleanNote.subtopic || ''}</div>
+                            <div class="meta-item"><span class="label">Duration:</span> ${cleanNote.duration || ''}</div>
+                            <div class="meta-item"><span class="label">Date:</span> ${new Date().toLocaleDateString()}</div>
+                        </div>
+
+                        <h3>Behavioural Objectives</h3>
+                        <ul>
+                            ${objectives.map(obj => `<li>${obj}</li>`).join('')}
+                        </ul>
+
+                        <h3>Lesson Content</h3>
+                        <div class="content">${cleanNote.lessonContent || ''}</div>
+
+                        <h3>Evaluation</h3>
+                        <ul>
+                            ${evaluation.map(evalItem => `<li>${evalItem}</li>`).join('')}
+                        </ul>
+
+                        <h3>Assignment</h3>
+                        <p>${cleanNote.assignment || ''}</p>
+
+                        <div class="footer">
+                            <p>Generated by ${settings.siteName || 'TeachAide AI'} - Empowering Educators</p>
+                            <p>&copy; ${new Date().getFullYear()} ${settings.siteName || 'TeachAide AI'}</p>
+                        </div>
+                    </div>
+                </body>
+                </html>
+            `
+        };
+
+        const info = await transporter.sendMail(mailOptions);
+        console.log('Lesson note email sent successfully:', info.messageId);
+        return true;
+    } catch (error) {
+        console.error('CRITICAL ERROR in sendLessonNoteEmail:', {
+            errorMessage: error.message,
+            errorCode: error.code,
+            errorStack: error.stack,
+            fullError: error
+        });
+        return false;
+    }
+};
+
 module.exports = {
     sendPaymentReceipt,
     sendTeacherInvitation,
     sendTestEmail,
     sendTeacherRemovalNotification,
+    sendWelcomeEmail,
+    sendLessonNoteEmail,
     getTransporter
 };

@@ -9,7 +9,9 @@ const {
     getAllNotes,
     updateNoteStatus,
     updateSchoolTeacherLimit,
-    testSmtp
+    testSmtp,
+    resetUserLimit,
+    getAnalytics
 } = require('../controllers/adminController');
 
 const {
@@ -21,6 +23,7 @@ const {
 } = require('../controllers/testimonialController');
 
 const { provisionSchool } = require('../controllers/adminController');
+const { deleteUserPermanently } = require('../controllers/adminController');
 const { protect } = require('../middlewares/authMiddleware');
 const { admin } = require('../middlewares/adminMiddleware');
 const validate = require('../middlewares/validate');
@@ -38,6 +41,7 @@ router.use(protect);
 router.use(admin);
 
 router.get('/dashboard', getDashboardStats);
+router.get('/analytics', getAnalytics);
 router.get('/users', getUsers);
 router.post('/users', createUser);
 router.get('/orders', getOrders);
@@ -53,8 +57,14 @@ router.patch('/schools/:id/teacher-limit', updateSchoolTeacherLimit);
 // Admin-only: create a school and link an existing user as owner (placeholder for future onboarding)
 router.post('/schools/provision', provisionSchool);
 
+// Permanently delete a user and all related data
+router.delete('/users/:id', deleteUserPermanently);
+
 // SMTP Testing
 router.post('/test-smtp', testSmtp);
+
+// Manual Limit Reset
+router.post('/users/:id/reset-limit', resetUserLimit);
 
 // Admin Testimonial Management
 router.get('/testimonials', getAllTestimonials);

@@ -4,15 +4,33 @@ import { AdminLog } from '../types';
 import { Users, FileText, BarChart, Activity, AlertTriangle, CheckCircle, CreditCard } from '../components/Icons';
 
 const AdminOverview: React.FC = () => {
-    const [stats, setStats] = useState({ totalUsers: 0, totalNotes: 0, totalStudents: 0, premiumUsers: 0 });
+    const [stats, setStats] = useState<any>({ totalUsers: 0, totalNotes: 0, totalStudents: 0, premiumUsers: 0, chartData: [], chartLabels: [], totalTokens: 0, modelUsage: {} });
     const [logs, setLogs] = useState<AdminLog[]>([]);
     const [loading, setLoading] = useState(true);
 
+    // Immediate synchronous check to prevent Flash of Unauthorized Content
+    const currentUser = db.adminAuth.getCurrentUser();
+
+    // Redirect non-admins immediately
+    if (!currentUser || !['Admin', 'SuperAdmin', 'admin', 'superadmin'].includes(currentUser.role)) {
+        // Return null or empty fragment so nothing renders while redirect logic (in App or here) kicks in
+        // Ideally this component shouldn't even mount, but if it does:
+        return <div className="p-8 text-center text-slate-500 dark:text-slate-400">Checking authorization...</div>;
+    }
+
     useEffect(() => {
+        const user = db.adminAuth.getCurrentUser();
+        if (!user || !['Admin', 'SuperAdmin', 'admin', 'superadmin'].includes(user.role)) {
+            window.location.href = '/admin/login'; // Redirect to admin login
+            return;
+        }
+
         const loadData = async () => {
             try {
                 const statsData = await db.admin.getStats();
-                setStats(statsData);
+                const analyticsData = await db.admin.getAnalytics();
+                setStats({ ...statsData, ...analyticsData });
+
                 const logsData = await db.admin.getLogs();
                 setLogs(logsData);
             } catch (error) {
@@ -53,35 +71,61 @@ const AdminOverview: React.FC = () => {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Main Chart Area (Simulated) */}
+                {/* Main Chart Area */}
                 <div className="lg:col-span-2 bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
                     <div className="flex items-center justify-between mb-6">
-                        <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">Usage Analytics</h2>
-                        <select className="text-sm border-slate-300 rounded-md shadow-sm">
-                            <option>Last 7 Days</option>
-                            <option>Last 30 Days</option>
-                        </select>
+                        <div>
+                            <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">AI Generation Analytics</h2>
+                            <p className="text-sm text-slate-500">Last 7 Days Usage</p>
+                        </div>
+                        <div className="text-right">
+                            <p className="text-2xl font-bold text-brand-600">{stats.totalTokens?.toLocaleString() || 0}</p>
+                            <p className="text-xs text-slate-400">Total Tokens Used</p>
+                        </div>
                     </div>
-                    {/* Simulated Chart Bars */}
+                    {/* Chart Bars */}
                     <div className="h-64 flex items-end justify-between space-x-2 px-2">
-                        {[40, 65, 45, 80, 55, 70, 90].map((h, i) => (
-                            <div key={i} className="w-full bg-brand-100 rounded-t-md relative group">
-                                <div style={{ height: `${h}%` }} className="absolute bottom-0 w-full bg-brand-500 rounded-t-md transition-all duration-500 hover:bg-brand-600"></div>
-                                <div className="opacity-0 group-hover:opacity-100 absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-xs px-2 py-1 rounded dark:bg-slate-700">
-                                    {h * 12} Generations
+                        {(stats.chartData || []).map((count: number, i: number) => {
+                            // Calculate height percentage relative to max, defaulting to 5% min
+                            const max = Math.max(...(stats.chartData || [1]));
+                            const height = max === 0 ? 0 : (count / max) * 100;
+                            return (
+                                <div key={i} className="w-full bg-brand-50 dark:bg-slate-700 rounded-t-md relative group h-full flex flex-col justify-end">
+                                    <div style={{ height: `${Math.max(height, 5)}%` }} className={`w-full rounded-t-md transition-all duration-500 ${count > 0 ? 'bg-brand-500 hover:bg-brand-600' : 'bg-slate-200 dark:bg-slate-600'}`}></div>
+                                    <div className="opacity-0 group-hover:opacity-100 absolute -top-12 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-xs px-2 py-1 rounded z-10 whitespace-nowrap pointer-events-none">
+                                        {count} Gens
+                                        <br />
+                                        {(stats.chartLabels || [])[i]}
+                                    </div>
                                 </div>
-                            </div>
+                            );
+                        })}
+                    </div>
+                    <div className="flex justify-between mt-4 text-xs text-slate-400 font-medium">
+                        {(stats.chartLabels || []).map((label: string, i: number) => (
+                            <span key={i} className="text-center w-full">{label}</span>
                         ))}
                     </div>
-                    <div className="flex justify-between mt-4 text-xs text-slate-400">
-                        <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+
+                    {/* Model Usage Stats */}
+                    <div className="mt-8 pt-6 border-t border-slate-100 dark:border-slate-700">
+                        <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-4">Model Distribution</h3>
+                        <div className="flex gap-4 flex-wrap">
+                            {Object.entries(stats.modelUsage || {}).map(([model, count]: [string, any]) => (
+                                <div key={model} className="bg-slate-50 dark:bg-slate-700 px-3 py-2 rounded-lg text-sm">
+                                    <span className="text-slate-500 dark:text-slate-300 mr-2">{model}:</span>
+                                    <span className="font-bold text-slate-900 dark:text-slate-100">{count}</span>
+                                </div>
+                            ))}
+                            {Object.keys(stats.modelUsage || {}).length === 0 && <span className="text-sm text-slate-400 italic">No model data yet</span>}
+                        </div>
                     </div>
                 </div>
 
                 {/* Activity Log */}
-                 <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
-                     <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100 mb-4">Recent Activity</h2>
-                     <div className="flow-root">
+                <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
+                    <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100 mb-4">Recent Activity</h2>
+                    <div className="flow-root">
                         <ul className="-mb-8">
                             {logs.map((log, logIdx) => (
                                 <li key={log.id}>
@@ -91,14 +135,13 @@ const AdminOverview: React.FC = () => {
                                         ) : null}
                                         <div className="relative flex space-x-3">
                                             <div>
-                                                <span className={`h-8 w-8 rounded-full flex items-center justify-center ring-8 ring-white ${
-                                                    log.type === 'error' ? 'bg-red-100 text-red-600' :
+                                                <span className={`h-8 w-8 rounded-full flex items-center justify-center ring-8 ring-white ${log.type === 'error' ? 'bg-red-100 text-red-600' :
                                                     log.type === 'warning' ? 'bg-yellow-100 text-yellow-600' :
-                                                    'bg-blue-100 text-blue-600'
-                                                }`}>
-                                                    {log.type === 'error' ? <AlertTriangle className="w-4 h-4" /> : 
-                                                     log.type === 'warning' ? <Activity className="w-4 h-4" /> :
-                                                     <CheckCircle className="w-4 h-4" />}
+                                                        'bg-blue-100 text-blue-600'
+                                                    }`}>
+                                                    {log.type === 'error' ? <AlertTriangle className="w-4 h-4" /> :
+                                                        log.type === 'warning' ? <Activity className="w-4 h-4" /> :
+                                                            <CheckCircle className="w-4 h-4" />}
                                                 </span>
                                             </div>
                                             <div className="min-w-0 flex-1 pt-1.5 flex justify-between space-x-4">
@@ -109,7 +152,7 @@ const AdminOverview: React.FC = () => {
                                                     <p className="text-xs text-slate-400 mt-1">Target: {log.target}</p>
                                                 </div>
                                                 <div className="text-right text-xs whitespace-nowrap text-slate-400">
-                                                    {new Date(log.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                                    {new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                                 </div>
                                             </div>
                                         </div>
@@ -117,7 +160,7 @@ const AdminOverview: React.FC = () => {
                                 </li>
                             ))}
                         </ul>
-                     </div>
+                    </div>
                 </div>
             </div>
         </div>

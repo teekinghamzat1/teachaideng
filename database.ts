@@ -14,19 +14,37 @@ const getAuthHeader = () => {
   return {};
 };
 
+const getAdminAuthHeader = () => {
+  const userStr = localStorage.getItem('teachaide_admin_session');
+  if (userStr) {
+    const user = JSON.parse(userStr);
+    if (user.token) {
+      return { Authorization: `Bearer ${user.token}` };
+    }
+  }
+  return {};
+};
+
 const handleResponse = async (response: Response) => {
   if (response.status === 401) {
-    // Only force logout if it's an auth-related endpoint
-    // For other endpoints, let the calling code handle it
     const url = response.url;
-    if (url.includes('/auth/') || url.includes('/login')) {
+    // Determine which session to clear based on the request context or try clearing both if unsure,
+    // but better to be specific.
+    // If it's an admin endpoint, clear admin session
+    if (url.includes('/api/admin')) {
+      console.error(`401 Unauthorized from Admin API: ${url}`);
+      localStorage.removeItem('teachaide_admin_session');
+      window.location.href = '/admin/login'; // Redirect to admin login
+      throw new Error('Admin session expired.');
+    } else if (!url.includes('/auth/login') && !url.includes('/auth/register')) {
+      console.error(`401 Unauthorized from: ${url}`);
       localStorage.removeItem('teachaide_session');
       window.dispatchEvent(new Event('auth-change'));
       window.location.href = '/login';
       throw new Error('Session expired. Please login again.');
     }
-    // For other 401s (like profile refresh), just throw error without logout
-    throw new Error('Unauthorized');
+    // For login failure, just throw
+    throw new Error('Invalid credentials');
   }
 
   if (!response.ok) {
@@ -38,6 +56,7 @@ const handleResponse = async (response: Response) => {
 };
 
 export const db = {
+  // Regular User Auth
   auth: {
     async register(name: string, email: string, password: string, role: string, gender: string, schoolName: string, accountType: string = 'individual'): Promise<User> {
       const response = await fetch(`${API_URL}/auth/register`, {
@@ -45,7 +64,7 @@ export const db = {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ name, email, password, role, gender, schoolName, accountType }), // include accountType for progressive onboarding
+        body: JSON.stringify({ name, email, password, role, gender, schoolName, accountType }),
       });
 
       const user = await handleResponse(response);
@@ -68,12 +87,14 @@ export const db = {
     },
 
     async loginAsAdminDemo(): Promise<User> {
-      // For demo purposes, we might need a specific endpoint or just login as a known admin.
-      // Since backend doesn't have a "loginAsAdmin" without password, let's skip or assume known credentials if this was for testing.
-      // Or we can create a specific endpoint for this if needed.
-      // For now, let's throw to indicate it's not supported in production mode or use hardcoded creds if they match seed.
-      // Assuming seed admin: admin@example.com / password123
       return this.login('admin@example.com', 'password123');
+    },
+
+    async getUsage(): Promise<{ used: number; limit: number; remaining: number }> {
+      const response = await fetch(`${API_URL}/users/usage`, {
+        headers: getAuthHeader(),
+      });
+      return handleResponse(response);
     },
 
     async logout(): Promise<void> {
@@ -87,7 +108,6 @@ export const db = {
     },
 
     async requestPasswordReset(email: string): Promise<void> {
-      // Backend doesn't have this yet.
       console.log(`Password reset requested for ${email}`);
     },
 
@@ -96,16 +116,21 @@ export const db = {
       return sessionStr ? JSON.parse(sessionStr) : null;
     },
 
+    getToken(): string | null {
+      const user = this.getCurrentUser();
+      return user?.token || null;
+    },
+
+    // ... rest of auth methods
     async refreshUser(): Promise<User | null> {
       try {
         const response = await fetch(`${API_URL}/users/profile`, {
           headers: getAuthHeader()
         });
         const result = await handleResponse(response);
-        // handleResponse returns data.data, so result is already the user object
         if (result) {
-          // Update the session with fresh user data
-          localStorage.setItem('teachaide_session', JSON.stringify(result));
+          const current = this.getCurrentUser();
+          localStorage.setItem('teachaide_session', JSON.stringify({ ...current, ...result }));
           window.dispatchEvent(new Event('auth-change'));
           return result;
         }
@@ -125,11 +150,10 @@ export const db = {
         body: JSON.stringify(data),
       });
       const updated = await handleResponse(response);
-      // Update local session with fresh user data if returned
       if (updated) {
         try {
-          // backend returns user object; refresh stored session
-          localStorage.setItem('teachaide_session', JSON.stringify(updated));
+          const current = this.getCurrentUser();
+          localStorage.setItem('teachaide_session', JSON.stringify({ ...current, ...updated }));
           window.dispatchEvent(new Event('auth-change'));
         } catch (e) {
           console.warn('Failed to update local session after profile update', e);
@@ -137,10 +161,132 @@ export const db = {
       }
       return updated;
     },
+    async deleteAccount(): Promise<void> {
+      const response = await fetch(`${API_URL}/users/profile`, {
+        method: 'DELETE',
+        headers: getAuthHeader(),
+      });
+      await handleResponse(response);
+      localStorage.removeItem('teachaide_session');
+      window.dispatchEvent(new Event('auth-change'));
+    },
   },
 
+  // Admin Specific Auth using separate session key
+  adminAuth: {
+    async login(email: string, password: string): Promise<User> {
+      const response = await fetch(`${API_URL}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const user = await handleResponse(response);
+      // Store in ADMIN session
+      localStorage.setItem('teachaide_admin_session', JSON.stringify(user));
+      // We don't fire 'auth-change' because main app doesn't care about admin login
+      return user;
+    },
+
+    async logout(): Promise<void> {
+      localStorage.removeItem('teachaide_admin_session');
+    },
+
+    getCurrentUser(): User | null {
+      const sessionStr = localStorage.getItem('teachaide_admin_session');
+      return sessionStr ? JSON.parse(sessionStr) : null;
+    }
+  },
+
+  async getUsage(): Promise<{ used: number; limit: number; remaining: number }> {
+    const response = await fetch(`${API_URL}/users/usage`, {
+      headers: getAuthHeader(),
+    });
+    return handleResponse(response);
+  },
+
+  async logout(): Promise<void> {
+    try {
+      await fetch(`${API_URL}/auth/logout`, { method: 'POST' });
+    } catch (e) {
+      console.error(e);
+    }
+    localStorage.removeItem('teachaide_session');
+    window.dispatchEvent(new Event('auth-change'));
+  },
+
+  async requestPasswordReset(email: string): Promise<void> {
+    // Backend doesn't have this yet.
+    console.log(`Password reset requested for ${email}`);
+  },
+
+  getCurrentUser(): User | null {
+    const sessionStr = localStorage.getItem('teachaide_session');
+    return sessionStr ? JSON.parse(sessionStr) : null;
+  },
+
+  getToken(): string | null {
+    const user = this.getCurrentUser();
+    return user?.token || null;
+  },
+
+  async refreshUser(): Promise<User | null> {
+    try {
+      const response = await fetch(`${API_URL}/users/profile`, {
+        headers: getAuthHeader()
+      });
+      const result = await handleResponse(response);
+      // handleResponse returns data.data, so result is already the user object
+      if (result) {
+        // Update the session with fresh user data - merge to preserve token
+        const current = this.getCurrentUser();
+        localStorage.setItem('teachaide_session', JSON.stringify({ ...current, ...result }));
+        window.dispatchEvent(new Event('auth-change'));
+        return result;
+      }
+      return null;
+    } catch (error) {
+      console.error('Failed to refresh user:', error);
+      return null;
+    }
+  },
+  async updateProfile(data: Partial<User> & { password?: string }): Promise<User> {
+    const response = await fetch(`${API_URL}/users/profile`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeader(),
+      },
+      body: JSON.stringify(data),
+    });
+    const updated = await handleResponse(response);
+    // Update local session with fresh user data if returned
+    if (updated) {
+      try {
+        // backend returns user object; refresh stored session - merge to preserve token
+        const current = this.getCurrentUser();
+        localStorage.setItem('teachaide_session', JSON.stringify({ ...current, ...updated }));
+        window.dispatchEvent(new Event('auth-change'));
+      } catch (e) {
+        console.warn('Failed to update local session after profile update', e);
+      }
+    }
+    return updated;
+  },
+  async deleteAccount(): Promise<void> {
+    const response = await fetch(`${API_URL}/users/profile`, {
+      method: 'DELETE',
+      headers: getAuthHeader(),
+    });
+    await handleResponse(response);
+    // Clear local session after deletion
+    localStorage.removeItem('teachaide_session');
+    window.dispatchEvent(new Event('auth-change'));
+  },
+
+
   notes: {
-    async save(note: LessonNote): Promise<LessonNote> {
+    async save(note: LessonNote): Promise<{ success: boolean; message: string; data: LessonNote }> {
       const response = await fetch(`${API_URL}/notes`, {
         method: 'POST',
         headers: {
@@ -149,7 +295,20 @@ export const db = {
         },
         body: JSON.stringify(note),
       });
-      return handleResponse(response);
+
+      if (response.status === 401) {
+        // Shared logic with handleResponse for 401
+        localStorage.removeItem('teachaide_session');
+        window.dispatchEvent(new Event('auth-change'));
+        window.location.href = '/login';
+        throw new Error('Session expired. Please login again.');
+      }
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message || 'API Error');
+      }
+      return data;
     },
 
     async getUserNotes(): Promise<LessonNote[]> {
@@ -162,6 +321,13 @@ export const db = {
     async delete(id: string): Promise<void> {
       const response = await fetch(`${API_URL}/notes/${id}`, {
         method: 'DELETE',
+        headers: getAuthHeader(),
+      });
+      await handleResponse(response);
+    },
+    async email(id: string): Promise<void> {
+      const response = await fetch(`${API_URL}/notes/${id}/email`, {
+        method: 'POST',
         headers: getAuthHeader(),
       });
       await handleResponse(response);
@@ -270,7 +436,7 @@ export const db = {
       try {
         // Notify interested parts of the app that settings changed
         window.dispatchEvent(new Event('settings-change'));
-      } catch (e) {}
+      } catch (e) { }
     },
   },
 
@@ -336,14 +502,21 @@ export const db = {
   admin: {
     async getStats() {
       const response = await fetch(`${API_URL}/admin/dashboard`, {
-        headers: getAuthHeader(),
+        headers: getAdminAuthHeader(),
+      });
+      return handleResponse(response);
+    },
+
+    async getAnalytics() {
+      const response = await fetch(`${API_URL}/admin/analytics`, {
+        headers: getAdminAuthHeader(),
       });
       return handleResponse(response);
     },
 
     async getAllUsers(): Promise<User[]> {
       const response = await fetch(`${API_URL}/admin/users`, {
-        headers: getAuthHeader(),
+        headers: getAdminAuthHeader(),
       });
       return handleResponse(response);
     },
@@ -353,7 +526,7 @@ export const db = {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...getAuthHeader(),
+          ...getAdminAuthHeader(),
         },
         body: JSON.stringify(data),
       });
@@ -366,13 +539,24 @@ export const db = {
     },
 
     async deleteUser(userId: string): Promise<void> {
-      // Backend not fully implemented for delete user, placeholder
-      console.warn('Delete user not implemented in backend yet');
+      const response = await fetch(`${API_URL}/admin/users/${userId}`, {
+        method: 'DELETE',
+        headers: getAdminAuthHeader(),
+      });
+      await handleResponse(response);
+    },
+
+    async resetUserLimit(userId: string): Promise<void> {
+      const response = await fetch(`${API_URL}/admin/users/${userId}/reset-limit`, {
+        method: 'POST',
+        headers: getAdminAuthHeader(),
+      });
+      await handleResponse(response);
     },
 
     async getAllNotes(): Promise<LessonNote[]> {
       const response = await fetch(`${API_URL}/admin/content/notes`, {
-        headers: getAuthHeader(),
+        headers: getAdminAuthHeader(),
       });
       return handleResponse(response);
     },
@@ -382,7 +566,7 @@ export const db = {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          ...getAuthHeader()
+          ...getAdminAuthHeader()
         },
         body: JSON.stringify({ status })
       });
@@ -396,7 +580,7 @@ export const db = {
 
     async getSystemSettings(): Promise<SystemSettings> {
       const response = await fetch(`${API_URL}/settings`, {
-        headers: getAuthHeader(),
+        headers: getAdminAuthHeader(),
       });
       return handleResponse(response);
     },
@@ -406,7 +590,7 @@ export const db = {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          ...getAuthHeader(),
+          ...getAdminAuthHeader(),
         },
         body: JSON.stringify(settings),
       });
@@ -415,7 +599,7 @@ export const db = {
 
     async getCurriculum(): Promise<Curriculum> {
       const response = await fetch(`${API_URL}/curriculum`, {
-        headers: getAuthHeader(),
+        headers: getAdminAuthHeader(),
       });
       return handleResponse(response);
     },
@@ -425,7 +609,7 @@ export const db = {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          ...getAuthHeader(),
+          ...getAdminAuthHeader(),
         },
         body: JSON.stringify(data),
       });
@@ -434,7 +618,7 @@ export const db = {
 
     async getAllTestimonials(): Promise<any[]> {
       const response = await fetch(`${API_URL}/admin/testimonials`, {
-        headers: getAuthHeader()
+        headers: getAdminAuthHeader()
       });
       return handleResponse(response);
     },
@@ -553,6 +737,17 @@ export const db = {
           ...getAuthHeader()
         },
         body: JSON.stringify(settings)
+      });
+      return handleResponse(response);
+    },
+    async updateTeacherLimit(teacherId: string, limit: number) {
+      const response = await fetch(`${API_URL}/school/teachers/${teacherId}/limit`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeader()
+        },
+        body: JSON.stringify({ monthlyLessonLimit: limit })
       });
       return handleResponse(response);
     }

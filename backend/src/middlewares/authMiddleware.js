@@ -2,6 +2,7 @@
 const jwt = require('jsonwebtoken');
 const asyncHandler = require('express-async-handler');
 const prisma = require('../config/db');
+const { JWT_SECRET } = require('../config/jwt');
 
 const protect = asyncHandler(async (req, res, next) => {
   let token;
@@ -15,22 +16,39 @@ const protect = asyncHandler(async (req, res, next) => {
       token = req.headers.authorization.split(' ')[1];
 
       // Verify token
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const decoded = jwt.verify(token, JWT_SECRET);
 
-      // Get user from the token
-      req.user = await prisma.user.findUnique({
+      // Get user from the token with explicit selection aka Layer 2 Identity Context
+      const user = await prisma.user.findUnique({
         where: { id: decoded.id },
-        // select: { password: false } // Prisma excludes password manually usually, or we just don't select it? 
-        // findUnique returns everything by default.
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          subscriptionPlan: true,
+          schoolId: true,
+          isSchoolAdmin: true,
+        }
       });
-      // Remove password from user object manually if needed, but for req.user it's fine as long as we don't send it back.
-      if (req.user) delete req.user.password;
 
-      if (!req.user) {
+      if (!user) {
         res.status(401);
         throw new Error('Not authorized, user not found');
       }
 
+      // Attach rich user object to request
+      req.user = {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        subscriptionPlan: user.subscriptionPlan,
+        schoolId: user.schoolId,
+        isSchoolAdmin: user.isSchoolAdmin
+      };
+      // Remove password from user object manually if needed, but for req.user it's fine as long as we don't send it back.
+      // Next is called at the end
       next();
     } catch (error) {
       console.error(error);

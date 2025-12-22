@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { db } from '../database';
-import { LayoutDashboard, Users, FileText, SettingsIcon, LogOut, Menu, X, Shield, BookOpen, Bell, Search, Activity } from './Icons';
+import { LayoutDashboard, Users, FileText, SettingsIcon, LogOut, Menu, X, Shield, BookOpen, Bell, Search, Activity, Sun, Moon } from './Icons';
 import { User } from '../types';
 
 const AdminLayout: React.FC = () => {
@@ -9,18 +9,44 @@ const AdminLayout: React.FC = () => {
     const [user, setUser] = useState<User | null>(null);
     const location = useLocation();
     const navigate = useNavigate();
+    const [theme, setTheme] = useState<'light' | 'dark'>(db.settings.get()?.theme || 'light');
+
+    const toggleTheme = () => {
+        const newTheme = theme === 'dark' ? 'light' : 'dark';
+        setTheme(newTheme);
+        try {
+            const currentSettings = db.settings.get() || { theme: 'light', textSize: 'medium' };
+            db.settings.save({ ...currentSettings, theme: newTheme });
+        } catch (e) {
+            console.warn('Failed to save theme', e);
+        }
+    };
+
+    // Synchronous Auth Check to prevent FOUC
+    const currentUser = db.adminAuth.getCurrentUser();
+    if (!currentUser) {
+        window.location.href = '/admin/login';
+        return null;
+    }
+
+    if (!['admin', 'superadmin', 'Admin'].includes(currentUser.role)) {
+        window.location.href = '/admin/login';
+        return null;
+    }
 
     useEffect(() => {
-        const currentUser = db.auth.getCurrentUser();
-        if (!currentUser || !['admin', 'superadmin', 'Admin'].includes(currentUser.role)) {
-            navigate('/dashboard');
-        }
         setUser(currentUser);
-    }, [navigate]);
+
+        // Apply theme settings on load
+        const settings = db.settings.get();
+        if (settings) {
+            db.settings.save(settings); // Re-applies css side effects
+        }
+    }, []);
 
     const handleLogout = async () => {
-        await db.auth.logout();
-        navigate('/login');
+        await db.adminAuth.logout();
+        navigate('/admin/login'); // Redirect to admin login, not general login
     };
 
     const navItems = [
@@ -54,9 +80,9 @@ const AdminLayout: React.FC = () => {
                             key={item.path}
                             to={item.path}
                             className={`flex items-center px-4 py-3 rounded-lg text-sm font-medium transition-colors ${location.pathname === item.path
-                                        ? 'bg-brand-600 text-white'
-                                        : 'text-slate-400 hover:text-white hover:bg-slate-800'
-                                        }`}
+                                ? 'bg-brand-600 text-white'
+                                : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                                }`}
                         >
                             <item.icon className="w-5 h-5 mr-3" />
                             {item.name}
@@ -97,6 +123,13 @@ const AdminLayout: React.FC = () => {
                     </div>
 
                     <div className="flex items-center gap-4">
+                        <button
+                            onClick={toggleTheme}
+                            className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                            title="Toggle Theme"
+                        >
+                            {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+                        </button>
                         {/* Bell removed */}
                         <div className="flex items-center gap-3 border-l border-slate-200 pl-4">
                             <div className="text-right hidden sm:block">

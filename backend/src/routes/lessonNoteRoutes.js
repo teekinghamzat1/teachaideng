@@ -5,6 +5,7 @@ const {
     getNotes,
     getNoteById,
     deleteNote,
+    emailNote,
 } = require('../controllers/lessonNoteController');
 const { protect } = require('../middlewares/authMiddleware');
 
@@ -15,5 +16,7 @@ router.route('/')
 router.route('/:id')
     .get(protect, getNoteById)
     .delete(protect, deleteNote);
+
+router.post('/:id/email', protect, emailNote);
 
 module.exports = router;

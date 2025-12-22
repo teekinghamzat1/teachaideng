@@ -5,6 +5,9 @@ const {
     updateUserProfile,
     getUserOrders,
     getUserTransactions,
+    deleteOwnAccount,
+    getUsageStats,
+    emailLessonNote,
 } = require('../controllers/userController');
 const { protect } = require('../middlewares/authMiddleware');
 const validate = require('../middlewares/validate');
@@ -21,9 +24,12 @@ const updateProfileSchema = z.object({
 
 router.route('/profile')
     .get(protect, getUserProfile)
-    .patch(protect, validate(updateProfileSchema), updateUserProfile);
+    .patch(protect, validate(updateProfileSchema), updateUserProfile)
+    .delete(protect, deleteOwnAccount);
 
 router.get('/orders', protect, getUserOrders);
 router.get('/transactions', protect, getUserTransactions);
+router.get('/usage', protect, getUsageStats);
+router.post('/email-note', protect, emailLessonNote);
 
 module.exports = router;

@@ -2,6 +2,7 @@ const asyncHandler = require('express-async-handler');
 const bcrypt = require('bcryptjs');
 const prisma = require('../config/db');
 const formatResponse = require('../utils/formatResponse');
+const { getWeeklyLessonUsage } = require('../utils/usage');
 
 // @desc    Get admin dashboard stats
 // @route   GET /api/admin/dashboard
@@ -10,7 +11,7 @@ const getDashboardStats = asyncHandler(async (req, res) => {
     const totalUsers = await prisma.user.count();
     const totalNotes = await prisma.lessonNote.count();
     const totalStudents = await prisma.student.count();
-    const premiumUsers = 0; // Placeholder until premium logic is defined or derived from Orders
+    const premiumUsers = await prisma.user.count({ where: { OR: [{ subscriptionPlan: 'Pro' }, { subscriptionPlan: 'School' }] } });
 
     const stats = {
         totalUsers,
@@ -25,6 +26,91 @@ const getDashboardStats = asyncHandler(async (req, res) => {
     };
 
     res.json(formatResponse(true, 'Dashboard stats retrieved', stats));
+});
+
+// @desc    Get detailed AI analytics
+// @route   GET /api/admin/analytics
+// @access  Private/Admin
+const getAnalytics = asyncHandler(async (req, res) => {
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const logs = await prisma.usageLog.findMany({
+        where: {
+            createdAt: { gte: sevenDaysAgo },
+            action: { in: ['LESSON_GENERATION', 'ASSESSMENT_GENERATION'] }
+        },
+        orderBy: { createdAt: 'asc' }
+    });
+
+    // Group logs by day
+    const dailyStats = {};
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+    // Initialize last 7 days keys
+    for (let i = 0; i < 7; i++) {
+        const d = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
+        const dayName = days[d.getDay()];
+        dailyStats[dayName] = 0;
+    }
+
+    // Populate counts
+    let totalTokens = 0;
+    let modelUsage = {};
+
+    logs.forEach(log => {
+        const dayName = days[new Date(log.createdAt).getDay()];
+        if (dailyStats[dayName] !== undefined) {
+            dailyStats[dayName]++;
+        }
+
+        // Parse metadata if available
+        if (log.meta) {
+            try {
+                const meta = JSON.parse(log.meta);
+                if (meta.tokens) totalTokens += meta.tokens;
+                if (meta.model) {
+                    modelUsage[meta.model] = (modelUsage[meta.model] || 0) + 1;
+                }
+            } catch (e) { }
+        }
+    });
+
+    // Convert dailyStats to array ordered by day of week (just roughly for the chart, or better, simply key value)
+    // Actually the chart expects an array. Let's formatted it as array of values for "Last 7 Days"
+    // To implement "Last 7 Days" correctly on chart we need strict ordering from 6 days ago -> Today.
+
+    const chartData = [];
+    const chartLabels = [];
+    for (let i = 6; i >= 0; i--) {
+        const d = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
+        const dayName = days[d.getDay()];
+        chartData.push(dailyStats[dayName] || 0); // This logic above was flawed because it overwrites keys.
+        // Let's redo grouping by date string to be accurate
+    }
+
+    // Correct aggregation
+    const usageByDate = {};
+    logs.forEach(log => {
+        const dateStr = new Date(log.createdAt).toLocaleDateString('en-US', { weekday: 'short', month: 'numeric', day: 'numeric' });
+        usageByDate[dateStr] = (usageByDate[dateStr] || 0) + 1;
+    });
+
+    const orderedLabels = [];
+    const orderedData = [];
+    for (let i = 6; i >= 0; i--) {
+        const d = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
+        const label = d.toLocaleDateString('en-US', { weekday: 'short', month: 'numeric', day: 'numeric' });
+        orderedLabels.push(d.toLocaleDateString('en-US', { weekday: 'short' }));
+        orderedData.push(usageByDate[label] || 0);
+    }
+
+
+    res.json(formatResponse(true, 'Analytics retrieved', {
+        chartData: orderedData,
+        chartLabels: orderedLabels,
+        totalGenerations: logs.length,
+        totalTokens,
+        modelUsage
+    }));
 });
 
 // @desc    Get all users
@@ -63,7 +149,12 @@ const getUsers = asyncHandler(async (req, res) => {
             }
         },
     });
-    res.json(formatResponse(true, 'Users retrieved', users));
+    const usersWithUsage = await Promise.all(users.map(async (user) => {
+        const usage = await getWeeklyLessonUsage(user.id);
+        return { ...user, usage };
+    }));
+
+    res.json(formatResponse(true, 'Users retrieved', usersWithUsage));
 });
 
 // @desc    Get all orders
@@ -245,6 +336,39 @@ const provisionSchool = asyncHandler(async (req, res) => {
     res.status(201).json(formatResponse(true, 'School provisioned and user linked as owner', { school }));
 });
 
+// @desc    Permanently delete a user and associated data
+// @route   DELETE /api/admin/users/:id
+// @access  Private/Admin
+const deleteUserPermanently = asyncHandler(async (req, res) => {
+    const userId = req.params.id;
+
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+        res.status(404);
+        throw new Error('User not found');
+    }
+
+    // Delete related data in a safe order to avoid FK constraint issues
+    await prisma.$transaction([
+        prisma.notificationRead.deleteMany({ where: { userId } }),
+        prisma.timetableSlot.deleteMany({ where: { timetable: { userId } } }),
+        prisma.timetable.deleteMany({ where: { userId } }),
+        prisma.student.deleteMany({ where: { userId } }),
+        prisma.question.deleteMany({ where: { assessment: { userId } } }),
+        prisma.assessment.deleteMany({ where: { userId } }),
+        prisma.lessonNote.deleteMany({ where: { userId } }),
+        prisma.sharedContent.deleteMany({ where: { createdById: userId } }),
+        prisma.tokenUsage.deleteMany({ where: { userId } }),
+        prisma.transaction.deleteMany({ where: { userId } }),
+        prisma.orderItem.deleteMany({ where: { order: { userId } } }),
+        prisma.order.deleteMany({ where: { userId } }),
+        prisma.usageLog.deleteMany({ where: { userId } }),
+        prisma.user.delete({ where: { id: userId } })
+    ]);
+
+    res.json(formatResponse(true, 'User and related data permanently deleted'));
+});
+
 // @desc    Update school teacher limit
 // @route   PATCH /api/admin/schools/:id/teacher-limit
 // @access  Private/Admin
@@ -296,6 +420,21 @@ const testSmtp = asyncHandler(async (req, res) => {
     }
 });
 
+// @desc    Reset user's weekly lesson limit
+// @route   POST /api/admin/users/:id/reset-limit
+// @access  Private/Admin
+const resetUserLimit = asyncHandler(async (req, res) => {
+    const userId = req.params.id;
+
+    // Update user's lastLimitReset to now
+    await prisma.user.update({
+        where: { id: userId },
+        data: { lastLimitReset: new Date() }
+    });
+
+    res.json(formatResponse(true, 'User limit reset successfully'));
+});
+
 module.exports = {
     getDashboardStats,
     getUsers,
@@ -307,5 +446,8 @@ module.exports = {
     updateSchoolTeacherLimit,
     testSmtp
     ,
-    provisionSchool
+    provisionSchool,
+    deleteUserPermanently,
+    resetUserLimit,
+    getAnalytics
 };

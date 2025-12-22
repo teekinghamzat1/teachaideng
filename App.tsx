@@ -19,6 +19,9 @@ import Timetable from './pages/Timetable';
 import Settings from './pages/Settings';
 import SchoolManagement from './pages/SchoolManagement';
 import { sessionManager } from './utils/sessionManager';
+import { HelpCenter } from './pages/HelpCenter';
+import { ContactUs } from './pages/ContactUs';
+import { PrivacyPolicy } from './pages/PrivacyPolicy';
 
 // Admin Pages
 import AdminOverview from './pages/AdminDashboard'; // We reuse AdminDashboard.tsx as the overview
@@ -27,6 +30,9 @@ import AdminContent from './pages/AdminContent';
 import AdminTestimonials from './pages/AdminTestimonials';
 import AdminCurriculum from './pages/AdminCurriculum';
 import AdminSettings from './pages/AdminSettings';
+
+import ProtectedRoute from './components/ProtectedRoute';
+import { BrandingProvider } from './contexts/BrandingContext';
 
 const App: React.FC = () => {
   useEffect(() => {
@@ -39,37 +45,87 @@ const App: React.FC = () => {
   }, []);
 
   return (
-    <Router>
-      <Routes>
-        {/* Main Application Routes */}
-        <Route path="/" element={<Layout><Home /></Layout>} />
-        <Route path="/generator" element={<Layout><Generator /></Layout>} />
-        <Route path="/result" element={<Layout><Result /></Layout>} />
-        <Route path="/dashboard" element={<Layout><Dashboard /></Layout>} />
-        <Route path="/pricing" element={<Layout><Pricing /></Layout>} />
-        <Route path="/login" element={<Layout><Login /></Layout>} />
-        <Route path="/admin/login" element={<Layout><AdminLogin /></Layout>} />
-        <Route path="/signup" element={<Layout><Signup /></Layout>} />
-        <Route path="/forgot-password" element={<Layout><ForgotPassword /></Layout>} />
-        <Route path="/history" element={<Layout><History /></Layout>} />
-        <Route path="/assessment" element={<Layout><AssessmentGenerator /></Layout>} />
-        <Route path="/classes" element={<Layout><ClassManager /></Layout>} />
-        <Route path="/timetable" element={<Layout><Timetable /></Layout>} />
-        <Route path="/settings" element={<Layout><Settings /></Layout>} />
-        <Route path="/school" element={<Layout><SchoolManagement /></Layout>} />
-        <Route path="/payment/success" element={<Layout><PaymentSuccess /></Layout>} />
+    <BrandingProvider>
+      <Router>
+        <Routes>
+          {/* Main Application Routes */}
+          <Route path="/" element={<Layout><Home /></Layout>} />
 
-        {/* Admin Routes */}
-        <Route path="/admin" element={<AdminLayout />}>
-          <Route index element={<AdminOverview />} />
-          <Route path="users" element={<AdminUsers />} />
-          <Route path="content" element={<AdminContent />} />
-          <Route path="testimonials" element={<AdminTestimonials />} />
-          <Route path="curriculum" element={<AdminCurriculum />} />
-          <Route path="settings" element={<AdminSettings />} />
-        </Route>
-      </Routes>
-    </Router>
+          {/* Protected User Routes */}
+          <Route path="/generator" element={
+            <ProtectedRoute>
+              <Layout><Generator /></Layout>
+            </ProtectedRoute>
+          } />
+          <Route path="/result" element={
+            <ProtectedRoute>
+              <Layout><Result /></Layout>
+            </ProtectedRoute>
+          } />
+          <Route path="/dashboard" element={
+            <ProtectedRoute>
+              <Layout><Dashboard /></Layout>
+            </ProtectedRoute>
+          } />
+          <Route path="/history" element={
+            <ProtectedRoute>
+              <Layout><History /></Layout>
+            </ProtectedRoute>
+          } />
+          <Route path="/assessment" element={
+            <ProtectedRoute>
+              <Layout><AssessmentGenerator /></Layout>
+            </ProtectedRoute>
+          } />
+          <Route path="/classes" element={
+            <ProtectedRoute>
+              <Layout><ClassManager /></Layout>
+            </ProtectedRoute>
+          } />
+          <Route path="/timetable" element={
+            <ProtectedRoute>
+              <Layout><Timetable /></Layout>
+            </ProtectedRoute>
+          } />
+          <Route path="/settings" element={
+            <ProtectedRoute>
+              <Layout><Settings /></Layout>
+            </ProtectedRoute>
+          } />
+          <Route path="/school" element={
+            <ProtectedRoute>
+              <Layout><SchoolManagement /></Layout>
+            </ProtectedRoute>
+          } />
+          <Route path="/payment/success" element={
+            <ProtectedRoute>
+              <Layout><PaymentSuccess /></Layout>
+            </ProtectedRoute>
+          } />
+
+          {/* Public Routes */}
+          <Route path="/pricing" element={<Layout><Pricing /></Layout>} />
+          <Route path="/login" element={<Layout><Login /></Layout>} />
+          <Route path="/admin/login" element={<Layout><AdminLogin /></Layout>} />
+          <Route path="/signup" element={<Layout><Signup /></Layout>} />
+          <Route path="/forgot-password" element={<Layout><ForgotPassword /></Layout>} />
+
+          <Route path="/help" element={<Layout><HelpCenter /></Layout>} />
+          <Route path="/contact" element={<Layout><ContactUs /></Layout>} />
+          <Route path="/privacy" element={<Layout><PrivacyPolicy /></Layout>} />
+
+          {/* Admin Routes */}
+          <Route path="/admin" element={<AdminLayout />}>
+            <Route index element={<AdminOverview />} />
+            <Route path="users" element={<AdminUsers />} />
+            <Route path="content" element={<AdminContent />} />
+            <Route path="testimonials" element={<AdminTestimonials />} />
+            <Route path="curriculum" element={<AdminCurriculum />} />
+            <Route path="settings" element={<AdminSettings />} />
+          </Route>
+        </Routes>
+      </Router>
+    </BrandingProvider>
   );
 };
 

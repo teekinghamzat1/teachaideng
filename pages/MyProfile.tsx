@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../database';
+import { showAlert } from '../utils/alerts';
 
 const getAuthHeader = () => {
   const userStr = localStorage.getItem('teachaide_session');
@@ -41,7 +42,7 @@ const MyProfile: React.FC = () => {
     setUploading(true);
     try {
       const form = new FormData();
-      form.append('file', file);
+      form.append('image', file);
       const res = await fetch('/api/upload/image', {
         method: 'POST',
         headers: {
@@ -69,11 +70,26 @@ const MyProfile: React.FC = () => {
       await db.auth.updateProfile(updateData);
       // refresh local user from server
       await db.auth.refreshUser();
-      alert('Profile updated');
+      showAlert.success('Profile Updated', 'Your changes have been saved.');
     } catch (err: any) {
-      alert(err?.message || 'Failed to update profile');
+      showAlert.error('Update Failed', err?.message || 'Failed to update profile');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (await showAlert.confirm('Delete Account', 'This will permanently delete your account and all related data. This action cannot be undone. Continue?')) {
+      try {
+        await db.auth.deleteAccount();
+        showAlert.success('Account Deleted', 'Your account has been successfully removed. Goodbye!');
+        // Redirect to home or login
+        setTimeout(() => {
+          window.location.href = '/login';
+        }, 2000);
+      } catch (err: any) {
+        showAlert.error('Deletion Failed', err?.message || 'Failed to delete account');
+      }
     }
   };
 
@@ -100,15 +116,15 @@ const MyProfile: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm text-slate-700 dark:text-slate-300">Full name</label>
-              <input value={name} onChange={(e)=>setName(e.target.value)} className="mt-1 block w-full rounded-md border border-slate-300 dark:border-slate-700 p-2 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100" />
+              <input value={name} onChange={(e) => setName(e.target.value)} className="mt-1 block w-full rounded-md border border-slate-300 dark:border-slate-700 p-2 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100" />
             </div>
             <div>
               <label className="block text-sm text-slate-700 dark:text-slate-300">Email</label>
-              <input value={email} onChange={(e)=>setEmail(e.target.value)} className="mt-1 block w-full rounded-md border border-slate-300 dark:border-slate-700 p-2 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100" />
+              <input value={email} onChange={(e) => setEmail(e.target.value)} className="mt-1 block w-full rounded-md border border-slate-300 dark:border-slate-700 p-2 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100" />
             </div>
             <div>
               <label className="block text-sm text-slate-700 dark:text-slate-300">Role</label>
-              <select value={role} onChange={(e)=>setRole(e.target.value)} className="mt-1 block w-full rounded-md border border-slate-300 dark:border-slate-700 p-2 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100">
+              <select value={role} onChange={(e) => setRole(e.target.value)} className="mt-1 block w-full rounded-md border border-slate-300 dark:border-slate-700 p-2 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100">
                 <option value="user">User</option>
                 <option value="teacher">Teacher</option>
                 <option value="school_admin">School Admin</option>
@@ -117,7 +133,7 @@ const MyProfile: React.FC = () => {
             </div>
             <div>
               <label className="block text-sm text-slate-700 dark:text-slate-300">New Password</label>
-              <input type="password" value={password} onChange={(e)=>setPassword(e.target.value)} className="mt-1 block w-full rounded-md border border-slate-300 dark:border-slate-700 p-2 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100" placeholder="Leave blank to keep current" />
+              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="mt-1 block w-full rounded-md border border-slate-300 dark:border-slate-700 p-2 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100" placeholder="Leave blank to keep current" />
             </div>
           </div>
 
@@ -125,6 +141,7 @@ const MyProfile: React.FC = () => {
             <button onClick={handleSave} disabled={saving} className="px-4 py-2 bg-brand-600 text-white rounded-md hover:bg-brand-700">
               {saving ? 'Saving...' : 'Save Profile'}
             </button>
+            <button onClick={handleDeleteAccount} className="ml-4 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700">Delete Account</button>
           </div>
 
           {schoolInfo && (

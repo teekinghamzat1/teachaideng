@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../database';
 import { User } from '../types';
-import { Search, Filter, MoreVertical, Edit, Trash, CheckSquare, XSquare, Loader2 } from '../components/Icons';
+import { Search, Filter, MoreVertical, Edit, Trash, CheckSquare, XSquare, Loader2, RotateCcw } from '../components/Icons';
+import { showAlert } from '../utils/alerts';
 
 const AdminUsers: React.FC = () => {
     const [users, setUsers] = useState<User[]>([]);
@@ -60,11 +61,12 @@ const AdminUsers: React.FC = () => {
     };
 
     const handleDeleteBroadcast = async (id: string) => {
-        if (window.confirm('Delete this broadcast?')) {
+        if (await showAlert.confirm('Delete Broadcast', 'Are you sure you want to delete this broadcast?')) {
             try {
                 await db.notifications.delete(id);
                 loadBroadcasts();
-            } catch (e) { alert('Failed to delete'); }
+                showAlert.success('Deleted', 'Broadcast removed successfully.');
+            } catch (e) { showAlert.error('Error', 'Failed to delete'); }
         }
     };
 
@@ -85,8 +87,8 @@ const AdminUsers: React.FC = () => {
             });
             setEditingBroadcast(null);
             loadBroadcasts();
-            alert('Updated successfully');
-        } catch (e) { alert('Failed to update'); }
+            showAlert.success('Updated', 'Broadcast message updated.');
+        } catch (e) { showAlert.error('Error', 'Failed to update'); }
     };
 
     const handleCreateUser = async (e: React.FormEvent) => {
@@ -94,12 +96,12 @@ const AdminUsers: React.FC = () => {
         setCreating(true);
         try {
             await db.admin.createUser(newUser);
-            alert('User created successfully!');
+            showAlert.success('User Created', 'New user account has been successfully created.');
             setIsModalOpen(false);
             setNewUser({ name: '', email: '', password: '', role: 'Teacher', subscriptionPlan: 'Free' });
             loadUsers();
         } catch (error: any) {
-            alert(error.message || 'Failed to create user');
+            showAlert.error('Error', error.message || 'Failed to create user');
         } finally {
             setCreating(false);
         }
@@ -110,11 +112,11 @@ const AdminUsers: React.FC = () => {
         setBroadcasting(true);
         try {
             await db.notifications.create(broadcastData.title, broadcastData.message, broadcastData.type, 'all');
-            alert('Broadcast sent successfully!');
+            showAlert.success('Broadcast Sent', 'Message has been dispatched to all users.');
             setIsBroadcastOpen(false);
             setBroadcastData({ title: '', message: '', type: 'info' });
         } catch (error: any) {
-            alert(error.message || 'Failed to send broadcast');
+            showAlert.error('Error', error.message || 'Failed to send broadcast');
         } finally {
             setBroadcasting(false);
         }
@@ -134,15 +136,15 @@ const AdminUsers: React.FC = () => {
             });
 
             if (response.ok) {
-                alert('Teacher limit updated successfully!');
+                showAlert.success('Limit Updated', 'Teacher limit updated successfully.');
                 setShowLimitModal(false);
                 loadUsers();
             } else {
-                alert('Failed to update teacher limit');
+                showAlert.error('Error', 'Failed to update teacher limit');
             }
         } catch (error) {
             console.error('Error updating teacher limit:', error);
-            alert('Error updating teacher limit');
+            showAlert.error('Error', 'Error updating teacher limit');
         }
     };
 
@@ -164,9 +166,21 @@ const AdminUsers: React.FC = () => {
     };
 
     const handleDelete = async (userId: string) => {
-        if (window.confirm("Permanently delete this user?")) {
+        if (await showAlert.confirm("Delete User", "Are you sure you want to permanently delete this user? This action cannot be undone.")) {
             await db.admin.deleteUser(userId);
+            showAlert.success('User Deleted', 'Account has been removed.');
             loadUsers();
+        }
+    };
+
+    const handleResetLimit = async (userId: string) => {
+        if (await showAlert.confirm("Reset Limit", "Reset weekly lesson limit for this user?")) {
+            try {
+                await db.admin.resetUserLimit(userId);
+                showAlert.success("Limit Reset", "User limit reset successfully");
+            } catch (error) {
+                showAlert.error("Error", "Failed to reset limit");
+            }
         }
     };
 
@@ -174,8 +188,8 @@ const AdminUsers: React.FC = () => {
         <div className="max-w-7xl mx-auto">
             {/* Modal */}
             {isModalOpen && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-                                <div className="bg-white dark:bg-slate-800 dark:text-slate-100 rounded-lg p-6 w-full max-w-md">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+                    <div className="bg-white dark:bg-slate-800 dark:text-slate-100 rounded-lg p-6 w-full max-w-md">
                         <h2 className="text-xl font-bold mb-4 text-slate-900 dark:text-slate-100">Add New User</h2>
                         <form onSubmit={handleCreateUser} className="space-y-4">
                             <div>
@@ -297,7 +311,7 @@ const AdminUsers: React.FC = () => {
                 </div>
             )}
 
-                <div className="flex justify-between items-center mb-6">
+            <div className="flex justify-between items-center mb-6">
                 <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">User Management</h1>
                 <div className="flex gap-2">
                     <button onClick={() => { setIsManageBroadcastsOpen(true); loadBroadcasts(); }} className="bg-slate-100 dark:bg-slate-800 dark:text-slate-200 text-slate-700 border border-slate-300 dark:border-slate-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-200 dark:hover:bg-slate-700">
@@ -354,8 +368,9 @@ const AdminUsers: React.FC = () => {
                                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Email</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Role</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Plan</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Usage</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Status</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Actions</th>
+                                <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider sticky right-0 bg-slate-50 dark:bg-slate-800 z-20 border-l border-slate-200 dark:border-slate-700">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="bg-white dark:bg-slate-800 divide-y divide-slate-200 dark:divide-slate-700">
@@ -373,12 +388,12 @@ const AdminUsers: React.FC = () => {
                                                 </div>
                                                 <div className="ml-4">
                                                     <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{user.name}</div>
-                                                        <div className="text-sm text-slate-500 dark:text-slate-400">{user.email}</div>
+                                                    <div className="text-sm text-slate-500 dark:text-slate-400">{user.email}</div>
                                                 </div>
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
-                                                <div className="text-sm text-slate-900 dark:text-slate-100">{user.email}</div>
+                                            <div className="text-sm text-slate-900 dark:text-slate-100">{user.email}</div>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${user.role === 'Admin' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'}`}>
@@ -392,6 +407,21 @@ const AdminUsers: React.FC = () => {
                                                 }`}>
                                                 {user.subscriptionPlan || 'Free'}
                                             </span>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            {user.usage ? (
+                                                <div className="text-sm text-slate-900 dark:text-slate-100">
+                                                    {user.usage.limit > 100 ? (
+                                                        <span className="text-green-600 font-medium">Unlimited</span>
+                                                    ) : (
+                                                        <span className={user.usage.remaining === 0 ? "text-red-500 font-bold" : ""}>
+                                                            {user.usage.used}/{user.usage.limit}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            ) : (
+                                                <span className="text-xs text-slate-400">-</span>
+                                            )}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             {user.isSchoolAdmin && user.ownedSchools && user.ownedSchools.length > 0 ? (
@@ -428,10 +458,13 @@ const AdminUsers: React.FC = () => {
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
                                             {user.lastActive ? new Date(user.lastActive).toLocaleDateString() : 'Never'}
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                        <td className="px-4 py-4 whitespace-nowrap text-right text-sm font-medium sticky right-0 bg-white dark:bg-slate-800 z-10 border-l border-slate-200 dark:border-slate-700">
                                             <div className="flex items-center justify-end gap-2">
                                                 <button onClick={() => handleStatusChange(user.id, user.status)} className="text-slate-400 hover:text-slate-600" title={user.status === 'Suspended' ? "Activate" : "Suspend"}>
                                                     {user.status === 'Suspended' ? <CheckSquare className="w-4 h-4" /> : <XSquare className="w-4 h-4" />}
+                                                </button>
+                                                <button onClick={() => handleResetLimit(user.id)} className="text-slate-400 hover:text-blue-600" title="Reset Lesson Limit">
+                                                    <RotateCcw className="w-4 h-4" />
                                                 </button>
                                                 <button onClick={() => handleDelete(user.id)} className="text-slate-400 hover:text-red-600" title="Delete">
                                                     <Trash className="w-4 h-4" />
