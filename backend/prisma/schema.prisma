@@ -1,0 +1,334 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id               String @id @default(uuid())
+  name             String
+  email            String @unique
+  password         String
+  role             String @default("user") // 'user', 'admin', 'teacher', 'school_admin'
+  subscriptionPlan String @default("Free") // 'Free', 'Pro', 'School'
+  avatar           String @default("")
+
+  // School Management Fields
+  schoolId      String?
+  school        School?  @relation("SchoolTeachers", fields: [schoolId], references: [id], onDelete: SetNull)
+  ownedSchools  School[] @relation("SchoolOwner")
+  isSchoolAdmin Boolean  @default(false)
+  teacherStatus String?  @default("Active") // 'Invited', 'Active', 'Suspended'
+  teacherLimit  Int      @default(15) // Only used for school admins
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Token billing fields
+  tokens         Int      @default(0)
+  lastTokenReset DateTime?
+  // Account type for progressive onboarding: 'individual' | 'school'
+  // Default 'individual' keeps backward compatibility for existing users
+  accountType    String   @default("individual")
+
+  // Relations
+  products     Product[]
+  orders       Order[]
+  transactions Transaction[]
+
+  // Shared generated content created by user
+  sharedContents SharedContent[]
+  // Token usage history
+  tokenUsages   TokenUsage[]
+
+  // Teachaide Relations
+  lessonNotes       LessonNote[]
+  assessments       Assessment[]
+  students          Student[]
+  timetables        Timetable[]
+  notificationReads NotificationRead[]
+}
+
+model Product {
+  id          String   @id @default(uuid())
+  name        String
+  description String
+  price       Float    @default(0)
+  images      String // Storing as JSON string or comma-separated if simple SQLite list needed, or separate table. Simplest: JSON string
+  stock       Int      @default(0)
+  categoryId  String
+  userId      String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  category   Category    @relation(fields: [categoryId], references: [id])
+  user       User        @relation(fields: [userId], references: [id])
+  orderItems OrderItem[]
+}
+
+model Category {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  image       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  products Product[]
+}
+
+model Order {
+  id              String    @id @default(uuid())
+  userId          String
+  paymentMethod   String
+  taxPrice        Float     @default(0.0)
+  shippingPrice   Float     @default(0.0)
+  totalPrice      Float     @default(0.0)
+  isPaid          Boolean   @default(false)
+  paidAt          DateTime?
+  isDelivered     Boolean   @default(false)
+  deliveredAt     DateTime?
+  status          String    @default("Pending")
+  paymentResult   String? // JSON string
+  shippingAddress String? // JSON string
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  user         User          @relation(fields: [userId], references: [id])
+  orderItems   OrderItem[]
+  transactions Transaction[]
+}
+
+model OrderItem {
+  id        String @id @default(uuid())
+  name      String
+  qty       Int
+  image     String
+  price     Float
+  productId String
+  orderId   String
+
+  product Product @relation(fields: [productId], references: [id])
+  order   Order   @relation(fields: [orderId], references: [id])
+}
+
+model Transaction {
+  id        String   @id @default(uuid())
+  userId    String
+  orderId   String?
+  amount    Float
+  type      String // 'credit', 'debit'
+  status    String // 'pending', 'completed', 'failed'
+  reference String?  @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user  User   @relation(fields: [userId], references: [id])
+  order Order? @relation(fields: [orderId], references: [id])
+}
+
+// --- Teachaide Models ---
+
+model LessonNote {
+  id                     String    @id @default(uuid())
+  userId                 String
+  topic                  String
+  subtopic               String
+  classLevel             String
+  subject                String
+  duration               String
+  date                   DateTime?
+  references             String // JSON array
+  objectives             String // JSON array
+  instructionalMaterials String // JSON array
+  previousKnowledge      String?
+  introduction           String?
+  lessonContent          String?
+  presentation           String // JSON array of objects
+  evaluation             String // JSON array
+  assignment             String?
+  conclusion             String?
+  status                 String    @default("Approved") // 'Approved', 'Flagged', 'Pending'
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model Assessment {
+  id         String   @id @default(uuid())
+  userId     String
+  topic      String
+  classLevel String
+  subject    String
+  status     String   @default("Approved")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user      User       @relation(fields: [userId], references: [id])
+  questions Question[]
+}
+
+model Question {
+  id            String  @id @default(uuid())
+  assessmentId  String
+  type          String // 'MCQ', 'TrueFalse', 'ShortAnswer'
+  question      String
+  options       String? // JSON array for MCQ
+  correctAnswer String
+
+  assessment Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+}
+
+model Student {
+  id        String   @id @default(uuid())
+  userId    String // Teacher
+  name      String
+  age       Int
+  gender    String
+  subject   String
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model Timetable {
+  id        String   @id @default(uuid())
+  userId    String
+  className String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user  User            @relation(fields: [userId], references: [id])
+  slots TimetableSlot[]
+}
+
+model TimetableSlot {
+  id          String @id @default(uuid())
+  timetableId String
+  day         String
+  time        String
+  subject     String
+
+  timetable Timetable @relation(fields: [timetableId], references: [id], onDelete: Cascade)
+}
+
+// Admin tables can be merged into User with role='admin' or 'superadmin' as implemented above.
+
+model School {
+  id           String   @id @default(uuid())
+  name         String
+  slug         String   @unique
+  ownerId      String
+  owner        User     @relation("SchoolOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  teachers     User[]   @relation("SchoolTeachers")
+  teacherLimit Int      @default(15)
+  allowAdminAccess Boolean @default(true) // Allow teacher admins to access School Management
+  isActive     Boolean  @default(true)
+  metadata     String? // JSON string for additional data
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model SystemSetting {
+  id              Int     @id @default(1)
+  maintenanceMode Boolean @default(false)
+  allowSignup     Boolean @default(true)
+  defaultModel    String  @default("gemini-2.5-flash")
+  maxTokens       Int     @default(4096)
+
+  // SMTP Configuration
+  smtpHost      String @default("")
+  smtpPort      Int    @default(587)
+  smtpUser      String @default("")
+  smtpPassword  String @default("")
+  smtpFromEmail String @default("")
+  smtpFromName  String @default("TeachAide AI")
+
+  // Token pricing (average estimated output tokens per generation)
+  lessonGenerationCost  Int @default(600) // average tokens per lesson generation
+  assessmentGenerationCost Int @default(200) // average tokens per assessment generation
+}
+
+// Record of token charges/credits
+model TokenUsage {
+  id        String   @id @default(uuid())
+  userId    String
+  amount    Int
+  type      String   // 'charge' | 'credit' | 'admin_credit' | 'reset'
+  meta      String?  // optional JSON string with details (e.g., {reason, generationId})
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Testimonial {
+  id           String   @id @default(uuid())
+  name         String
+  role         String
+  organization String?
+  content      String
+  avatarUrl    String?
+  rating       Int?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+}
+
+model Subject {
+  id   String @id @default(uuid())
+  name String @unique
+}
+
+model ClassLevel {
+  id   String @id @default(uuid())
+  name String @unique
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  title     String
+  message   String
+  type      String   @default("info") // 'info', 'alert', 'success'
+  target    String   @default("all") // 'all', or specific userId
+  createdAt DateTime @default(now())
+
+  reads NotificationRead[]
+}
+
+model NotificationRead {
+  id             String   @id @default(uuid())
+  userId         String
+  notificationId String
+  readAt         DateTime @default(now())
+
+  user         User         @relation(fields: [userId], references: [id])
+  notification Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, notificationId])
+}
+
+// Shared generated content cache to avoid repeated costly AI calls
+model SharedContent {
+  id         String   @id @default(uuid())
+  type       String   // e.g. 'lesson', 'assessment'
+  subject    String
+  classLevel String
+  topic      String
+  // store content as JSON string for SQLite compatibility
+  content    String
+  createdById String?
+  createdBy  User?    @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  usageCount Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([type, subject, classLevel, topic])
+}
