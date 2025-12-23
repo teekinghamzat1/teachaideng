@@ -20,7 +20,8 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS
         'http://localhost:5174',
         'http://127.0.0.1:5174',
         'http://localhost:3000',
-        'https://teachaide.ai'
+        'https://teachaide.ai',
+        'https://teachaide-ai.vercel.app'
     ];
 
 app.use(cors({
@@ -80,12 +81,18 @@ const PORT = process.env.PORT || 5000;
 
 const { seedDefaultCurriculum } = require('./src/controllers/curriculumController');
 
-app.listen(PORT, async () => {
-    try {
-        await seedDefaultCurriculum(); // Ensure defaults exist
-    } catch (seedError) {
-        console.error('Seeding failed:', seedError.message);
-    }
+// For local development
+if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
+    app.listen(PORT, async () => {
+        try {
+            await seedDefaultCurriculum(); // Ensure defaults exist
+        } catch (seedError) {
+            console.error('Seeding failed:', seedError.message);
+        }
 
-    console.log(`Server running on port ${PORT}`);
-});
+        console.log(`Server running on port ${PORT}`);
+    });
+}
+
+// Export for Vercel serverless functions
+module.exports = app;
