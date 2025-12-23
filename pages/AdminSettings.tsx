@@ -616,7 +616,7 @@ const AdminSettings: React.FC = () => {
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Database URL (Risky: Requires Restart)</label>
                                 <input
-                                    type="text"
+                                    type="password"
                                     value={config.databaseUrl || ''}
                                     onChange={e => setConfig({ ...config, databaseUrl: e.target.value })}
                                     placeholder="file:./dev.db or postgresql://..."

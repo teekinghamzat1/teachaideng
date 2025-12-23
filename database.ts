@@ -409,6 +409,10 @@ export const db = {
   },
 
   settings: {
+    async getPublic(): Promise<SystemSettings> {
+      const response = await fetch(`${API_URL}/settings/public`);
+      return handleResponse(response);
+    },
     get(): AppSettings {
       const str = localStorage.getItem('teachaide_settings');
       return str ? JSON.parse(str) : { theme: 'light', textSize: 'medium' };

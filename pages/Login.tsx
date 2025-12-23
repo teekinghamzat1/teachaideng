@@ -1,10 +1,24 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { db } from '../database';
 import { Mail, Lock, Loader2, BookOpen, Eye, EyeOff, Shield } from '../components/Icons';
+import Loader from '../components/Loader';
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
+
+  // Redirect if already logged in
+  useEffect(() => {
+    const user = db.auth.getCurrentUser();
+    if (user) {
+      if (user.role === 'Admin' || user.role === 'superadmin') {
+        navigate('/admin');
+      } else {
+        navigate('/dashboard');
+      }
+    }
+  }, [navigate]);
+
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -12,6 +26,11 @@ const Login: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+
+  // Eliminate flash by not rendering if user is already logged in
+  if (db.auth.getCurrentUser()) {
+    return <Loader fullscreen message="Redirecting to dashboard..." />;
+  }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({

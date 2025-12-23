@@ -38,7 +38,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
       // Fetch System Settings (Maintenance Mode)
       try {
-        const sysSettings = await db.admin.getSystemSettings();
+        const sysSettings = await db.settings.getPublic();
         if (sysSettings) setMaintenanceMode(sysSettings.maintenanceMode);
       } catch (e) {
         // Silent fail or default to false

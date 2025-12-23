@@ -81,7 +81,11 @@ const PORT = process.env.PORT || 5000;
 const { seedDefaultCurriculum } = require('./src/controllers/curriculumController');
 
 app.listen(PORT, async () => {
-    await seedDefaultCurriculum(); // Ensure defaults exist
+    try {
+        await seedDefaultCurriculum(); // Ensure defaults exist
+    } catch (seedError) {
+        console.error('Seeding failed:', seedError.message);
+    }
 
     console.log(`Server running on port ${PORT}`);
 });

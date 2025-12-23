@@ -73,11 +73,54 @@ const getSettings = asyncHandler(async (req, res) => {
             };
             settings = await prisma.systemSetting.create({ data: initialData });
         }
-        res.json(formatResponse(true, 'System settings retrieved', settings));
+        // Mask sensitive fields before sending to client
+        const maskedSettings = { ...settings };
+        const sensitiveFields = [
+            'smtpPassword', 'googleGeminiApiKey', 'cloudinaryApiKey',
+            'cloudinaryApiSecret', 'paystackSecretKey', 'paystackPublicKey',
+            'jwtSecret', 'databaseUrl'
+        ];
+
+        sensitiveFields.forEach(field => {
+            if (maskedSettings[field]) {
+                maskedSettings[field] = '**********';
+            }
+        });
+
+        res.json(formatResponse(true, 'System settings retrieved', maskedSettings));
     } catch (err) {
         console.error('Failed to retrieve system settings', err);
         res.status(500);
         throw new Error('Failed to retrieve system settings');
+    }
+});
+
+// @desc    Get public system settings (non-sensitive)
+// @route   GET /api/settings/public
+// @access  Public
+const getPublicSettings = asyncHandler(async (req, res) => {
+    try {
+        const settings = await prisma.systemSetting.findUnique({
+            where: { id: 1 },
+            select: {
+                maintenanceMode: true,
+                siteName: true,
+                siteTagline: true,
+                siteLogo: true,
+                siteLogoDark: true,
+                siteFavicon: true,
+                brandPrimaryColor: true,
+                brandSecondaryColor: true,
+                brandFont: true,
+                allowSignup: true
+            }
+        });
+
+        res.json(formatResponse(true, 'Public settings retrieved', settings || {}));
+    } catch (err) {
+        console.error('Failed to retrieve public settings', err);
+        res.status(500);
+        throw new Error('Failed to retrieve public settings');
     }
 });
 
@@ -144,7 +187,6 @@ const updateSettings = asyncHandler(async (req, res) => {
             smtpFromName: (smtpFromName || '').trim(),
             cloudinaryCloudName: (cloudinaryCloudName || '').trim(),
             jwtExpire: (jwtExpire || '').trim(),
-            databaseUrl: (databaseUrl || '').trim(),
             port: Number(port),
             nodeEnv: (nodeEnv || '').trim(),
             siteName: (siteName || 'TeachAide AI').trim(),
@@ -184,6 +226,7 @@ const updateSettings = asyncHandler(async (req, res) => {
         if (paystackSecretKey && !paystackSecretKey.startsWith('***')) updateData.paystackSecretKey = paystackSecretKey;
         if (paystackPublicKey && !paystackPublicKey.startsWith('***')) updateData.paystackPublicKey = paystackPublicKey;
         if (jwtSecret && !jwtSecret.startsWith('***')) updateData.jwtSecret = jwtSecret;
+        if (databaseUrl && !databaseUrl.startsWith('***')) updateData.databaseUrl = databaseUrl;
 
         const settings = await prisma.systemSetting.upsert({
             where: { id: 1 },
@@ -253,5 +296,6 @@ const updateSettings = asyncHandler(async (req, res) => {
 module.exports = {
     getSettings,
     updateSettings,
-    getPublicPricing
+    getPublicPricing,
+    getPublicSettings
 };

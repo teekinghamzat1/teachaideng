@@ -22,6 +22,7 @@ import { sessionManager } from './utils/sessionManager';
 import { HelpCenter } from './pages/HelpCenter';
 import { ContactUs } from './pages/ContactUs';
 import { PrivacyPolicy } from './pages/PrivacyPolicy';
+import NotFound from './pages/NotFound';
 
 // Admin Pages
 import AdminOverview from './pages/AdminDashboard'; // We reuse AdminDashboard.tsx as the overview
@@ -123,6 +124,9 @@ const App: React.FC = () => {
             <Route path="curriculum" element={<AdminCurriculum />} />
             <Route path="settings" element={<AdminSettings />} />
           </Route>
+
+          {/* 404 Route */}
+          <Route path="*" element={<Layout><NotFound /></Layout>} />
         </Routes>
       </Router>
     </BrandingProvider>
