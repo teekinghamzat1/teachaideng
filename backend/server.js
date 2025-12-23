@@ -45,6 +45,19 @@ app.get('/', (req, res) => {
     res.send('API is running...');
 });
 
+// Health check to verify API routing without DB
+app.get('/api/health', (req, res) => {
+    res.json({
+        status: 'UP',
+        timestamp: new Date(),
+        env: {
+            nodeEnv: process.env.NODE_ENV,
+            hasDbUrl: !!process.env.DATABASE_URL,
+            isVercel: !!process.env.VERCEL
+        }
+    });
+});
+
 const { apiLimiter, strictLimiter } = require('./src/middlewares/rateLimiter');
 
 // Rate Limiting
