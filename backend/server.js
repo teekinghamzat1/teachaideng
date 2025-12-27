@@ -67,6 +67,7 @@ app.use(apiLimiter);
 app.use('/api/auth', strictLimiter, require('./src/routes/authRoutes'));
 app.use('/api/users', require('./src/routes/userRoutes'));
 app.use('/api/admin', require('./src/routes/adminRoutes'));
+app.use('/api/school-admin', require('./src/routes/schoolAdminRoutes'));
 app.use('/api/products', require('./src/routes/productRoutes'));
 app.use('/api/categories', require('./src/routes/categoryRoutes'));
 app.use('/api/orders', require('./src/routes/orderRoutes'));

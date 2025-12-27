@@ -1,4 +1,3 @@
-
 const jwt = require('jsonwebtoken');
 const asyncHandler = require('express-async-handler');
 const prisma = require('../config/db');
@@ -64,7 +63,7 @@ const protect = asyncHandler(async (req, res, next) => {
 });
 
 const admin = (req, res, next) => {
-  if (req.user && (req.user.role.toLowerCase() === 'admin' || req.user.role.toLowerCase() === 'superadmin')) {
+  if (req.user && (req.user.role.toLowerCase() === 'admin' || req.user.role.toLowerCase() === 'superadmin') && !req.user.isSchoolAdmin) {
     next();
   } else {
     res.status(401);
@@ -73,4 +72,3 @@ const admin = (req, res, next) => {
 };
 
 module.exports = { protect, admin };
-
