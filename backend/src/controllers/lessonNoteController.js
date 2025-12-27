@@ -54,6 +54,7 @@ const createNote = asyncHandler(async (req, res) => {
     const note = await prisma.lessonNote.create({
         data: {
             userId: req.user.id,
+            schoolId: req.body.schoolId || req.user.schoolId, // Support both explicit and derived schoolId
             topic, subtopic, classLevel, subject, duration,
             date: (date && !isNaN(new Date(date).getTime())) ? new Date(date) : undefined,
             references: references ? JSON.stringify(references) : '[]',

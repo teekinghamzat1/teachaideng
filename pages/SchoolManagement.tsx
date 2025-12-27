@@ -15,6 +15,16 @@ const SchoolManagement: React.FC = () => {
     const [editingLimit, setEditingLimit] = useState<string | null>(null);
     const [newLimitValue, setNewLimitValue] = useState<number>(0);
     const [updatingLimit, setUpdatingLimit] = useState(false);
+    const [showProfileModal, setShowProfileModal] = useState(false);
+    const [editProfile, setEditProfile] = useState({
+        name: '',
+        address: '',
+        phone: '',
+        email: '',
+        website: '',
+        capacity: 0
+    });
+    const [savingProfile, setSavingProfile] = useState(false);
 
     useEffect(() => {
         loadSchoolData();
@@ -26,6 +36,14 @@ const SchoolManagement: React.FC = () => {
             const data = await db.school.getDetails();
             setSchool(data.school);
             setStats(data.stats);
+            setEditProfile({
+                name: data.school.name || '',
+                address: data.school.address || '',
+                phone: data.school.phone || '',
+                email: data.school.email || '',
+                website: data.school.website || '',
+                capacity: data.school.capacity || 0
+            });
         } catch (error: any) {
             console.error('Failed to load school data:', error);
             showAlert.error('Load Error', error.message || 'Failed to load school data');
@@ -120,6 +138,21 @@ const SchoolManagement: React.FC = () => {
         }
     };
 
+    const handleUpdateProfile = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setSavingProfile(true);
+        try {
+            await db.school.updateProfile(editProfile);
+            showAlert.success('Profile Updated', 'Your school details have been successfully updated.');
+            setShowProfileModal(false);
+            loadSchoolData();
+        } catch (error: any) {
+            showAlert.error('Update Failed', error.message || 'Failed to update profile');
+        } finally {
+            setSavingProfile(false);
+        }
+    };
+
     if (loading) {
         return (
             <div className="flex items-center justify-center min-h-screen">
@@ -147,10 +180,38 @@ const SchoolManagement: React.FC = () => {
     return (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
             {/* Header */}
-            <div className="mb-8">
-                <h1 className="text-3xl font-bold text-slate-900 mb-2">School Management</h1>
-                <p className="text-slate-600">Manage your teachers and school settings</p>
+            <div className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div>
+                    <h1 className="text-3xl font-bold text-slate-900 mb-2">School Management</h1>
+                    <p className="text-slate-600">Manage your teachers and school settings</p>
+                </div>
+                <button
+                    onClick={() => setShowProfileModal(true)}
+                    className="inline-flex items-center px-4 py-2 bg-white border border-slate-300 text-slate-700 rounded-lg font-medium hover:bg-slate-50 transition-colors shadow-sm"
+                >
+                    <Edit className="w-4 h-4 mr-2" />
+                    Edit School Profile
+                </button>
             </div>
+
+            {/* Profile Completion Warning */}
+            {school && (!school.address || !school.phone || !school.email) && (
+                <div className="mb-8 bg-blue-50 border border-blue-200 rounded-xl p-6 flex flex-col md:flex-row items-center gap-4">
+                    <div className="bg-blue-100 p-3 rounded-full">
+                        <AlertCircle className="w-8 h-8 text-blue-600" />
+                    </div>
+                    <div className="flex-1 text-center md:text-left">
+                        <h3 className="text-lg font-bold text-blue-900">Complete Your School Profile</h3>
+                        <p className="text-blue-700">Please provide your school's address, contact details, and capacity to complete your setup.</p>
+                    </div>
+                    <button
+                        onClick={() => setShowProfileModal(true)}
+                        className="px-6 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-all shadow-md"
+                    >
+                        Complete Now
+                    </button>
+                </div>
+            )}
 
             {/* School Overview Card */}
             <div className="bg-gradient-to-br from-brand-500 to-brand-700 rounded-xl shadow-lg p-6 text-white mb-8">
@@ -436,6 +497,127 @@ const SchoolManagement: React.FC = () => {
                     </div>
                 </div>
             )}
+
+            <ProfileModal
+                isOpen={showProfileModal}
+                onClose={() => setShowProfileModal(false)}
+                editProfile={editProfile}
+                setEditProfile={setEditProfile}
+                onSubmit={handleUpdateProfile}
+                saving={savingProfile}
+            />
+        </div>
+    );
+};
+
+interface ProfileModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    editProfile: any;
+    setEditProfile: (p: any) => void;
+    onSubmit: (e: React.FormEvent) => void;
+    saving: boolean;
+}
+
+const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, editProfile, setEditProfile, onSubmit, saving }) => {
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                <div className="p-6 border-b border-slate-100 flex items-center justify-between sticky top-0 bg-white z-10">
+                    <h3 className="text-xl font-bold text-slate-900">Edit School Profile</h3>
+                    <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
+                        <X className="w-6 h-6" />
+                    </button>
+                </div>
+
+                <form onSubmit={onSubmit} className="p-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="col-span-1 md:col-span-2">
+                            <label className="block text-sm font-medium text-slate-700 mb-1">School Name</label>
+                            <input
+                                type="text"
+                                value={editProfile.name}
+                                onChange={(e) => setEditProfile({ ...editProfile, name: e.target.value })}
+                                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
+                                required
+                            />
+                        </div>
+
+                        <div className="col-span-1 md:col-span-2">
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Address</label>
+                            <textarea
+                                value={editProfile.address}
+                                onChange={(e) => setEditProfile({ ...editProfile, address: e.target.value })}
+                                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
+                                rows={3}
+                                placeholder="Full street address, city, state"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Official Phone</label>
+                            <input
+                                type="tel"
+                                value={editProfile.phone}
+                                onChange={(e) => setEditProfile({ ...editProfile, phone: e.target.value })}
+                                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
+                                placeholder="+234..."
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Official Email</label>
+                            <input
+                                type="email"
+                                value={editProfile.email}
+                                onChange={(e) => setEditProfile({ ...editProfile, email: e.target.value })}
+                                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
+                                placeholder="admin@school.com"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Website</label>
+                            <input
+                                type="url"
+                                value={editProfile.website}
+                                onChange={(e) => setEditProfile({ ...editProfile, website: e.target.value })}
+                                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
+                                placeholder="https://..."
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Student Capacity</label>
+                            <input
+                                type="number"
+                                value={editProfile.capacity}
+                                onChange={(e) => setEditProfile({ ...editProfile, capacity: parseInt(e.target.value) || 0 })}
+                                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="flex gap-3 mt-8">
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className="flex-1 px-4 py-3 bg-slate-100 text-slate-700 rounded-lg font-semibold hover:bg-slate-200 transition-colors"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={saving}
+                            className="flex-1 px-4 py-3 bg-brand-600 text-white rounded-lg font-semibold hover:bg-brand-700 disabled:opacity-50 transition-colors flex items-center justify-center"
+                        >
+                            {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Save Profile Details'}
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
     );
 };

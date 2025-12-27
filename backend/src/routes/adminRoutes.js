@@ -11,7 +11,10 @@ const {
     updateSchoolTeacherLimit,
     testSmtp,
     resetUserLimit,
-    getAnalytics
+    updateUserStatus,
+    getAnalytics,
+    getSchools,
+    getAdminLogs
 } = require('../controllers/adminController');
 
 const {
@@ -43,6 +46,7 @@ router.use(admin);
 
 router.get('/dashboard', getDashboardStats);
 router.get('/analytics', getAnalytics);
+router.get('/logs', getAdminLogs);
 router.get('/users', getUsers);
 router.post('/users', createUser);
 router.get('/orders', getOrders);
@@ -54,12 +58,14 @@ router.put('/content/notes/:id/status', updateNoteStatus);
 
 // School Management
 router.patch('/schools/:id/teacher-limit', updateSchoolTeacherLimit);
+router.get('/schools', getSchools);
 
 // Admin-only: create a school and link an existing user as owner (placeholder for future onboarding)
 router.post('/schools/provision', provisionSchool);
 
 // Permanently delete a user and all related data
 router.delete('/users/:id', deleteUserPermanently);
+router.put('/users/:id/status', updateUserStatus);
 
 // SMTP Testing
 router.post('/test-smtp', testSmtp);

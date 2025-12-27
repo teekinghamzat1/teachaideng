@@ -8,7 +8,7 @@ const isSchoolAdmin = asyncHandler(async (req, res, next) => {
     }
 
     // Check if user has School Plan and is marked as school admin
-    if (req.user.subscriptionPlan !== 'School' || !req.user.isSchoolAdmin || !req.user.schoolId) {
+    if (req.user.subscriptionPlan?.toLowerCase() !== 'school' || !req.user.isSchoolAdmin || !req.user.schoolId) {
         res.status(403);
         throw new Error('Access denied. School License, admin privileges, and a school ID are required.');
     }

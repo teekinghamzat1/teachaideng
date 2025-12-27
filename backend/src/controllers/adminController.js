@@ -3,15 +3,31 @@ const bcrypt = require('bcryptjs');
 const prisma = require('../config/db');
 const formatResponse = require('../utils/formatResponse');
 const { getWeeklyLessonUsage } = require('../utils/usage');
+const { createAdminLog } = require('../utils/auditLogger');
 
 // @desc    Get admin dashboard stats
 // @route   GET /api/admin/dashboard
 // @access  Private/Admin
 const getDashboardStats = asyncHandler(async (req, res) => {
-    const totalUsers = await prisma.user.count();
-    const totalNotes = await prisma.lessonNote.count();
-    const totalStudents = await prisma.student.count();
-    const premiumUsers = await prisma.user.count({ where: { OR: [{ subscriptionPlan: 'Pro' }, { subscriptionPlan: 'School' }] } });
+    let userWhere = {};
+    let noteWhere = {};
+    let studentWhere = {};
+
+    if (req.user.isSchoolAdmin && req.user.schoolId) {
+        userWhere = { schoolId: req.user.schoolId };
+        noteWhere = { user: { schoolId: req.user.schoolId } };
+        studentWhere = { user: { schoolId: req.user.schoolId } };
+    }
+
+    const totalUsers = await prisma.user.count({ where: userWhere });
+    const totalNotes = await prisma.lessonNote.count({ where: noteWhere });
+    const totalStudents = await prisma.student.count({ where: studentWhere });
+    const premiumUsers = await prisma.user.count({
+        where: {
+            ...userWhere,
+            OR: [{ subscriptionPlan: 'Pro' }, { subscriptionPlan: 'School' }]
+        }
+    });
 
     const stats = {
         totalUsers,
@@ -20,9 +36,9 @@ const getDashboardStats = asyncHandler(async (req, res) => {
         premiumUsers,
         // Keeping original ones just in case
         users: totalUsers,
-        orders: await prisma.order.count(),
-        products: await prisma.product.count(),
-        totalSales: (await prisma.order.aggregate({ _sum: { totalPrice: true }, where: { isPaid: true } }))._sum.totalPrice || 0,
+        orders: req.user.isSchoolAdmin ? 0 : await prisma.order.count(),
+        products: req.user.isSchoolAdmin ? 0 : await prisma.product.count(),
+        totalSales: req.user.isSchoolAdmin ? 0 : (await prisma.order.aggregate({ _sum: { totalPrice: true }, where: { isPaid: true } }))._sum.totalPrice || 0,
     };
 
     res.json(formatResponse(true, 'Dashboard stats retrieved', stats));
@@ -33,11 +49,17 @@ const getDashboardStats = asyncHandler(async (req, res) => {
 // @access  Private/Admin
 const getAnalytics = asyncHandler(async (req, res) => {
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    let where = {
+        createdAt: { gte: sevenDaysAgo },
+        action: { in: ['LESSON_GENERATION', 'ASSESSMENT_GENERATION'] }
+    };
+
+    if (req.user.isSchoolAdmin && req.user.schoolId) {
+        where.user = { schoolId: req.user.schoolId };
+    }
+
     const logs = await prisma.usageLog.findMany({
-        where: {
-            createdAt: { gte: sevenDaysAgo },
-            action: { in: ['LESSON_GENERATION', 'ASSESSMENT_GENERATION'] }
-        },
+        where,
         orderBy: { createdAt: 'asc' }
     });
 
@@ -117,7 +139,13 @@ const getAnalytics = asyncHandler(async (req, res) => {
 // @route   GET /api/admin/users
 // @access  Private/Admin
 const getUsers = asyncHandler(async (req, res) => {
+    let where = {};
+    if (req.user.isSchoolAdmin && req.user.schoolId) {
+        where.schoolId = req.user.schoolId;
+    }
+
     const users = await prisma.user.findMany({
+        where,
         select: {
             id: true,
             name: true,
@@ -128,6 +156,7 @@ const getUsers = asyncHandler(async (req, res) => {
             teacherLimit: true,
             schoolId: true,
             createdAt: true,
+            teacherStatus: true,
             school: {
                 select: {
                     id: true,
@@ -151,7 +180,9 @@ const getUsers = asyncHandler(async (req, res) => {
     });
     const usersWithUsage = await Promise.all(users.map(async (user) => {
         const usage = await getWeeklyLessonUsage(user.id);
-        return { ...user, usage };
+        // Map teacherStatus to status for frontend compatibility
+        const { teacherStatus, ...rest } = user;
+        return { ...rest, status: teacherStatus, usage };
     }));
 
     res.json(formatResponse(true, 'Users retrieved', usersWithUsage));
@@ -222,10 +253,20 @@ const createAdmin = asyncHandler(async (req, res) => {
 // @route   GET /api/admin/content/notes
 // @access  Private/Admin
 const getAllNotes = asyncHandler(async (req, res) => {
+    let where = {};
+    if (req.user.isSchoolAdmin && req.user.schoolId) {
+        where = {
+            user: {
+                schoolId: req.user.schoolId
+            }
+        };
+    }
+
     const notes = await prisma.lessonNote.findMany({
+        where,
         include: {
             user: {
-                select: { name: true, email: true }
+                select: { name: true, email: true, schoolId: true }
             }
         },
         orderBy: { createdAt: 'desc' },
@@ -268,11 +309,18 @@ const updateNoteStatus = asyncHandler(async (req, res) => {
 // @route   POST /api/admin/users
 // @access  Private/Admin
 const createUser = asyncHandler(async (req, res) => {
-    const { name, email, password, role } = req.body;
+    const { name, email, password, role, isSchoolAdmin, schoolId, subscriptionPlan } = req.body;
 
+    // Restrict Admin/SuperAdmin creation
     if (role && (role.toLowerCase() === 'admin' || role.toLowerCase() === 'superadmin')) {
         res.status(403);
         throw new Error('Forbidden: Admins cannot create other admins or superadmins.');
+    }
+
+    // Only SuperAdmin can create School Admins
+    if (isSchoolAdmin && req.user.role !== 'superadmin') {
+        res.status(403);
+        throw new Error('Forbidden: Only SuperAdmins can create School Admins.');
     }
 
     const userExists = await prisma.user.findUnique({
@@ -293,7 +341,16 @@ const createUser = asyncHandler(async (req, res) => {
             email,
             password: hashedPassword,
             role: role || 'user',
+            isSchoolAdmin: !!isSchoolAdmin,
+            schoolId: schoolId || null,
+            subscriptionPlan: subscriptionPlan || 'Free',
         },
+    });
+
+    await createAdminLog(req.user.id, req.user.schoolId, 'CREATE_USER', {
+        createdUserId: user.id,
+        role,
+        email
     });
 
     if (user) {
@@ -303,12 +360,31 @@ const createUser = asyncHandler(async (req, res) => {
                 name: user.name,
                 email: user.email,
                 role: user.role,
+                isSchoolAdmin: user.isSchoolAdmin,
+                schoolId: user.schoolId
             })
         );
     } else {
         res.status(400);
         throw new Error('Invalid user data');
     }
+});
+
+// @desc    Get all schools
+// @route   GET /api/admin/schools
+// @access  Private/Admin
+const getSchools = asyncHandler(async (req, res) => {
+    const schools = await prisma.school.findMany({
+        include: {
+            owner: {
+                select: { name: true, email: true }
+            },
+            _count: {
+                select: { teachers: true }
+            }
+        }
+    });
+    res.json(formatResponse(true, 'Schools retrieved', schools));
 });
 
 // @desc    Provision a new School and link an existing user as owner (admin only)
@@ -372,8 +448,12 @@ const deleteUserPermanently = asyncHandler(async (req, res) => {
         prisma.orderItem.deleteMany({ where: { order: { userId } } }),
         prisma.order.deleteMany({ where: { userId } }),
         prisma.usageLog.deleteMany({ where: { userId } }),
-        prisma.user.delete({ where: { id: userId } })
+        prisma.user.delete({ where: { id: req.params.id } })
     ]);
+
+    await createAdminLog(req.user.id, req.user.schoolId, 'DELETE_USER', {
+        deletedUserId: req.params.id
+    });
 
     res.json(formatResponse(true, 'User and related data permanently deleted'));
 });
@@ -400,8 +480,13 @@ const updateSchoolTeacherLimit = asyncHandler(async (req, res) => {
     }
 
     const updatedSchool = await prisma.school.update({
-        where: { id },
-        data: { teacherLimit: parseInt(teacherLimit) }
+        where: { id: req.params.id },
+        data: { teacherLimit: Number(teacherLimit) }
+    });
+
+    await createAdminLog(req.user.id, req.user.schoolId, 'UPDATE_TEACHER_LIMIT', {
+        schoolId: req.params.id,
+        newLimit: teacherLimit
     });
 
     res.json(formatResponse(true, 'Teacher limit updated', updatedSchool));
@@ -437,11 +522,75 @@ const resetUserLimit = asyncHandler(async (req, res) => {
 
     // Update user's lastLimitReset to now
     await prisma.user.update({
-        where: { id: userId },
+        where: { id: req.params.id },
         data: { lastLimitReset: new Date() }
     });
 
+    await createAdminLog(req.user.id, req.user.schoolId, 'RESET_USER_LIMIT', {
+        targetUserId: req.params.id
+    });
+
     res.json(formatResponse(true, 'User limit reset successfully'));
+});
+
+// @desc    Get admin activity logs
+// @route   GET /api/admin/logs
+// @access  Private/Admin
+const getAdminLogs = asyncHandler(async (req, res) => {
+    let where = {};
+    if (req.user.isSchoolAdmin && req.user.schoolId) {
+        where = { schoolId: req.user.schoolId };
+    }
+
+    const logs = await prisma.adminLog.findMany({
+        where,
+        include: {
+            user: {
+                select: { name: true, email: true }
+            },
+            school: {
+                select: { name: true }
+            }
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 100
+    });
+
+    res.json(formatResponse(true, 'Admin logs retrieved', logs));
+});
+
+// @desc    Update user status (Suspended/Active)
+// @route   PUT /api/admin/users/:id/status
+// @access  Private/Admin
+const updateUserStatus = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    const user = await prisma.user.findUnique({ where: { id } });
+    if (!user) {
+        res.status(404);
+        throw new Error('User not found');
+    }
+
+    // Security: School admin can only update their own school's members
+    if (req.user.isSchoolAdmin && user.schoolId !== req.user.schoolId) {
+        res.status(403);
+        throw new Error('Unauthorized: You can only manage users in your own school');
+    }
+
+    const updatedUser = await prisma.user.update({
+        where: { id },
+        data: { teacherStatus: status }
+    });
+
+    // Log the action
+    await createAdminLog(req.user.id, updatedUser.schoolId, 'UPDATE_USER_STATUS', {
+        targetUserId: id,
+        targetUserName: updatedUser.name,
+        newStatus: status
+    });
+
+    res.json(formatResponse(true, `User status updated to ${status}`, updatedUser));
 });
 
 module.exports = {
@@ -453,10 +602,12 @@ module.exports = {
     getAllNotes,
     updateNoteStatus,
     updateSchoolTeacherLimit,
-    testSmtp
-    ,
+    testSmtp,
     provisionSchool,
     deleteUserPermanently,
     resetUserLimit,
-    getAnalytics
+    updateUserStatus,
+    getAnalytics,
+    getSchools,
+    getAdminLogs
 };

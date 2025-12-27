@@ -184,6 +184,11 @@ export interface School {
   teacherLimit: number;
   allowAdminAccess: boolean;
   isActive: boolean;
+  address?: string;
+  phone?: string;
+  email?: string;
+  website?: string;
+  capacity?: number;
   createdAt: string;
   updatedAt: string;
   teachers?: Teacher[];

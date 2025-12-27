@@ -8,7 +8,6 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
 }
 
 model User {
@@ -70,6 +69,7 @@ model User {
   students          Student[]
   timetables        Timetable[]
   notificationReads NotificationRead[]
+  adminLogs         AdminLog[]
 }
 
 model Product {
@@ -176,6 +176,8 @@ model LessonNote {
   updatedAt              DateTime  @updatedAt
 
   user User @relation(fields: [userId], references: [id])
+  schoolId  String?
+  school    School? @relation(fields: [schoolId], references: [id])
 }
 
 model Assessment {
@@ -190,6 +192,9 @@ model Assessment {
 
   user      User       @relation(fields: [userId], references: [id])
   questions Question[]
+
+  schoolId  String?
+  school    School? @relation(fields: [schoolId], references: [id])
 }
 
 model Question {
@@ -253,9 +258,34 @@ model School {
   teacherLimit Int      @default(15)
   allowAdminAccess Boolean @default(true) // Allow teacher admins to access School Management
   isActive     Boolean  @default(true)
+  
+  // School Profile Details
+  address      String?
+  phone        String?
+  email        String?
+  website      String?
+  capacity     Int? @default(0)
+
   metadata     String? // JSON string for additional data
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
+  lessonNotes  LessonNote[]
+  assessments  Assessment[]
+  usageLogs    UsageLog[]
+  adminLogs    AdminLog[]
+}
+
+model AdminLog {
+  id         String   @id @default(uuid())
+  userId     String
+  schoolId   String?
+  actionType String   // e.g. "CREATE_USER", "UPDATE_TEACHER_LIMIT", "DELETE_NOTE"
+  details    String?  // JSON string
+  createdAt  DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id])
+  school School? @relation(fields: [schoolId], references: [id])
 }
 
 model SystemSetting {
@@ -417,4 +447,6 @@ model UsageLog {
   createdAt DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  schoolId String?
+  school   School? @relation(fields: [schoolId], references: [id])
 }

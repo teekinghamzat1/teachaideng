@@ -13,7 +13,15 @@ const AdminUsers: React.FC = () => {
 
     // Modal State
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [newUser, setNewUser] = useState({ name: '', email: '', password: '', role: 'Teacher', subscriptionPlan: 'Free' });
+    const [newUser, setNewUser] = useState({
+        name: '',
+        email: '',
+        password: '',
+        role: 'Teacher',
+        subscriptionPlan: 'Free',
+        isSchoolAdmin: false,
+        schoolId: ''
+    });
 
     // Teacher Limit Modal
     const [showLimitModal, setShowLimitModal] = useState(false);
@@ -25,10 +33,23 @@ const AdminUsers: React.FC = () => {
     const [isBroadcastOpen, setIsBroadcastOpen] = useState(false);
     const [broadcastData, setBroadcastData] = useState({ title: '', message: '', type: 'info' as 'info' | 'alert' | 'success' });
     const [broadcasting, setBroadcasting] = useState(false);
+    const [schools, setSchools] = useState<any[]>([]);
+    const currentUser = db.adminAuth.getCurrentUser();
+    const isSuperAdmin = currentUser?.role?.toLowerCase() === 'superadmin';
 
     useEffect(() => {
         loadUsers();
+        if (isSuperAdmin) loadSchools();
     }, []);
+
+    const loadSchools = async () => {
+        try {
+            const data = await db.admin.getAllSchools();
+            setSchools(data || []);
+        } catch (error) {
+            console.error("Failed to load schools", error);
+        }
+    };
 
     const loadUsers = async () => {
         setLoading(true);
@@ -95,10 +116,22 @@ const AdminUsers: React.FC = () => {
         e.preventDefault();
         setCreating(true);
         try {
-            await db.admin.createUser(newUser);
+            await db.admin.createUser({
+                ...newUser,
+                role: newUser.isSchoolAdmin ? 'user' : newUser.role,
+                subscriptionPlan: newUser.isSchoolAdmin ? 'School' : newUser.subscriptionPlan as any
+            });
             showAlert.success('User Created', 'New user account has been successfully created.');
             setIsModalOpen(false);
-            setNewUser({ name: '', email: '', password: '', role: 'Teacher', subscriptionPlan: 'Free' });
+            setNewUser({
+                name: '',
+                email: '',
+                password: '',
+                role: 'Teacher',
+                subscriptionPlan: 'Free',
+                isSchoolAdmin: false,
+                schoolId: ''
+            });
             loadUsers();
         } catch (error: any) {
             showAlert.error('Error', error.message || 'Failed to create user');
@@ -210,14 +243,42 @@ const AdminUsers: React.FC = () => {
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Role</label>
                                 <select className="mt-1 block w-full rounded-md border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-700 dark:text-slate-100 shadow-sm focus:border-brand-500 focus:ring-brand-500"
-                                    value={newUser.role} onChange={e => setNewUser({ ...newUser, role: e.target.value })}>
+                                    value={newUser.isSchoolAdmin ? 'School Admin' : newUser.role}
+                                    onChange={e => {
+                                        const val = e.target.value;
+                                        if (val === 'School Admin') {
+                                            setNewUser({ ...newUser, isSchoolAdmin: true, role: 'teacher', subscriptionPlan: 'School' });
+                                        } else {
+                                            setNewUser({ ...newUser, isSchoolAdmin: false, role: val, subscriptionPlan: val === 'Admin' ? 'Pro' : 'Free' });
+                                        }
+                                    }}>
                                     <option value="Teacher">Teacher</option>
                                     <option value="Student Teacher">Student Teacher</option>
                                     <option value="Tutor">Tutor</option>
-                                    <option value="School Admin">School Admin</option>
-                                    <option value="Admin">Admin</option>
+                                    {isSuperAdmin && <option value="School Admin">School Admin</option>}
+                                    {isSuperAdmin && <option value="Admin">Admin</option>}
                                 </select>
                             </div>
+
+                            {newUser.isSchoolAdmin && (
+                                <div className="space-y-4 pt-2 border-t border-slate-100 dark:border-slate-700 mt-4">
+                                    <p className="text-xs font-semibold text-brand-600 uppercase">School Assignment</p>
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Select School</label>
+                                        <select
+                                            required
+                                            className="mt-1 block w-full rounded-md border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-700 dark:text-slate-100 shadow-sm focus:border-brand-500 focus:ring-brand-500"
+                                            value={newUser.schoolId}
+                                            onChange={e => setNewUser({ ...newUser, schoolId: e.target.value })}
+                                        >
+                                            <option value="">Select a school...</option>
+                                            {schools.map(school => (
+                                                <option key={school.id} value={school.id}>{school.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+                            )}
                             <div className="flex justify-end gap-2 mt-6">
                                 <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-slate-700 hover:bg-slate-100 rounded-md">Cancel</button>
                                 <button type="submit" disabled={creating} className="px-4 py-2 bg-brand-600 text-white rounded-md hover:bg-brand-700 disabled:opacity-50">
@@ -314,12 +375,16 @@ const AdminUsers: React.FC = () => {
             <div className="flex justify-between items-center mb-6">
                 <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">User Management</h1>
                 <div className="flex gap-2">
-                    <button onClick={() => { setIsManageBroadcastsOpen(true); loadBroadcasts(); }} className="bg-slate-100 dark:bg-slate-800 dark:text-slate-200 text-slate-700 border border-slate-300 dark:border-slate-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-200 dark:hover:bg-slate-700">
-                        Manage Broadcasts
-                    </button>
-                    <button onClick={() => setIsBroadcastOpen(true)} className="bg-slate-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-700">
-                        Broadcast Message
-                    </button>
+                    {!currentUser?.isSchoolAdmin && (
+                        <>
+                            <button onClick={() => { setIsManageBroadcastsOpen(true); loadBroadcasts(); }} className="bg-slate-100 dark:bg-slate-800 dark:text-slate-200 text-slate-700 border border-slate-300 dark:border-slate-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-200 dark:hover:bg-slate-700">
+                                Manage Broadcasts
+                            </button>
+                            <button onClick={() => setIsBroadcastOpen(true)} className="bg-slate-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-700">
+                                Broadcast Message
+                            </button>
+                        </>
+                    )}
                     <button onClick={() => setIsModalOpen(true)} className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-brand-700">
                         Add New User
                     </button>
@@ -429,16 +494,18 @@ const AdminUsers: React.FC = () => {
                                                     <div className="font-medium text-slate-900">{user.ownedSchools[0].name}</div>
                                                     <div className="text-xs text-slate-500 flex items-center gap-2">
                                                         {user.ownedSchools[0]._count?.teachers || 0}/{user.ownedSchools[0].teacherLimit} teachers
-                                                        <button
-                                                            onClick={() => {
-                                                                setSelectedSchool(user.ownedSchools[0]);
-                                                                setNewLimit(user.ownedSchools[0].teacherLimit);
-                                                                setShowLimitModal(true);
-                                                            }}
-                                                            className="text-brand-600 hover:text-brand-800 underline text-xs"
-                                                        >
-                                                            Edit Limit
-                                                        </button>
+                                                        {!currentUser?.isSchoolAdmin && (
+                                                            <button
+                                                                onClick={() => {
+                                                                    setSelectedSchool(user.ownedSchools[0]);
+                                                                    setNewLimit(user.ownedSchools[0].teacherLimit);
+                                                                    setShowLimitModal(true);
+                                                                }}
+                                                                className="text-brand-600 hover:text-brand-800 underline text-xs"
+                                                            >
+                                                                Edit Limit
+                                                            </button>
+                                                        )}
                                                     </div>
                                                 </div>
                                             ) : user.school ? (
@@ -463,9 +530,11 @@ const AdminUsers: React.FC = () => {
                                                 <button onClick={() => handleStatusChange(user.id, user.status)} className="text-slate-400 hover:text-slate-600" title={user.status === 'Suspended' ? "Activate" : "Suspend"}>
                                                     {user.status === 'Suspended' ? <CheckSquare className="w-4 h-4" /> : <XSquare className="w-4 h-4" />}
                                                 </button>
-                                                <button onClick={() => handleResetLimit(user.id)} className="text-slate-400 hover:text-blue-600" title="Reset Lesson Limit">
-                                                    <RotateCcw className="w-4 h-4" />
-                                                </button>
+                                                {!currentUser?.isSchoolAdmin && (
+                                                    <button onClick={() => handleResetLimit(user.id)} className="text-slate-400 hover:text-blue-600" title="Reset Lesson Limit">
+                                                        <RotateCcw className="w-4 h-4" />
+                                                    </button>
+                                                )}
                                                 <button onClick={() => handleDelete(user.id)} className="text-slate-400 hover:text-red-600" title="Delete">
                                                     <Trash className="w-4 h-4" />
                                                 </button>

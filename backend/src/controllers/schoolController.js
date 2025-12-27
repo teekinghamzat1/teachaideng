@@ -2,6 +2,7 @@ const asyncHandler = require('express-async-handler');
 const prisma = require('../config/db');
 const formatResponse = require('../utils/formatResponse');
 const bcrypt = require('bcryptjs');
+const { createAdminLog } = require('../utils/auditLogger');
 
 // @desc    Get school details and teacher list
 // @route   GET /api/school
@@ -154,6 +155,11 @@ const addTeacher = asyncHandler(async (req, res) => {
         // Teacher is still created, admin can manually share credentials
     }
 
+    await createAdminLog(req.user.id, school.id, 'ADD_TEACHER', {
+        teacherEmail: teacher.email,
+        teacherName: teacher.name
+    });
+
     res.status(201).json(formatResponse(true, 'Teacher invited successfully', {
         teacher: {
             id: teacher.id,
@@ -205,6 +211,11 @@ const updateTeacherStatus = asyncHandler(async (req, res) => {
     const updatedTeacher = await prisma.user.update({
         where: { id: teacherId },
         data: { teacherStatus }
+    });
+
+    await createAdminLog(req.user.id, school.id, 'UPDATE_TEACHER_STATUS', {
+        teacherId,
+        newStatus: teacherStatus
     });
 
     res.json(formatResponse(true, 'Teacher status updated', {
@@ -266,6 +277,11 @@ const removeTeacher = asyncHandler(async (req, res) => {
         // Continue - account is already deleted
     }
 
+    await createAdminLog(req.user.id, school.id, 'REMOVE_TEACHER', {
+        teacherId,
+        teacherName
+    });
+
     res.json(formatResponse(true, 'Teacher account permanently deleted and notification sent'));
 });
 
@@ -312,6 +328,11 @@ const toggleTeacherAdmin = asyncHandler(async (req, res) => {
         data: { isSchoolAdmin: isAdmin }
     });
 
+    await createAdminLog(req.user.id, school.id, 'TOGGLE_TEACHER_ADMIN', {
+        teacherId,
+        isAdmin
+    });
+
     res.json(formatResponse(true, `Teacher ${isAdmin ? 'promoted to' : 'removed from'} admin`, {
         teacher: {
             id: updatedTeacher.id,
@@ -343,6 +364,10 @@ const updateSchoolSettings = asyncHandler(async (req, res) => {
     const updatedSchool = await prisma.school.update({
         where: { id: school.id },
         data: { allowAdminAccess }
+    });
+
+    await createAdminLog(req.user.id, school.id, 'UPDATE_SCHOOL_SETTINGS', {
+        allowAdminAccess
     });
 
     res.json(formatResponse(true, 'School settings updated', {
@@ -402,6 +427,11 @@ const updateTeacherLimit = asyncHandler(async (req, res) => {
     const updatedUser = await prisma.user.update({
         where: { id: teacherId },
         data: { monthlyLessonLimit: parseInt(monthlyLessonLimit) }
+    });
+
+    await createAdminLog(req.user.id, school.id, 'UPDATE_TEACHER_LIMIT', {
+        teacherId,
+        newLimit: monthlyLessonLimit
     });
 
     res.json(formatResponse(true, 'Teacher limit updated', {

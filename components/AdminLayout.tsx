@@ -37,12 +37,20 @@ const AdminLayout: React.FC = () => {
     useEffect(() => {
         setUser(currentUser);
 
+        // Route Guard for School Admins
+        if (currentUser.isSchoolAdmin) {
+            const forbiddenPaths = ['/admin/testimonials', '/admin/curriculum', '/admin/settings'];
+            if (forbiddenPaths.includes(location.pathname)) {
+                navigate('/admin');
+            }
+        }
+
         // Apply theme settings on load
         const settings = db.settings.get();
         if (settings) {
             db.settings.save(settings); // Re-applies css side effects
         }
-    }, []);
+    }, [location.pathname]);
 
     const handleLogout = async () => {
         await db.adminAuth.logout();
@@ -53,10 +61,17 @@ const AdminLayout: React.FC = () => {
         { name: 'Overview', path: '/admin', icon: LayoutDashboard },
         { name: 'Users', path: '/admin/users', icon: Users },
         { name: 'Content', path: '/admin/content', icon: FileText },
-        { name: 'Testimonials', path: '/admin/testimonials', icon: Activity },
-        { name: 'Curriculum', path: '/admin/curriculum', icon: BookOpen },
-        { name: 'Settings', path: '/admin/settings', icon: SettingsIcon },
     ];
+
+    if (!currentUser.isSchoolAdmin) {
+        navItems.push(
+            { name: 'Testimonials', path: '/admin/testimonials', icon: Activity },
+            { name: 'Curriculum', path: '/admin/curriculum', icon: BookOpen },
+            { name: 'Settings', path: '/admin/settings', icon: SettingsIcon }
+        );
+    }
+
+    const roleTitle = currentUser.isSchoolAdmin ? 'School Admin' : (currentUser.role === 'superadmin' ? 'Super Admin' : 'Admin');
 
     return (
         <div className="min-h-screen bg-slate-100 dark:bg-slate-900 flex">
@@ -134,7 +149,7 @@ const AdminLayout: React.FC = () => {
                         <div className="flex items-center gap-3 border-l border-slate-200 pl-4">
                             <div className="text-right hidden sm:block">
                                 <p className="text-sm font-medium text-slate-900 dark:text-slate-100">{user?.name}</p>
-                                <p className="text-xs text-slate-500 dark:text-slate-400">Super Admin</p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400">{roleTitle}</p>
                             </div>
                             <div className="h-8 w-8 rounded-full bg-brand-100 flex items-center justify-center text-brand-700 font-bold border border-brand-200">
                                 {user?.name?.charAt(0)}

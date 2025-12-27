@@ -23,6 +23,7 @@ const getUserProfile = asyncHandler(async (req, res) => {
                 role: user.role,
                 subscriptionPlan: user.subscriptionPlan,
                 isSchoolAdmin: user.isSchoolAdmin,
+                schoolId: user.schoolId,
                 avatar: user.avatar,
                 accountType: user.accountType || 'individual',
             })
@@ -66,6 +67,7 @@ const updateUserProfile = asyncHandler(async (req, res) => {
                 role: updatedUser.role,
                 subscriptionPlan: updatedUser.subscriptionPlan,
                 isSchoolAdmin: updatedUser.isSchoolAdmin,
+                schoolId: updatedUser.schoolId,
                 avatar: updatedUser.avatar,
                 accountType: updatedUser.accountType || 'individual',
             })

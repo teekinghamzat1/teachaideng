@@ -21,6 +21,7 @@ const createAssessment = asyncHandler(async (req, res) => {
     const assessment = await prisma.assessment.create({
         data: {
             userId: req.user.id,
+            schoolId: req.body.schoolId || req.user.schoolId, // Support both explicit and derived schoolId
             topic,
             classLevel,
             subject,

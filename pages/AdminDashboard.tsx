@@ -12,7 +12,7 @@ const AdminOverview: React.FC = () => {
     const currentUser = db.adminAuth.getCurrentUser();
 
     // Redirect non-admins immediately
-    if (!currentUser || !['Admin', 'SuperAdmin', 'admin', 'superadmin'].includes(currentUser.role)) {
+    if (!currentUser || (!['Admin', 'SuperAdmin', 'admin', 'superadmin'].includes(currentUser.role) && !currentUser.isSchoolAdmin)) {
         // Return null or empty fragment so nothing renders while redirect logic (in App or here) kicks in
         // Ideally this component shouldn't even mount, but if it does:
         return <div className="p-8 text-center text-slate-500 dark:text-slate-400">Checking authorization...</div>;
@@ -20,7 +20,7 @@ const AdminOverview: React.FC = () => {
 
     useEffect(() => {
         const user = db.adminAuth.getCurrentUser();
-        if (!user || !['Admin', 'SuperAdmin', 'admin', 'superadmin'].includes(user.role)) {
+        if (!user || (!['Admin', 'SuperAdmin', 'admin', 'superadmin'].includes(user.role) && !user.isSchoolAdmin)) {
             window.location.href = '/admin/login'; // Redirect to admin login
             return;
         }
@@ -124,41 +124,53 @@ const AdminOverview: React.FC = () => {
 
                 {/* Activity Log */}
                 <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
-                    <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100 mb-4">Recent Activity</h2>
+                    <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100 mb-4">Recent Activity Feed</h2>
                     <div className="flow-root">
                         <ul className="-mb-8">
-                            {logs.map((log, logIdx) => (
-                                <li key={log.id}>
-                                    <div className="relative pb-8">
-                                        {logIdx !== logs.length - 1 ? (
-                                            <span className="absolute top-4 left-4 -ml-px h-full w-0.5 bg-slate-200" aria-hidden="true" />
-                                        ) : null}
-                                        <div className="relative flex space-x-3">
-                                            <div>
-                                                <span className={`h-8 w-8 rounded-full flex items-center justify-center ring-8 ring-white ${log.type === 'error' ? 'bg-red-100 text-red-600' :
-                                                    log.type === 'warning' ? 'bg-yellow-100 text-yellow-600' :
-                                                        'bg-blue-100 text-blue-600'
-                                                    }`}>
-                                                    {log.type === 'error' ? <AlertTriangle className="w-4 h-4" /> :
-                                                        log.type === 'warning' ? <Activity className="w-4 h-4" /> :
-                                                            <CheckCircle className="w-4 h-4" />}
-                                                </span>
-                                            </div>
-                                            <div className="min-w-0 flex-1 pt-1.5 flex justify-between space-x-4">
+                            {logs.length === 0 ? (
+                                <li className="text-sm text-slate-400 italic py-4">No recent activity found</li>
+                            ) : logs.map((log: any, logIdx) => {
+                                const isDestructive = log.actionType.includes('DELETE') || log.actionType.includes('SUSPEND');
+                                const isImportant = log.actionType.includes('CREATE') || log.actionType.includes('UPDATE');
+
+                                return (
+                                    <li key={log.id}>
+                                        <div className="relative pb-8">
+                                            {logIdx !== logs.length - 1 ? (
+                                                <span className="absolute top-4 left-4 -ml-px h-full w-0.5 bg-slate-100 dark:bg-slate-700" aria-hidden="true" />
+                                            ) : null}
+                                            <div className="relative flex space-x-3">
                                                 <div>
-                                                    <p className="text-sm text-slate-500">
-                                                        <span className="font-medium text-slate-900">{log.action}</span> by {log.adminName}
-                                                    </p>
-                                                    <p className="text-xs text-slate-400 mt-1">Target: {log.target}</p>
+                                                    <span className={`h-8 w-8 rounded-full flex items-center justify-center ring-4 ring-white dark:ring-slate-800 ${isDestructive ? 'bg-red-100 text-red-600' :
+                                                            isImportant ? 'bg-brand-100 text-brand-600' :
+                                                                'bg-slate-100 text-slate-600'
+                                                        }`}>
+                                                        {isDestructive ? <AlertTriangle className="w-4 h-4" /> :
+                                                            isImportant ? <CheckCircle className="w-4 h-4" /> :
+                                                                <Activity className="w-4 h-4" />}
+                                                    </span>
                                                 </div>
-                                                <div className="text-right text-xs whitespace-nowrap text-slate-400">
-                                                    {new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                <div className="min-w-0 flex-1 pt-1.5 flex justify-between space-x-4">
+                                                    <div>
+                                                        <p className="text-sm text-slate-900 dark:text-slate-100">
+                                                            <span className="font-bold">{log.actionType.replace(/_/g, ' ')}</span>
+                                                        </p>
+                                                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                                                            by <span className="font-medium text-slate-700 dark:text-slate-200">{log.user?.name || 'Unknown'}</span>
+                                                        </p>
+                                                        {log.school?.name && (
+                                                            <p className="text-[10px] text-slate-400 uppercase tracking-tighter mt-1">{log.school.name}</p>
+                                                        )}
+                                                    </div>
+                                                    <div className="text-right text-xs whitespace-nowrap text-slate-400">
+                                                        {new Date(log.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
-                                    </div>
-                                </li>
-                            ))}
+                                    </li>
+                                );
+                            })}
                         </ul>
                     </div>
                 </div>

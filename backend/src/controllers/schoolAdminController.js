@@ -1,107 +1,255 @@
 const asyncHandler = require('express-async-handler');
 const prisma = require('../config/db');
 const formatResponse = require('../utils/formatResponse');
+const bcrypt = require('bcryptjs');
+const { createAdminLog } = require('../utils/auditLogger');
 
-// @desc    Get all teachers for the school
-// @route   GET /api/school-admin/teachers
+// @desc    Get school details and teacher list
+// @route   GET /api/school-admin/details
 // @access  Private/SchoolAdmin
-const getSchoolTeachers = asyncHandler(async (req, res) => {
+const getSchoolDetails = asyncHandler(async (req, res) => {
   const schoolId = req.user.schoolId;
 
-  const teachers = await prisma.user.findMany({
-    where: { schoolId },
-    select: {
-      id: true,
-      name: true,
-      email: true,
-    },
+  const school = await prisma.school.findUnique({
+    where: { id: schoolId },
+    include: {
+      teachers: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          teacherStatus: true,
+          isSchoolAdmin: true,
+          monthlyLessonLimit: true,
+          lessonsUsedThisMonth: true,
+          createdAt: true
+        }
+      },
+      owner: {
+        select: { id: true, name: true, email: true }
+      }
+    }
   });
 
-  res.json(formatResponse(true, 'Teachers retrieved', teachers));
-});
-
-// @desc    Add a teacher to the school
-// @route   POST /api/school-admin/teachers
-// @access  Private/SchoolAdmin
-const addSchoolTeacher = asyncHandler(async (req, res) => {
-  const { email } = req.body;
-  const schoolId = req.user.schoolId;
-
-  const user = await prisma.user.findUnique({ where: { email } });
-
-  if (!user) {
+  if (!school) {
     res.status(404);
-    throw new Error('User not found');
+    throw new Error('School not found');
   }
 
-  await prisma.user.update({
-    where: { id: user.id },
-    data: { schoolId },
-  });
+  const stats = {
+    totalTeachers: school.teachers.length,
+    activeTeachers: school.teachers.filter(t => t.teacherStatus === 'Active').length,
+    invitedTeachers: school.teachers.filter(t => t.teacherStatus === 'Invited').length,
+    suspendedTeachers: school.teachers.filter(t => t.teacherStatus === 'Suspended').length,
+    teacherLimit: school.teacherLimit,
+    slotsRemaining: Math.max(0, school.teacherLimit - school.teachers.length)
+  };
 
-  res.json(formatResponse(true, 'Teacher added to school', { id: user.id, name: user.name, email: user.email }));
+  res.json(formatResponse(true, 'School details retrieved', { school, stats }));
 });
 
-// @desc    Remove a teacher from the school
-// @route   DELETE /api/school-admin/teachers/:teacherId
-// @access  Private/SchoolAdmin
-const removeSchoolTeacher = asyncHandler(async (req, res) => {
-  const { teacherId } = req.params;
+// @desc    Add teacher to school
+// @route   POST /api/school-admin/teachers
+const addTeacher = asyncHandler(async (req, res) => {
+  const { name, email, gender } = req.body;
   const schoolId = req.user.schoolId;
 
-  const user = await prisma.user.findFirst({
-    where: { id: teacherId, schoolId },
+  const school = await prisma.school.findUnique({
+    where: { id: schoolId },
+    include: { teachers: true }
   });
 
-  if (!user) {
+  if (school.teachers.length >= school.teacherLimit) {
+    res.status(400);
+    throw new Error('Teacher limit reached for this school.');
+  }
+
+  const existingUser = await prisma.user.findUnique({ where: { email } });
+  if (existingUser) {
+    res.status(400);
+    throw new Error('User with this email already exists.');
+  }
+
+  const tempPassword = Math.random().toString(36).slice(-8);
+  const hashedPassword = await bcrypt.hash(tempPassword, 10);
+
+  const teacher = await prisma.user.create({
+    data: {
+      name,
+      email,
+      password: hashedPassword,
+      role: 'teacher',
+      schoolId,
+      teacherStatus: 'Invited',
+      subscriptionPlan: 'School'
+    }
+  });
+
+  await createAdminLog(req.user.id, schoolId, 'ADD_TEACHER', { email, name });
+
+  res.status(201).json(formatResponse(true, 'Teacher invited', {
+    teacher: { id: teacher.id, name, email },
+    tempPassword
+  }));
+});
+
+// @desc    Update teacher status
+// @route   POST /api/school-admin/teachers/:id/status
+const updateTeacherStatus = asyncHandler(async (req, res) => {
+  const { teacherStatus } = req.body;
+  const schoolId = req.user.schoolId;
+
+  const teacher = await prisma.user.findFirst({
+    where: { id: req.params.id, schoolId }
+  });
+
+  if (!teacher) {
     res.status(404);
     throw new Error('Teacher not found in this school');
   }
 
   await prisma.user.update({
-    where: { id: teacherId },
-    data: { schoolId: null },
+    where: { id: req.params.id },
+    data: { teacherStatus }
   });
 
-  res.json(formatResponse(true, 'Teacher removed from school'));
+  await createAdminLog(req.user.id, schoolId, 'UPDATE_TEACHER_STATUS', {
+    teacherId: req.params.id,
+    newStatus: teacherStatus
+  });
+
+  res.json(formatResponse(true, 'Status updated'));
 });
 
-// @desc    Get school usage stats
-// @route   GET /api/school-admin/usage
-// @access  Private/SchoolAdmin
-const getSchoolUsage = asyncHandler(async (req, res) => {
+// @desc    Remove teacher
+// @route   DELETE /api/school-admin/teachers/:id
+const removeTeacher = asyncHandler(async (req, res) => {
   const schoolId = req.user.schoolId;
-
-  const teacherCount = await prisma.user.count({ where: { schoolId } });
-  const lessonNoteCount = await prisma.lessonNote.count({
-    where: { user: { schoolId } },
+  const teacher = await prisma.user.findFirst({
+    where: { id: req.params.id, schoolId }
   });
 
-  res.json(formatResponse(true, 'School usage stats retrieved', {
-    teacherCount,
-    lessonNoteCount,
-  }));
+  if (!teacher) {
+    res.status(404);
+    throw new Error('Teacher not found');
+  }
+
+  await prisma.user.delete({ where: { id: req.params.id } });
+
+  await createAdminLog(req.user.id, schoolId, 'REMOVE_TEACHER', {
+    teacherId: req.params.id,
+    teacherName: teacher.name
+  });
+
+  res.json(formatResponse(true, 'Teacher removed'));
+});
+
+// @desc    Toggle teacher admin
+// @route   POST /api/school-admin/teachers/:id/toggle-admin
+const toggleTeacherAdmin = asyncHandler(async (req, res) => {
+  const { isAdmin } = req.body;
+  const schoolId = req.user.schoolId;
+
+  const teacher = await prisma.user.findFirst({
+    where: { id: req.params.id, schoolId }
+  });
+
+  if (!teacher) {
+    res.status(404);
+    throw new Error('Teacher not found');
+  }
+
+  await prisma.user.update({
+    where: { id: req.params.id },
+    data: { isSchoolAdmin: isAdmin }
+  });
+
+  await createAdminLog(req.user.id, schoolId, 'TOGGLE_TEACHER_ADMIN', {
+    teacherId: req.params.id,
+    isAdmin
+  });
+
+  res.json(formatResponse(true, 'Admin status updated'));
 });
 
 // @desc    Update school settings
 // @route   PUT /api/school-admin/settings
-// @access  Private/SchoolAdmin
 const updateSchoolSettings = asyncHandler(async (req, res) => {
-  const { name } = req.body;
+  const { allowAdminAccess } = req.body;
   const schoolId = req.user.schoolId;
 
-  const school = await prisma.school.update({
+  await prisma.school.update({
     where: { id: schoolId },
-    data: { name },
+    data: { allowAdminAccess }
   });
 
-  res.json(formatResponse(true, 'School settings updated', school));
+  await createAdminLog(req.user.id, schoolId, 'UPDATE_SCHOOL_SETTINGS', { allowAdminAccess });
+
+  res.json(formatResponse(true, 'Settings updated'));
+});
+
+// @desc    Update teacher limit
+// @route   PUT /api/school-admin/teachers/:id/limit
+const updateTeacherLimit = asyncHandler(async (req, res) => {
+  const { monthlyLessonLimit } = req.body;
+  const schoolId = req.user.schoolId;
+
+  const teacher = await prisma.user.findFirst({
+    where: { id: req.params.id, schoolId }
+  });
+
+  if (!teacher) {
+    res.status(404);
+    throw new Error('Teacher not found');
+  }
+
+  await prisma.user.update({
+    where: { id: req.params.id },
+    data: { monthlyLessonLimit: parseInt(monthlyLessonLimit) }
+  });
+
+  await createAdminLog(req.user.id, schoolId, 'UPDATE_TEACHER_LIMIT', {
+    teacherId: req.params.id,
+    newLimit: monthlyLessonLimit
+  });
+
+  res.json(formatResponse(true, 'Limit updated'));
+});
+
+// @desc    Update school profile details
+// @route   PUT /api/school-admin/profile
+const updateSchoolProfile = asyncHandler(async (req, res) => {
+  const { name, address, phone, email, website, capacity } = req.body;
+  const schoolId = req.user.schoolId;
+
+  const updatedSchool = await prisma.school.update({
+    where: { id: schoolId },
+    data: {
+      name,
+      address,
+      phone,
+      email,
+      website,
+      capacity: parseInt(capacity) || 0
+    }
+  });
+
+  await createAdminLog(req.user.id, schoolId, 'UPDATE_SCHOOL_PROFILE', {
+    name,
+    address,
+    phone
+  });
+
+  res.json(formatResponse(true, 'School profile updated', updatedSchool));
 });
 
 module.exports = {
-  getSchoolTeachers,
-  addSchoolTeacher,
-  removeSchoolTeacher,
-  getSchoolUsage,
+  getSchoolDetails,
+  addTeacher,
+  updateTeacherStatus,
+  removeTeacher,
+  toggleTeacherAdmin,
   updateSchoolSettings,
+  updateTeacherLimit,
+  updateSchoolProfile
 };

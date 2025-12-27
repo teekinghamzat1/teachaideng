@@ -68,9 +68,16 @@ async function checkWeeklyLessonLimit(userId) {
 
 async function createUsageLog(userId, action, metaData = null) {
   try {
+    // Automatically find schoolId for scoping
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { schoolId: true }
+    });
+
     const log = await prisma.usageLog.create({
       data: {
         userId,
+        schoolId: user?.schoolId,
         action,
         meta: metaData ? JSON.stringify(metaData) : null
       },

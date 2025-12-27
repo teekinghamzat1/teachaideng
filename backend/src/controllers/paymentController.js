@@ -18,9 +18,6 @@ const verifyPayment = asyncHandler(async (req, res) => {
     try {
         // Verify with Paystack
         const secretKey = process.env.PAYSTACK_SECRET_KEY;
-        // If no key configured, we might verify via frontend callback alone (less secure) or mock it for dev
-        // For security, always verify on backend.
-
         let isValid = false;
         let amountPaid = 0;
 
@@ -30,7 +27,6 @@ const verifyPayment = asyncHandler(async (req, res) => {
                     headers: { Authorization: `Bearer ${secretKey}` }
                 });
 
-
                 if (response.data.status && response.data.data.status === 'success') {
                     isValid = true;
                     amountPaid = response.data.data.amount / 100; // Paystack returns kobo
@@ -39,32 +35,30 @@ const verifyPayment = asyncHandler(async (req, res) => {
                 }
             } catch (axiosErr) {
                 console.error("Axios Call Failed:", axiosErr.message);
-                if (axiosErr.response) console.error("Axios Response:", axiosErr.response.data);
                 throw axiosErr;
             }
         } else {
-            // DEV FALLBACK without Key - ONLY FOR DEMO/TESTING
+            // DEV FALLBACK
             console.warn("Paystack Secret Key missing. Accepting payment blindly for demo.");
-            isValid = true; // Assume success if code reaches here in dev
-            amountPaid = plan === 'Pro' ? 2500 : 20000;
+            isValid = true;
+            amountPaid = plan === 'School' ? 20000 : 2500;
         }
 
         if (isValid) {
-            // Normalize plan name
             const normalizedPlan = plan.charAt(0).toUpperCase() + plan.slice(1).toLowerCase();
 
-            // Update User Plan
-            const updatedUser = await prisma.user.update({
+            // 1. Initial Update of the user's plan
+            let updatedUser = await prisma.user.update({
                 where: { id: userId },
                 data: {
                     subscriptionPlan: normalizedPlan,
-                    isSchoolAdmin: normalizedPlan === 'School' ? true : false
+                    isSchoolAdmin: normalizedPlan === 'School'
                 }
             });
 
-            // If School Plan, create school if it doesn't exist
-            if (plan === 'School') {
-                const existingSchool = await prisma.school.findFirst({
+            // 2. School License Specific Logic
+            if (normalizedPlan === 'School') {
+                let existingSchool = await prisma.school.findFirst({
                     where: { ownerId: userId }
                 });
 
@@ -72,19 +66,37 @@ const verifyPayment = asyncHandler(async (req, res) => {
                     const schoolName = updatedUser.schoolName || `${updatedUser.name}'s School`;
                     const slug = schoolName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '') + '-' + Date.now();
 
-                    await prisma.school.create({
+                    existingSchool = await prisma.school.create({
                         data: {
                             name: schoolName,
                             slug,
                             ownerId: userId,
-                            teacherLimit: updatedUser.teacherLimit || 15
+                            teacherLimit: 15
                         }
                     });
-
                 }
+
+                // IMPORTANT: Link User to School
+                updatedUser = await prisma.user.update({
+                    where: { id: userId },
+                    data: {
+                        schoolId: existingSchool.id,
+                        isSchoolAdmin: true
+                    }
+                });
+
+                // Notify User
+                await prisma.notification.create({
+                    data: {
+                        title: 'School Profile Setup Required',
+                        message: 'Welcome to the School Plan! Please complete your school profile in the School Management dashboard.',
+                        type: 'info',
+                        target: userId
+                    }
+                });
             }
 
-            // Log Transaction
+            // 3. Log Transaction
             await prisma.transaction.create({
                 data: {
                     userId,
@@ -92,43 +104,24 @@ const verifyPayment = asyncHandler(async (req, res) => {
                     type: 'credit',
                     status: 'completed',
                     reference
-                    // orderId is a Foreign Key to Order table. Since we don't create an Order record for subscriptions, we must leave this null.
-                    // orderId: null
                 }
             });
 
-            // Send receipt email
+            // 4. Send Receipt
             const { sendPaymentReceipt } = require('../utils/emailService');
             try {
-                await sendPaymentReceipt(
-                    updatedUser.email,
-                    updatedUser.name,
-                    plan,
-                    amountPaid,
-                    reference
-                );
-            } catch (emailError) {
-                console.error('Failed to send receipt email:', emailError);
-                // Don't fail the payment if email fails
-            }
+                await sendPaymentReceipt(updatedUser.email, updatedUser.name, normalizedPlan, amountPaid, reference);
+            } catch (e) { console.error('Email failed'); }
 
-            res.json(formatResponse(true, `Upgraded to ${plan} Plan successfully`, updatedUser));
+            res.json(formatResponse(true, `Upgraded to ${normalizedPlan} Plan successfully`, updatedUser));
         } else {
             res.status(400);
             throw new Error('Payment verification failed');
         }
-
     } catch (error) {
-        console.error("PAYMENT ERROR:", error.message);
-        if (error.response) {
-            console.error("Paystack API Error:", error.response.data);
-        }
         res.status(400);
-        // Pass the actual error message to the frontend for better debugging
-        throw new Error(error.response?.data?.message || error.message || 'Payment verification failed');
+        throw new Error(error.message || 'Payment verification failed');
     }
 });
 
-module.exports = {
-    verifyPayment
-};
+module.exports = { verifyPayment };

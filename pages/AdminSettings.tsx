@@ -1,14 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../database';
 import { SystemSettings } from '../types';
-import { SettingsIcon, Save, AlertTriangle, Zap, Building, UserIcon, Shield, CreditCard } from '../components/Icons';
+import { SettingsIcon, Save, AlertTriangle, Zap, Building, UserIcon, Shield, CreditCard, Activity, Bell } from '../components/Icons';
 import { showAlert } from '../utils/alerts';
 
 const AdminSettings: React.FC = () => {
+    // Immediate check for authorization
+    const currentUser = db.adminAuth.getCurrentUser();
+    const isSuperAdmin = currentUser?.role?.toLowerCase() === 'superadmin';
+
+    if (!currentUser || !['Admin', 'SuperAdmin', 'admin', 'superadmin'].includes(currentUser.role) || currentUser.isSchoolAdmin) {
+        return <div className="p-8 text-center text-slate-500">Access Denied: Global Admin privileges required.</div>;
+    }
+
     const [config, setConfig] = useState<SystemSettings>({
         maintenanceMode: false,
         allowSignup: true,
-        defaultModel: 'gemini-2.5-flash',
+        defaultModel: 'gemini-1.5-flash',
         maxTokens: 4096,
         smtpPort: 587,
         lessonGenerationCost: 600,
@@ -26,18 +34,38 @@ const AdminSettings: React.FC = () => {
         brandFont: 'Inter',
         freePlanLessonLimit: 10,
         proPlanLessonLimit: 100,
-        schoolPlanLessonLimit: 999999
+        schoolPlanLessonLimit: 999999,
+        googleGeminiApiKey: '',
+        smtpHost: '',
+        smtpUser: '',
+        smtpPassword: '',
+        smtpFromEmail: '',
+        smtpFromName: '',
+        cloudinaryCloudName: '',
+        cloudinaryApiKey: '',
+        cloudinaryApiSecret: '',
+        paystackPublicKey: '',
+        paystackSecretKey: '',
+        jwtSecret: '',
+        jwtExpire: '30d',
+        databaseUrl: '',
+        freePlanName: 'Free',
+        freePlanPrice: 0,
+        proPlanName: 'Pro Plan',
+        proPlanPrice: 5000,
+        schoolPlanName: 'School License',
+        schoolPlanPrice: 50000
     });
+
     const [loading, setLoading] = useState(false);
     const [testEmail, setTestEmail] = useState('');
     const [testingSmtp, setTestingSmtp] = useState(false);
     const [uploadingLogo, setUploadingLogo] = useState(false);
-    const [uploadingLogoDark, setUploadingLogoDark] = useState(false);
-    const [uploadingFavicon, setUploadingFavicon] = useState(false);
+    const [activeSection, setActiveSection] = useState('general');
 
     useEffect(() => {
         db.admin.getSystemSettings().then(data => {
-            if (data) setConfig(data);
+            if (data) setConfig(prev => ({ ...prev, ...data }));
         });
     }, []);
 
@@ -45,7 +73,7 @@ const AdminSettings: React.FC = () => {
         setLoading(true);
         try {
             await db.admin.updateSystemSettings(config);
-            showAlert.success("Settings Saved");
+            showAlert.success("Settings Saved", "All configurations updated and synced to .env");
         } catch (err: any) {
             showAlert.error("Error", `Failed to update settings: ${err.message}`);
         } finally {
@@ -84,771 +112,482 @@ const AdminSettings: React.FC = () => {
     };
 
     const handleImageUpload = async (file: File, field: 'siteLogo' | 'siteLogoDark' | 'siteFavicon') => {
-        const setUploading = field === 'siteLogo' ? setUploadingLogo : field === 'siteLogoDark' ? setUploadingLogoDark : setUploadingFavicon;
-
-        setUploading(true);
+        setUploadingLogo(true);
         try {
             const formData = new FormData();
-            formData.append('image', file); // Changed from 'file' to 'image'
-
-            const response = await fetch('/api/upload/image', { // Changed from '/api/upload' to '/api/upload/image'
+            formData.append('image', file);
+            const response = await fetch('/api/upload/image', {
                 method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${db.adminAuth.getCurrentUser()?.token}`
-                },
+                headers: { 'Authorization': `Bearer ${db.adminAuth.getCurrentUser()?.token}` },
                 body: formData
             });
-
             const data = await response.json();
             if (response.ok && data.success) {
                 setConfig({ ...config, [field]: data.data.url });
-                showAlert.success('Upload Successful', 'Image uploaded to Cloudinary');
-            } else {
-                showAlert.error('Upload Failed', data.message || 'Failed to upload image');
+                showAlert.success('Upload Successful');
             }
         } catch (error: any) {
             showAlert.error('Upload Error', error.message);
         } finally {
-            setUploading(false);
+            setUploadingLogo(false);
         }
     };
 
+    const sections = [
+        { id: 'general', name: 'General', icon: SettingsIcon },
+        { id: 'branding', name: 'Branding', icon: Zap },
+        { id: 'ai', name: 'AI Engine', icon: Shield },
+        { id: 'billing', name: 'Plans & Billing', icon: CreditCard },
+        { id: 'limits', name: 'Usage Limits', icon: Activity },
+        { id: 'services', name: 'Services & Keys', icon: Building },
+        { id: 'email', name: 'Email (SMTP)', icon: Bell },
+    ];
+
     return (
-        <div className="max-w-5xl mx-auto px-4 py-8">
-            <div className="flex items-center justify-between mb-8">
-                <div>
-                    <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100">System Configuration</h1>
-                    <p className="text-slate-500 dark:text-slate-400 mt-1">Manage environment variables and global application settings.</p>
-                </div>
-                <button
-                    onClick={handleSave}
-                    disabled={loading}
-                    className="flex items-center px-6 py-3 bg-brand-600 text-white rounded-lg font-bold hover:bg-brand-700 transition-all shadow-lg shadow-brand-200 dark:shadow-none disabled:opacity-50"
-                >
-                    <Save className="w-5 h-5 mr-2" />
-                    {loading ? 'Saving...' : 'Save All Changes'}
-                </button>
-            </div>
+        <div className="max-w-7xl mx-auto px-4 py-8">
+            <div className="flex flex-col md:flex-row gap-8">
+                {/* Sidebar Navigation */}
+                <div className="md:w-64 space-y-1">
+                    <h2 className="px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-4">Settings</h2>
+                    {sections.map((s) => (
+                        <button
+                            key={s.id}
+                            onClick={() => setActiveSection(s.id)}
+                            className={`w-full flex items-center px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeSection === s.id
+                                ? 'bg-brand-600 text-white shadow-md'
+                                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                                }`}
+                        >
+                            <s.icon className="w-5 h-5 mr-3" />
+                            {s.name}
+                        </button>
+                    ))}
 
-            <div className="space-y-8">
-                {/* General Settings */}
-                <section className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
-                    <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
-                        <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100 flex items-center">
-                            <SettingsIcon className="w-5 h-5 mr-2 text-brand-500" />
-                            General & Registration
-                        </h2>
+                    <div className="pt-8 px-4">
+                        <button
+                            onClick={handleSave}
+                            disabled={loading}
+                            className="w-full flex items-center justify-center px-4 py-3 bg-green-600 text-white rounded-lg font-bold hover:bg-green-700 transition-all disabled:opacity-50"
+                        >
+                            <Save className="w-5 h-5 mr-2" />
+                            {loading ? 'Saving...' : 'Save Changes'}
+                        </button>
                     </div>
-                    <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-slate-100 dark:border-slate-700">
-                            <div>
-                                <h3 className="font-semibold text-slate-900 dark:text-slate-100">Maintenance Mode</h3>
-                                <p className="text-xs text-slate-500 dark:text-slate-400">Restricts app access to administratorsOnly.</p>
-                            </div>
-                            <button
-                                onClick={() => setConfig({ ...config, maintenanceMode: !config.maintenanceMode })}
-                                className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${config.maintenanceMode ? 'bg-red-500' : 'bg-slate-200 dark:bg-slate-700'}`}
-                            >
-                                <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow transition duration-200 ${config.maintenanceMode ? 'translate-x-5' : 'translate-x-0'}`} />
-                            </button>
-                        </div>
-                        <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-slate-100 dark:border-slate-700">
-                            <div>
-                                <h3 className="font-semibold text-slate-900 dark:text-slate-100">Allow New Signups</h3>
-                                <p className="text-xs text-slate-500 dark:text-slate-400">Enable or disable public user registration.</p>
-                            </div>
-                            <button
-                                onClick={() => setConfig({ ...config, allowSignup: !config.allowSignup })}
-                                className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${config.allowSignup ? 'bg-brand-600' : 'bg-slate-200 dark:bg-slate-700'}`}
-                            >
-                                <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow transition duration-200 ${config.allowSignup ? 'translate-x-5' : 'translate-x-0'}`} />
-                            </button>
-                        </div>
-                    </div>
-                </section>
-
-                {/* Site Branding & Customization */}
-                <section className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
-                    <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
-                        <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">🎨 Site Branding & Identity</h2>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Customize your site's name, logo, colors, and typography</p>
-                    </div>
-                    <div className="p-6 space-y-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Site Name</label>
-                                <input
-                                    type="text"
-                                    value={config.siteName || ''}
-                                    onChange={e => setConfig({ ...config, siteName: e.target.value })}
-                                    placeholder="TeachAide AI"
-                                    className="w-full rounded-lg border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white p-2.5 border"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Tagline</label>
-                                <input
-                                    type="text"
-                                    value={config.siteTagline || ''}
-                                    onChange={e => setConfig({ ...config, siteTagline: e.target.value })}
-                                    placeholder="Lesson Notes in Seconds"
-                                    className="w-full rounded-lg border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white p-2.5 border"
-                                />
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Logo (Light Mode)</label>
-                                <div className="space-y-2">
-                                    <input
-                                        type="file"
-                                        accept="image/*"
-                                        onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0], 'siteLogo')}
-                                        className="hidden"
-                                        id="logo-upload"
-                                    />
-                                    <label
-                                        htmlFor="logo-upload"
-                                        className={`w-full flex items-center justify-center px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg text-sm font-medium cursor-pointer transition-colors ${uploadingLogo
-                                            ? 'bg-slate-100 dark:bg-slate-700 text-slate-400 cursor-not-allowed'
-                                            : 'bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-600'
-                                            }`}
-                                    >
-                                        {uploadingLogo ? 'Uploading...' : '📤 Upload Image'}
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={config.siteLogo || ''}
-                                        onChange={e => setConfig({ ...config, siteLogo: e.target.value })}
-                                        placeholder="Or paste image URL"
-                                        className="w-full rounded-lg border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white p-2.5 border text-sm"
-                                    />
-                                    {config.siteLogo && (
-                                        <img src={config.siteLogo} alt="Logo preview" className="h-12 w-auto border border-slate-200 dark:border-slate-600 rounded p-1" />
-                                    )}
-                                </div>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Logo (Dark Mode) <span className="text-xs text-slate-400">Optional</span></label>
-                                <div className="space-y-2">
-                                    <input
-                                        type="file"
-                                        accept="image/*"
-                                        onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0], 'siteLogoDark')}
-                                        className="hidden"
-                                        id="logo-dark-upload"
-                                    />
-                                    <label
-                                        htmlFor="logo-dark-upload"
-                                        className={`w-full flex items-center justify-center px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg text-sm font-medium cursor-pointer transition-colors ${uploadingLogoDark
-                                            ? 'bg-slate-100 dark:bg-slate-700 text-slate-400 cursor-not-allowed'
-                                            : 'bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-600'
-                                            }`}
-                                    >
-                                        {uploadingLogoDark ? 'Uploading...' : '📤 Upload Image'}
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={config.siteLogoDark || ''}
-                                        onChange={e => setConfig({ ...config, siteLogoDark: e.target.value })}
-                                        placeholder="Or paste image URL"
-                                        className="w-full rounded-lg border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white p-2.5 border text-sm"
-                                    />
-                                    {config.siteLogoDark && (
-                                        <img src={config.siteLogoDark} alt="Dark logo preview" className="h-12 w-auto border border-slate-200 dark:border-slate-600 rounded p-1 bg-slate-800" />
-                                    )}
-                                </div>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Favicon</label>
-                                <div className="space-y-2">
-                                    <input
-                                        type="file"
-                                        accept="image/*"
-                                        onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0], 'siteFavicon')}
-                                        className="hidden"
-                                        id="favicon-upload"
-                                    />
-                                    <label
-                                        htmlFor="favicon-upload"
-                                        className={`w-full flex items-center justify-center px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg text-sm font-medium cursor-pointer transition-colors ${uploadingFavicon
-                                            ? 'bg-slate-100 dark:bg-slate-700 text-slate-400 cursor-not-allowed'
-                                            : 'bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-600'
-                                            }`}
-                                    >
-                                        {uploadingFavicon ? 'Uploading...' : '📤 Upload Image'}
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={config.siteFavicon || ''}
-                                        onChange={e => setConfig({ ...config, siteFavicon: e.target.value })}
-                                        placeholder="Or paste image URL"
-                                        className="w-full rounded-lg border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white p-2.5 border text-sm"
-                                    />
-                                    {config.siteFavicon && (
-                                        <img src={config.siteFavicon} alt="Favicon preview" className="h-8 w-8 border border-slate-200 dark:border-slate-600 rounded" />
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="border-t border-slate-200 dark:border-slate-700 pt-6">
-                            <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 mb-4">Brand Color System</h3>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Primary Color (Authority & Trust)</label>
-                                    <div className="flex gap-2">
-                                        <input
-                                            type="color"
-                                            value={config.brandPrimaryColor || '#1F4FD8'}
-                                            onChange={e => setConfig({ ...config, brandPrimaryColor: e.target.value })}
-                                            className="h-10 w-16 rounded border border-slate-300 dark:border-slate-600 cursor-pointer"
-                                        />
-                                        <input
-                                            type="text"
-                                            value={config.brandPrimaryColor || '#1F4FD8'}
-                                            onChange={e => setConfig({ ...config, brandPrimaryColor: e.target.value })}
-                                            className="flex-1 rounded-lg border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white p-2.5 border text-sm font-mono"
-                                        />
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Secondary Color (Growth & Learning)</label>
-                                    <div className="flex gap-2">
-                                        <input
-                                            type="color"
-                                            value={config.brandSecondaryColor || '#16A34A'}
-                                            onChange={e => setConfig({ ...config, brandSecondaryColor: e.target.value })}
-                                            className="h-10 w-16 rounded border border-slate-300 dark:border-slate-600 cursor-pointer"
-                                        />
-                                        <input
-                                            type="text"
-                                            value={config.brandSecondaryColor || '#16A34A'}
-                                            onChange={e => setConfig({ ...config, brandSecondaryColor: e.target.value })}
-                                            className="flex-1 rounded-lg border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white p-2.5 border text-sm font-mono"
-                                        />
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Accent Color (Insight & Ideas)</label>
-                                    <div className="flex gap-2">
-                                        <input
-                                            type="color"
-                                            value={config.brandAccentColor || '#FBBF24'}
-                                            onChange={e => setConfig({ ...config, brandAccentColor: e.target.value })}
-                                            className="h-10 w-16 rounded border border-slate-300 dark:border-slate-600 cursor-pointer"
-                                        />
-                                        <input
-                                            type="text"
-                                            value={config.brandAccentColor || '#FBBF24'}
-                                            onChange={e => setConfig({ ...config, brandAccentColor: e.target.value })}
-                                            className="flex-1 rounded-lg border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white p-2.5 border text-sm font-mono"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="border-t border-slate-200 dark:border-slate-700 pt-6">
-                            <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 mb-4">Typography</h3>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Primary Font</label>
-                                <select
-                                    value={config.brandFont || 'Inter'}
-                                    onChange={e => setConfig({ ...config, brandFont: e.target.value })}
-                                    className="w-full md:w-1/2 rounded-lg border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white p-2.5 border"
-                                >
-                                    <option value="Inter">Inter (Recommended)</option>
-                                    <option value="Manrope">Manrope</option>
-                                    <option value="Plus Jakarta Sans">Plus Jakarta Sans</option>
-                                    <option value="DM Sans">DM Sans</option>
-                                </select>
-                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Choose a clean, screen-optimized font for readability</p>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-                {/* AI Configuration */}
-                <section className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
-                    <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
-                        <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">🤖 AI Engine (Gemini)</h2>
-                    </div>
-                    <div className="p-6 space-y-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Default Model</label>
-                                <select
-                                    value={config.defaultModel}
-                                    onChange={e => setConfig({ ...config, defaultModel: e.target.value })}
-                                    className="w-full rounded-lg border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white p-2.5 border"
-                                >
-                                    <option value="gemini-2.5-flash">Gemini 2.5 Flash (Fastest)</option>
-                                    <option value="gemini-1.5-pro">Gemini 1.5 Pro (Powerful)</option>
-                                    <option value="gemini-pro">Gemini Pro (Classic)</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Max Tokens</label>
-                                <input
-                                    type="number"
-                                    value={config.maxTokens}
-                                    onChange={e => setConfig({ ...config, maxTokens: Number(e.target.value) })}
-                                    className="w-full rounded-lg border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white p-2.5 border"
-                                />
-                            </div>
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Google Gemini API Key</label>
-                            <input
-                                type="password"
-                                value={config.googleGeminiApiKey || ''}
-                                onChange={e => setConfig({ ...config, googleGeminiApiKey: e.target.value })}
-                                placeholder="Enter API Key"
-                                className="w-full rounded-lg border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white p-2.5 border"
-                            />
-                        </div>
-                    </div>
-                </section>
-
-                {/* Email (SMTP) Configuration */}
-                <section className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
-                    <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
-                        <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">📧 Email Configuration (SMTP)</h2>
-                    </div>
-                    <div className="p-6 space-y-6">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div className="md:col-span-2">
-                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">SMTP Host</label>
-                                <input
-                                    type="text"
-                                    value={config.smtpHost || ''}
-                                    onChange={e => setConfig({ ...config, smtpHost: e.target.value })}
-                                    placeholder="e.g. smtp.gmail.com"
-                                    className="w-full rounded-lg border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white p-2.5 border"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">SMTP Port</label>
-                                <input
-                                    type="number"
-                                    value={config.smtpPort}
-                                    onChange={e => setConfig({ ...config, smtpPort: Number(e.target.value) })}
-                                    placeholder="587"
-                                    className="w-full rounded-lg border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white p-2.5 border"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">SMTP Username</label>
-                                <input
-                                    type="text"
-                                    value={config.smtpUser || ''}
-                                    onChange={e => setConfig({ ...config, smtpUser: e.target.value })}
-                                    className="w-full rounded-lg border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white p-2.5 border"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">SMTP Password</label>
-                                <input
-                                    type="password"
-                                    value={config.smtpPassword || ''}
-                                    onChange={e => setConfig({ ...config, smtpPassword: e.target.value })}
-                                    className="w-full rounded-lg border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white p-2.5 border"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">From Email</label>
-                                <input
-                                    type="email"
-                                    value={config.smtpFromEmail || ''}
-                                    onChange={e => setConfig({ ...config, smtpFromEmail: e.target.value })}
-                                    className="w-full rounded-lg border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white p-2.5 border"
-                                />
-                            </div>
-                        </div>
-
-                        <div className="p-4 bg-brand-50 dark:bg-brand-900/20 rounded-lg flex items-center justify-between gap-4">
-                            <div className="flex-1">
-                                <h4 className="text-sm font-bold text-brand-900 dark:text-brand-300">Test SMTP Connection</h4>
-                                <p className="text-xs text-brand-700 dark:text-brand-400">Enter an email to send a test message using these settings.</p>
-                            </div>
-                            <div className="flex gap-2 min-w-[300px]">
-                                <input
-                                    type="email"
-                                    value={testEmail}
-                                    onChange={e => setTestEmail(e.target.value)}
-                                    placeholder="your@email.com"
-                                    className="flex-1 rounded-lg border-brand-200 dark:border-brand-700 dark:bg-slate-800 dark:text-white text-sm p-2 border"
-                                />
-                                <button
-                                    onClick={handleTestSmtp}
-                                    disabled={testingSmtp || !testEmail}
-                                    className="px-4 py-2 bg-brand-600 text-white rounded-lg text-sm font-bold hover:bg-brand-700 transition-colors disabled:opacity-50"
-                                >
-                                    {testingSmtp ? 'Sending...' : 'Send Test'}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    {/* Cloudinary Configuration */}
-                    <section className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
-                        <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
-                            <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">☁️ Cloudinary (Storage)</h2>
-                        </div>
-                        <div className="p-6 space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Cloud Name</label>
-                                <input
-                                    type="text"
-                                    value={config.cloudinaryCloudName || ''}
-                                    onChange={e => setConfig({ ...config, cloudinaryCloudName: e.target.value })}
-                                    className="w-full rounded-lg border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white p-2.5 border"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">API Key</label>
-                                <input
-                                    type="password"
-                                    value={config.cloudinaryApiKey || ''}
-                                    onChange={e => setConfig({ ...config, cloudinaryApiKey: e.target.value })}
-                                    className="w-full rounded-lg border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white p-2.5 border"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">API Secret</label>
-                                <input
-                                    type="password"
-                                    value={config.cloudinaryApiSecret || ''}
-                                    onChange={e => setConfig({ ...config, cloudinaryApiSecret: e.target.value })}
-                                    className="w-full rounded-lg border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white p-2.5 border"
-                                />
-                            </div>
-                        </div>
-                    </section>
-
-                    {/* Paystack Configuration */}
-                    <section className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
-                        <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
-                            <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">💳 Paystack (Payments)</h2>
-                        </div>
-                        <div className="p-6 space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Public Key</label>
-                                <input
-                                    type="text"
-                                    value={config.paystackPublicKey || ''}
-                                    onChange={e => setConfig({ ...config, paystackPublicKey: e.target.value })}
-                                    className="w-full rounded-lg border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white p-2.5 border"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Secret Key</label>
-                                <input
-                                    type="password"
-                                    value={config.paystackSecretKey || ''}
-                                    onChange={e => setConfig({ ...config, paystackSecretKey: e.target.value })}
-                                    className="w-full rounded-lg border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white p-2.5 border"
-                                />
-                            </div>
-                        </div>
-                    </section>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    {/* Security Configuration */}
-                    <section className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
-                        <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
-                            <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">🔒 Security (JWT)</h2>
-                        </div>
-                        <div className="p-6 space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">JWT Secret</label>
-                                <input
-                                    type="password"
-                                    value={config.jwtSecret || ''}
-                                    onChange={e => setConfig({ ...config, jwtSecret: e.target.value })}
-                                    className="w-full rounded-lg border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white p-2.5 border"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">JWT Expiration (e.g. 30d, 24h)</label>
-                                <input
-                                    type="text"
-                                    value={config.jwtExpire || ''}
-                                    onChange={e => setConfig({ ...config, jwtExpire: e.target.value })}
-                                    className="w-full rounded-lg border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white p-2.5 border"
-                                />
-                            </div>
-                        </div>
-                    </section>
-
-                    {/* Infrastructure Configuration */}
-                    <section className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
-                        <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
-                            <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">🏗️ Infrastructure</h2>
-                        </div>
-                        <div className="p-6 space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Server Port</label>
-                                <input
-                                    type="number"
-                                    value={config.port}
-                                    onChange={e => setConfig({ ...config, port: Number(e.target.value) })}
-                                    className="w-full rounded-lg border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white p-2.5 border"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Node Environment</label>
-                                <select
-                                    value={config.nodeEnv}
-                                    onChange={e => setConfig({ ...config, nodeEnv: e.target.value })}
-                                    className="w-full rounded-lg border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white p-2.5 border"
-                                >
-                                    <option value="development">Development</option>
-                                    <option value="production">Production</option>
-                                    <option value="test">Testing</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Database URL (Risky: Requires Restart)</label>
-                                <input
-                                    type="password"
-                                    value={config.databaseUrl || ''}
-                                    onChange={e => setConfig({ ...config, databaseUrl: e.target.value })}
-                                    placeholder="file:./dev.db or postgresql://..."
-                                    className="w-full rounded-lg border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white p-2.5 border text-xs"
-                                />
-                            </div>
-                        </div>
-                    </section>
-                </div>
-
-                {/* Plan Limits Section */}
-                <section className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden mb-12">
-                    <div className="px-8 py-6 border-b border-slate-200 dark:border-slate-700 bg-gradient-to-r from-slate-50 to-white dark:from-slate-800 dark:to-slate-800/50">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-brand-100 dark:bg-brand-900/30 rounded-lg">
-                                <CreditCard className="w-6 h-6 text-brand-600 dark:text-brand-400" />
-                            </div>
-                            <div>
-                                <h2 className="text-xl font-extrabold text-slate-900 dark:text-slate-100">Plan Usage Limits</h2>
-                                <p className="text-sm text-slate-500 dark:text-slate-400">
-                                    Define monthly generation quotas for each subscription tier
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="p-8 space-y-12">
-                        {/* Free Plan Row */}
-                        <div className="space-y-4">
-                            <div className="flex items-center gap-3 mb-2">
-                                <div className="p-2 bg-slate-100 dark:bg-slate-800 rounded-lg">
-                                    <UserIcon className="w-5 h-5 text-slate-600 dark:text-slate-400" />
-                                </div>
-                                <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100 italic">Free Plan Configuration</h3>
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 bg-slate-50 dark:bg-slate-900/40 p-5 rounded-xl border border-slate-100 dark:border-slate-700/50">
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2">Plan Name (Display)</label>
-                                    <input
-                                        type="text"
-                                        value={config.freePlanName || 'Free Starter'}
-                                        onChange={(e) => setConfig({ ...config, freePlanName: e.target.value })}
-                                        className="w-full px-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-brand-500 transition-all outline-none"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2">Price (Fixed)</label>
-                                    <div className="relative">
-                                        <input
-                                            type="number"
-                                            disabled
-                                            value={0}
-                                            className="w-full pl-8 pr-4 py-2.5 bg-slate-100 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg text-sm text-slate-500 dark:text-slate-400 font-bold cursor-not-allowed"
-                                        />
-                                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">₦</div>
+                {/* Content Area */}
+                <div className="flex-1 space-y-8 bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-8 min-h-[600px]">
+                    {activeSection === 'general' && (
+                        <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+                            <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-6 flex items-center">
+                                <SettingsIcon className="w-6 h-6 mr-3 text-brand-500" />
+                                General Settings
+                            </h2>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-700">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <h3 className="font-semibold text-slate-800 dark:text-slate-200">Maintenance Mode</h3>
+                                        <button
+                                            onClick={() => setConfig({ ...config, maintenanceMode: !config.maintenanceMode })}
+                                            className={`relative inline-flex h-6 w-11 rounded-full border-2 border-transparent transition-colors ${config.maintenanceMode ? 'bg-red-500' : 'bg-slate-200'}`}
+                                        >
+                                            <span className={`inline-block h-5 w-5 transform rounded-full bg-white transition ${config.maintenanceMode ? 'translate-x-5' : 'translate-x-0'}`} />
+                                        </button>
                                     </div>
+                                    <p className="text-xs text-slate-500">Enable to restrict access to the app for non-admins.</p>
                                 </div>
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2">Billing Cycle</label>
+                                <div className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-700">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <h3 className="font-semibold text-slate-800 dark:text-slate-200">Allow Registration</h3>
+                                        <button
+                                            onClick={() => setConfig({ ...config, allowSignup: !config.allowSignup })}
+                                            className={`relative inline-flex h-6 w-11 rounded-full border-2 border-transparent transition-colors ${config.allowSignup ? 'bg-brand-600' : 'bg-slate-200'}`}
+                                        >
+                                            <span className={`inline-block h-5 w-5 transform rounded-full bg-white transition ${config.allowSignup ? 'translate-x-5' : 'translate-x-0'}`} />
+                                        </button>
+                                    </div>
+                                    <p className="text-xs text-slate-500">Public user registration toggle.</p>
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Environment</label>
                                     <select
-                                        value={config.freePlanDuration || 'month'}
-                                        onChange={(e) => setConfig({ ...config, freePlanDuration: e.target.value })}
-                                        className="w-full px-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-brand-500 transition-all outline-none"
+                                        value={config.nodeEnv}
+                                        onChange={e => setConfig({ ...config, nodeEnv: e.target.value })}
+                                        className="w-full rounded-lg border-slate-200 dark:border-slate-700 dark:bg-slate-900 p-2.5 border text-slate-900 dark:text-white"
                                     >
-                                        <option value="week">Weekly</option>
-                                        <option value="month">Monthly</option>
-                                        <option value="term">Per Term</option>
-                                        <option value="year">Yearly</option>
+                                        <option value="development">Development</option>
+                                        <option value="production">Production</option>
+                                        <option value="test">Test</option>
                                     </select>
                                 </div>
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2">Lesson Notes / Mo</label>
-                                    <div className="relative">
-                                        <input
-                                            type="number"
-                                            min="0"
-                                            value={config.freePlanLessonLimit || 10}
-                                            onChange={(e) => setConfig({ ...config, freePlanLessonLimit: parseInt(e.target.value) || 0 })}
-                                            className="w-full px-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-white font-bold focus:ring-2 focus:ring-brand-500 transition-all outline-none"
-                                        />
-                                        <div className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs uppercase font-bold">Qty</div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Pro Plan Row */}
-                        <div className="space-y-4 pt-4 border-t border-slate-100 dark:border-slate-700/50">
-                            <div className="flex items-center gap-3 mb-2">
-                                <div className="p-2 bg-brand-100 dark:bg-brand-900/30 rounded-lg">
-                                    <Zap className="w-5 h-5 text-brand-600 dark:text-brand-400" />
-                                </div>
-                                <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100 italic">Pro Plan Configuration</h3>
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 bg-brand-50/20 dark:bg-brand-900/5 p-5 rounded-xl border border-brand-100/50 dark:border-brand-900/20">
-                                <div>
-                                    <label className="block text-xs font-bold text-brand-600 dark:text-brand-400 uppercase tracking-widest mb-2">Plan Name (Display)</label>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Server Port</label>
                                     <input
-                                        type="text"
-                                        value={config.proPlanName || 'Professional'}
-                                        onChange={(e) => setConfig({ ...config, proPlanName: e.target.value })}
-                                        className="w-full px-4 py-2.5 bg-white dark:bg-slate-800 border border-brand-200 dark:border-brand-800 rounded-lg text-sm text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-brand-500 transition-all outline-none"
+                                        type="number"
+                                        value={config.port}
+                                        onChange={e => setConfig({ ...config, port: Number(e.target.value) })}
+                                        className="w-full rounded-lg border-slate-200 dark:border-slate-700 dark:bg-slate-900 p-2.5 border text-slate-900 dark:text-white"
                                     />
                                 </div>
-                                <div>
-                                    <label className="block text-xs font-bold text-brand-600 dark:text-brand-400 uppercase tracking-widest mb-2">Price (₦)</label>
-                                    <div className="relative">
-                                        <input
-                                            type="number"
-                                            value={config.proPlanPrice || 2500}
-                                            onChange={(e) => setConfig({ ...config, proPlanPrice: parseInt(e.target.value) || 0 })}
-                                            className="w-full pl-8 pr-4 py-2.5 bg-white dark:bg-slate-800 border border-brand-200 dark:border-brand-800 rounded-lg text-sm text-slate-900 dark:text-white font-bold focus:ring-2 focus:ring-brand-500 transition-all outline-none"
-                                        />
-                                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-400 font-bold">₦</div>
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-bold text-brand-600 dark:text-brand-400 uppercase tracking-widest mb-2">Billing Cycle</label>
-                                    <select
-                                        value={config.proPlanDuration || 'month'}
-                                        onChange={(e) => setConfig({ ...config, proPlanDuration: e.target.value })}
-                                        className="w-full px-4 py-2.5 bg-white dark:bg-slate-800 border border-brand-200 dark:border-brand-800 rounded-lg text-sm text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-brand-500 transition-all outline-none"
-                                    >
-                                        <option value="week">Weekly</option>
-                                        <option value="month">Monthly</option>
-                                        <option value="term">Per Term</option>
-                                        <option value="year">Yearly</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-bold text-brand-600 dark:text-brand-400 uppercase tracking-widest mb-2">Lesson Notes / Mo</label>
-                                    <div className="relative">
-                                        <input
-                                            type="number"
-                                            min="0"
-                                            value={config.proPlanLessonLimit || 100}
-                                            onChange={(e) => setConfig({ ...config, proPlanLessonLimit: parseInt(e.target.value) || 0 })}
-                                            className="w-full px-4 py-2.5 bg-white dark:bg-slate-800 border border-brand-200 dark:border-brand-800 rounded-lg text-sm text-slate-900 dark:text-white font-bold focus:ring-2 focus:ring-brand-500 transition-all outline-none"
-                                        />
-                                        <div className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-400 text-xs uppercase font-bold">Qty</div>
-                                    </div>
-                                </div>
                             </div>
                         </div>
-
-                        {/* School Plan Row */}
-                        <div className="space-y-4 pt-4 border-t border-slate-100 dark:border-slate-700/50">
-                            <div className="flex items-center gap-3 mb-2">
-                                <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg">
-                                    <Building className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-                                </div>
-                                <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100 italic">School Plan Configuration</h3>
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 bg-emerald-50/20 dark:bg-emerald-900/5 p-5 rounded-xl border border-emerald-100/50 dark:border-emerald-900/20">
-                                <div>
-                                    <label className="block text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest mb-2">Plan Name (Display)</label>
-                                    <input
-                                        type="text"
-                                        value={config.schoolPlanName || 'School License'}
-                                        onChange={(e) => setConfig({ ...config, schoolPlanName: e.target.value })}
-                                        className="w-full px-4 py-2.5 bg-white dark:bg-slate-800 border border-emerald-200 dark:border-emerald-800 rounded-lg text-sm text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-brand-500 transition-all outline-none"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest mb-2">Price (₦)</label>
-                                    <div className="relative">
-                                        <input
-                                            type="number"
-                                            value={config.schoolPlanPrice || 20000}
-                                            onChange={(e) => setConfig({ ...config, schoolPlanPrice: parseInt(e.target.value) || 0 })}
-                                            className="w-full pl-8 pr-4 py-2.5 bg-white dark:bg-slate-800 border border-emerald-200 dark:border-emerald-800 rounded-lg text-sm text-slate-900 dark:text-white font-bold focus:ring-2 focus:ring-brand-500 transition-all outline-none"
-                                        />
-                                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-400 font-bold">₦</div>
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest mb-2">Billing Cycle</label>
-                                    <select
-                                        value={config.schoolPlanDuration || 'term'}
-                                        onChange={(e) => setConfig({ ...config, schoolPlanDuration: e.target.value })}
-                                        className="w-full px-4 py-2.5 bg-white dark:bg-slate-800 border border-emerald-200 dark:border-emerald-800 rounded-lg text-sm text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-brand-500 transition-all outline-none"
-                                    >
-                                        <option value="week">Weekly</option>
-                                        <option value="month">Monthly</option>
-                                        <option value="term">Per Term</option>
-                                        <option value="year">Yearly</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest mb-2">Lesson Notes / Mo</label>
-                                    <div className="relative">
-                                        <input
-                                            type="number"
-                                            min="0"
-                                            value={config.schoolPlanLessonLimit || 999999}
-                                            onChange={(e) => setConfig({ ...config, schoolPlanLessonLimit: parseInt(e.target.value) || 0 })}
-                                            className="w-full px-4 py-2.5 bg-white dark:bg-slate-800 border border-emerald-200 dark:border-emerald-800 rounded-lg text-sm text-slate-900 dark:text-white font-bold focus:ring-2 focus:ring-brand-500 transition-all outline-none"
-                                        />
-                                        <div className="absolute right-3 top-1/2 -translate-y-1/2 text-emerald-400 text-xs uppercase font-bold">Qty</div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="mt-8 p-5 bg-brand-50/50 dark:bg-slate-900/80 border border-brand-100 dark:border-slate-700 rounded-2xl flex items-start gap-4">
-                            <div className="p-2 bg-white dark:bg-slate-800 rounded-lg shadow-sm">
-                                <Shield className="w-5 h-5 text-brand-600 dark:text-brand-400" />
-                            </div>
-                            <div>
-                                <h4 className="text-sm font-black text-slate-900 dark:text-slate-100 mb-1">System Integrity Policy</h4>
-                                <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-                                    Limits are applied globally to all accounts within the tier. Changes take effect on the user's next subscription cycle reset. Note: setting zero enables unrestricted internal access for testing only.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-                {/* Floating Save Button (FAB) */}
-                <button
-                    onClick={handleSave}
-                    disabled={loading}
-                    className={`fixed bottom-8 right-8 p-4 bg-brand-600 hover:bg-brand-700 text-white rounded-full shadow-2xl shadow-brand-500/40 transition-all transform hover:scale-110 active:scale-95 z-50 flex items-center justify-center ${loading ? 'opacity-80 cursor-not-allowed' : ''}`}
-                    title="Save Configuration"
-                >
-                    {loading ? (
-                        <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                    ) : (
-                        <Save className="w-6 h-6" />
                     )}
-                </button>
 
-                <div className="h-24"></div> {/* Spacer to ensure content isn't hidden behind FAB */}
+                    {activeSection === 'branding' && (
+                        <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+                            <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-6 flex items-center">
+                                <Zap className="w-6 h-6 mr-3 text-amber-500" />
+                                Branding & Identity
+                            </h2>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">App Name</label>
+                                        <input
+                                            value={config.siteName}
+                                            onChange={e => setConfig({ ...config, siteName: e.target.value })}
+                                            className="w-full rounded-lg border-slate-200 dark:border-slate-700 dark:bg-slate-900 p-2.5 border text-slate-900 dark:text-white"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">Tagline</label>
+                                        <input
+                                            value={config.siteTagline}
+                                            onChange={e => setConfig({ ...config, siteTagline: e.target.value })}
+                                            className="w-full rounded-lg border-slate-200 dark:border-slate-700 dark:bg-slate-900 p-2.5 border text-slate-900 dark:text-white"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="space-y-4">
+                                    <div className="flex gap-4">
+                                        <div className="flex-1">
+                                            <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">Primary Color</label>
+                                            <div className="flex gap-2">
+                                                <input type="color" value={config.brandPrimaryColor} onChange={e => setConfig({ ...config, brandPrimaryColor: e.target.value })} className="w-10 h-10 rounded border" />
+                                                <input value={config.brandPrimaryColor} onChange={e => setConfig({ ...config, brandPrimaryColor: e.target.value })} className="flex-1 rounded-lg border dark:border-slate-700 dark:bg-slate-900 p-2 text-sm text-slate-900 dark:text-white" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">Font Family</label>
+                                        <select
+                                            value={config.brandFont}
+                                            onChange={e => setConfig({ ...config, brandFont: e.target.value })}
+                                            className="w-full rounded-lg border-slate-200 dark:border-slate-700 dark:bg-slate-900 p-2.5 border text-slate-900 dark:text-white"
+                                        >
+                                            <option value="Inter">Inter</option>
+                                            <option value="Outfit">Outfit</option>
+                                            <option value="Plus Jakarta Sans">Plus Jakarta</option>
+                                            <option value="Roboto">Roboto</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {activeSection === 'ai' && (
+                        <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+                            <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-6 flex items-center">
+                                <Shield className="w-6 h-6 mr-3 text-blue-500" />
+                                AI Engine Intelligence
+                            </h2>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="space-y-2">
+                                    <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">AI Model Strategy</label>
+                                    <select
+                                        value={config.defaultModel}
+                                        onChange={e => setConfig({ ...config, defaultModel: e.target.value })}
+                                        className="w-full rounded-lg border-slate-200 dark:border-slate-700 dark:bg-slate-900 p-2.5 border text-slate-900 dark:text-white"
+                                    >
+                                        <option value="gemini-1.5-flash">Gemini 1.5 Flash (Fast/Cheap)</option>
+                                        <option value="gemini-1.5-pro">Gemini 1.5 Pro (Smarter)</option>
+                                        <option value="gemini-2.0-flash-exp">Gemini 2.0 Flash (Advanced)</option>
+                                    </select>
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">Response Limit (Max Tokens)</label>
+                                    <input
+                                        type="number"
+                                        value={config.maxTokens}
+                                        onChange={e => setConfig({ ...config, maxTokens: Number(e.target.value) })}
+                                        className="w-full rounded-lg border-slate-200 dark:border-slate-700 dark:bg-slate-900 p-2.5 border text-slate-900 dark:text-white"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">Lesson Generation Cost (Tokens)</label>
+                                    <input
+                                        type="number"
+                                        value={config.lessonGenerationCost}
+                                        onChange={e => setConfig({ ...config, lessonGenerationCost: Number(e.target.value) })}
+                                        className="w-full rounded-lg border-slate-200 dark:border-slate-700 dark:bg-slate-900 p-2.5 border text-slate-900 dark:text-white"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">Assessment Cost (Tokens)</label>
+                                    <input
+                                        type="number"
+                                        value={config.assessmentGenerationCost}
+                                        onChange={e => setConfig({ ...config, assessmentGenerationCost: Number(e.target.value) })}
+                                        className="w-full rounded-lg border-slate-200 dark:border-slate-700 dark:bg-slate-900 p-2.5 border text-slate-900 dark:text-white"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {activeSection === 'billing' && (
+                        <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+                            <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-6 flex items-center">
+                                <CreditCard className="w-6 h-6 mr-3 text-brand-500" />
+                                Plans & Pricing
+                            </h2>
+                            <div className="space-y-8">
+                                {/* Free Plan */}
+                                <div className="p-6 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-700">
+                                    <h3 className="text-lg font-bold mb-4 text-slate-800 dark:text-slate-200 flex items-center">
+                                        <span className="w-2 h-6 bg-slate-400 rounded-full mr-3" />
+                                        Free Tier
+                                    </h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                        <div>
+                                            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Display Name</label>
+                                            <input value={config.freePlanName} onChange={e => setConfig({ ...config, freePlanName: e.target.value })} className="w-full mt-1 rounded-lg border dark:border-slate-700 dark:bg-slate-900 p-2 text-slate-900 dark:text-white" />
+                                        </div>
+                                        <div>
+                                            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Monthly Price (₦)</label>
+                                            <input type="number" readOnly value={0} className="w-full mt-1 rounded-lg border bg-slate-100 dark:bg-slate-800 p-2 text-slate-400" />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Pro Plan */}
+                                <div className="p-6 bg-brand-50/50 dark:bg-brand-900/10 rounded-2xl border border-brand-100 dark:border-brand-900/30">
+                                    <h3 className="text-lg font-bold mb-4 text-slate-800 dark:text-slate-200 flex items-center">
+                                        <span className="w-2 h-6 bg-brand-500 rounded-full mr-3" />
+                                        Pro Plan
+                                    </h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                        <div>
+                                            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Display Name</label>
+                                            <input value={config.proPlanName} onChange={e => setConfig({ ...config, proPlanName: e.target.value })} className="w-full mt-1 rounded-lg border dark:border-slate-700 dark:bg-slate-900 p-2 text-slate-900 dark:text-white" />
+                                        </div>
+                                        <div>
+                                            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Monthly Price (₦)</label>
+                                            <input type="number" value={config.proPlanPrice} onChange={e => setConfig({ ...config, proPlanPrice: Number(e.target.value) })} className="w-full mt-1 rounded-lg border dark:border-slate-700 dark:bg-slate-900 p-2 text-slate-900 dark:text-white" />
+                                        </div>
+                                        <div>
+                                            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Duration Label</label>
+                                            <input placeholder="per month" value={config.proPlanDuration} onChange={e => setConfig({ ...config, proPlanDuration: e.target.value })} className="w-full mt-1 rounded-lg border dark:border-slate-700 dark:bg-slate-900 p-2 text-slate-900 dark:text-white" />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* School Plan */}
+                                <div className="p-6 bg-purple-50/50 dark:bg-purple-900/10 rounded-2xl border border-purple-100 dark:border-purple-900/30">
+                                    <h3 className="text-lg font-bold mb-4 text-slate-800 dark:text-slate-200 flex items-center">
+                                        <span className="w-2 h-6 bg-purple-500 rounded-full mr-3" />
+                                        School License
+                                    </h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                        <div>
+                                            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Display Name</label>
+                                            <input value={config.schoolPlanName} onChange={e => setConfig({ ...config, schoolPlanName: e.target.value })} className="w-full mt-1 rounded-lg border dark:border-slate-700 dark:bg-slate-900 p-2 text-slate-900 dark:text-white" />
+                                        </div>
+                                        <div>
+                                            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Annual Price (₦)</label>
+                                            <input type="number" value={config.schoolPlanPrice} onChange={e => setConfig({ ...config, schoolPlanPrice: Number(e.target.value) })} className="w-full mt-1 rounded-lg border dark:border-slate-700 dark:bg-slate-900 p-2 text-slate-900 dark:text-white" />
+                                        </div>
+                                        <div>
+                                            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Duration Label</label>
+                                            <input placeholder="per year" value={config.schoolPlanDuration} onChange={e => setConfig({ ...config, schoolPlanDuration: e.target.value })} className="w-full mt-1 rounded-lg border dark:border-slate-700 dark:bg-slate-900 p-2 text-slate-900 dark:text-white" />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {activeSection === 'limits' && (
+                        <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+                            <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-6 flex items-center">
+                                <Activity className="w-6 h-6 mr-3 text-green-500" />
+                                Monthly Lesson Allowances
+                            </h2>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <div className="space-y-4">
+                                    <div className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-xl border dark:border-slate-700">
+                                        <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Free Plan</label>
+                                        <div className="flex items-end gap-2 mt-1">
+                                            <input type="number" value={config.freePlanLessonLimit} onChange={e => setConfig({ ...config, freePlanLessonLimit: Number(e.target.value) })} className="w-full rounded-lg border dark:border-slate-700 dark:bg-slate-900 p-2 text-2xl font-bold text-slate-700 dark:text-white" />
+                                            <span className="text-sm text-slate-500 mb-2">/mo</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="space-y-4">
+                                    <div className="p-4 bg-brand-50 dark:bg-brand-900/10 rounded-xl border border-brand-100 dark:border-brand-900/30">
+                                        <label className="text-xs font-bold text-brand-600 uppercase">Pro Plan</label>
+                                        <div className="flex items-end gap-2 mt-1">
+                                            <input type="number" value={config.proPlanLessonLimit} onChange={e => setConfig({ ...config, proPlanLessonLimit: Number(e.target.value) })} className="w-full rounded-lg border dark:border-slate-700 dark:bg-slate-900 p-2 text-2xl font-bold text-brand-700 dark:text-white" />
+                                            <span className="text-sm text-brand-500 mb-2">/mo</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="space-y-4">
+                                    <div className="p-4 bg-purple-50 dark:bg-purple-900/10 rounded-xl border border-purple-100 dark:border-purple-900/30">
+                                        <label className="text-xs font-bold text-purple-600 uppercase">School Plan</label>
+                                        <div className="flex items-end gap-2 mt-1">
+                                            <input type="number" value={config.schoolPlanLessonLimit} onChange={e => setConfig({ ...config, schoolPlanLessonLimit: Number(e.target.value) })} className="w-full rounded-lg border dark:border-slate-700 dark:bg-slate-900 p-2 text-2xl font-bold text-purple-700 dark:text-white" />
+                                            <span className="text-sm text-purple-500 mb-2">/mo</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {activeSection === 'services' && (
+                        <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+                            <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-6 flex items-center">
+                                <Building className="w-6 h-6 mr-3 text-slate-500" />
+                                Infrastructure & API Keys
+                            </h2>
+                            {!isSuperAdmin && (
+                                <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 rounded-xl text-blue-700 dark:text-blue-400 text-sm flex items-start">
+                                    <Shield className="w-5 h-5 mr-3 mt-0.5 flex-shrink-0" />
+                                    <p>Some extremely sensitive keys (like Database URL and JWT Secret) are restricted to SuperAdmins. You can update other service keys below.</p>
+                                </div>
+                            )}
+                            <div className="space-y-8">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="space-y-2 col-span-2">
+                                        <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Google Gemini API Key</label>
+                                        <input
+                                            type="password"
+                                            value={config.googleGeminiApiKey}
+                                            onChange={e => setConfig({ ...config, googleGeminiApiKey: e.target.value })}
+                                            className="w-full rounded-lg border dark:border-slate-700 p-2.5 bg-slate-50 dark:bg-slate-900 font-mono text-slate-900 dark:text-white"
+                                            placeholder="Paste Gemini API Key..."
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Paystack Public Key</label>
+                                        <input
+                                            value={config.paystackPublicKey}
+                                            onChange={e => setConfig({ ...config, paystackPublicKey: e.target.value })}
+                                            className="w-full rounded-lg border dark:border-slate-700 dark:bg-slate-900 p-2.5 font-mono text-slate-900 dark:text-white"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Paystack Secret Key</label>
+                                        <input
+                                            type="password"
+                                            value={config.paystackSecretKey}
+                                            onChange={e => setConfig({ ...config, paystackSecretKey: e.target.value })}
+                                            className="w-full rounded-lg border dark:border-slate-700 dark:bg-slate-900 p-2.5 font-mono text-slate-900 dark:text-white"
+                                        />
+                                    </div>
+                                </div>
+
+                                {isSuperAdmin && (
+                                    <div className="pt-6 border-t border-slate-100 dark:border-slate-700 space-y-6">
+                                        <h3 className="text-sm font-bold text-red-600 uppercase tracking-widest">SuperAdmin Restricted Area</h3>
+                                        <div className="grid grid-cols-1 gap-6">
+                                            <div className="space-y-2">
+                                                <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Database URL (Prisma)</label>
+                                                <input
+                                                    type="password"
+                                                    value={config.databaseUrl}
+                                                    onChange={e => setConfig({ ...config, databaseUrl: e.target.value })}
+                                                    className="w-full rounded-lg border dark:border-slate-700 p-2.5 font-mono text-sm bg-red-50/30 dark:bg-red-900/10 text-slate-900 dark:text-white"
+                                                />
+                                            </div>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                <div className="space-y-2">
+                                                    <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">JWT Secret Pin</label>
+                                                    <input
+                                                        type="password"
+                                                        value={config.jwtSecret}
+                                                        onChange={e => setConfig({ ...config, jwtSecret: e.target.value })}
+                                                        className="w-full rounded-lg border dark:border-slate-700 dark:bg-slate-900 p-2.5 font-mono text-slate-900 dark:text-white"
+                                                    />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">JWT Expiry</label>
+                                                    <input
+                                                        value={config.jwtExpire}
+                                                        onChange={e => setConfig({ ...config, jwtExpire: e.target.value })}
+                                                        className="w-full rounded-lg border dark:border-slate-700 dark:bg-slate-900 p-2.5 text-slate-900 dark:text-white"
+                                                        placeholder="e.g. 30d"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {activeSection === 'email' && (
+                        <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 text-slate-800 dark:text-slate-200">
+                            <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-6 flex items-center">
+                                <Bell className="w-6 h-6 mr-3 text-brand-500" />
+                                SMTP Email Gateway
+                            </h2>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">SMTP Host</label>
+                                    <input value={config.smtpHost} onChange={e => setConfig({ ...config, smtpHost: e.target.value })} className="w-full mt-1 rounded-lg border dark:border-slate-700 dark:bg-slate-900 p-2 text-slate-900 dark:text-white" placeholder="smtp.gmail.com" />
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Port</label>
+                                        <input type="number" value={config.smtpPort} onChange={e => setConfig({ ...config, smtpPort: Number(e.target.value) })} className="w-full mt-1 rounded-lg border dark:border-slate-700 dark:bg-slate-900 p-2 text-slate-900 dark:text-white" />
+                                    </div>
+                                    <div>
+                                        <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Auth User</label>
+                                        <input value={config.smtpUser} onChange={e => setConfig({ ...config, smtpUser: e.target.value })} className="w-full mt-1 rounded-lg border dark:border-slate-700 dark:bg-slate-900 p-2 text-slate-900 dark:text-white" />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Auth Password</label>
+                                    <input type="password" value={config.smtpPassword} onChange={e => setConfig({ ...config, smtpPassword: e.target.value })} className="w-full mt-1 rounded-lg border dark:border-slate-700 dark:bg-slate-900 p-2 text-slate-900 dark:text-white" />
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">From Email</label>
+                                        <input value={config.smtpFromEmail} onChange={e => setConfig({ ...config, smtpFromEmail: e.target.value })} className="w-full mt-1 rounded-lg border dark:border-slate-700 dark:bg-slate-900 p-2 text-slate-900 dark:text-white" />
+                                    </div>
+                                    <div>
+                                        <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">From Name</label>
+                                        <input value={config.smtpFromName} onChange={e => setConfig({ ...config, smtpFromName: e.target.value })} className="w-full mt-1 rounded-lg border dark:border-slate-700 dark:bg-slate-900 p-2 text-slate-900 dark:text-white" />
+                                    </div>
+                                </div>
+
+                                <div className="col-span-2 pt-6 mt-6 border-t border-slate-100 dark:border-slate-700">
+                                    <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-4">Connection Test</h3>
+                                    <div className="flex gap-4">
+                                        <input
+                                            type="email"
+                                            value={testEmail}
+                                            onChange={e => setTestEmail(e.target.value)}
+                                            placeholder="Recipient email address"
+                                            className="flex-1 rounded-lg border dark:border-slate-700 dark:bg-slate-900 p-2 pr-12 focus:ring-2 focus:ring-brand-500 outline-none text-slate-900 dark:text-white"
+                                        />
+                                        <button
+                                            onClick={handleTestSmtp}
+                                            disabled={testingSmtp}
+                                            className="px-6 py-2 bg-slate-800 dark:bg-slate-700 text-white rounded-lg font-semibold hover:bg-slate-900 dark:hover:bg-slate-600 disabled:opacity-50"
+                                        >
+                                            {testingSmtp ? 'Testing...' : 'Send Test Mail'}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
             </div>
         </div>
     );

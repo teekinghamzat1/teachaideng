@@ -1,4 +1,4 @@
-import { User, LessonNote, Assessment, Student, Timetable, AppSettings, AdminLog, SystemSettings, Curriculum, Subject, ClassLevel } from './types';
+import { User, LessonNote, Assessment, Student, Timetable, AppSettings, AdminLog, SystemSettings, Curriculum, Subject, ClassLevel, School } from './types';
 
 // Helper for API calls
 const API_URL = '/api';
@@ -90,8 +90,9 @@ export const db = {
       return this.login('admin@example.com', 'password123');
     },
 
-    async getUsage(): Promise<{ used: number; limit: number; remaining: number }> {
-      const response = await fetch(`${API_URL}/users/usage`, {
+    async getUsage(schoolId?: string): Promise<{ used: number; limit: number; remaining: number }> {
+      const url = schoolId ? `${API_URL}/users/usage?schoolId=${schoolId}` : `${API_URL}/users/usage`;
+      const response = await fetch(url, {
         headers: getAuthHeader(),
       });
       return handleResponse(response);
@@ -198,8 +199,9 @@ export const db = {
     }
   },
 
-  async getUsage(): Promise<{ used: number; limit: number; remaining: number }> {
-    const response = await fetch(`${API_URL}/users/usage`, {
+  async getUsage(schoolId?: string): Promise<{ used: number; limit: number; remaining: number }> {
+    const url = schoolId ? `${API_URL}/users/usage?schoolId=${schoolId}` : `${API_URL}/users/usage`;
+    const response = await fetch(url, {
       headers: getAuthHeader(),
     });
     return handleResponse(response);
@@ -287,13 +289,15 @@ export const db = {
 
   notes: {
     async save(note: LessonNote): Promise<{ success: boolean; message: string; data: LessonNote }> {
+      const user = JSON.parse(localStorage.getItem('teachaide_session') || '{}');
+      const payload = { ...note, schoolId: user.schoolId };
       const response = await fetch(`${API_URL}/notes`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           ...getAuthHeader(),
         },
-        body: JSON.stringify(note),
+        body: JSON.stringify(payload),
       });
 
       if (response.status === 401) {
@@ -336,13 +340,15 @@ export const db = {
 
   assessments: {
     async save(assessment: Assessment): Promise<Assessment> {
+      const user = JSON.parse(localStorage.getItem('teachaide_session') || '{}');
+      const payload = { ...assessment, schoolId: user.schoolId };
       const response = await fetch(`${API_URL}/assessments`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           ...getAuthHeader(),
         },
-        body: JSON.stringify(assessment),
+        body: JSON.stringify(payload),
       });
       return handleResponse(response);
     },
@@ -524,6 +530,12 @@ export const db = {
       });
       return handleResponse(response);
     },
+    async getAllSchools(): Promise<School[]> {
+      const response = await fetch(`${API_URL}/admin/schools`, {
+        headers: getAdminAuthHeader(),
+      });
+      return handleResponse(response);
+    },
 
     async createUser(data: Partial<User> & { password: string }): Promise<void> {
       const response = await fetch(`${API_URL}/admin/users`, {
@@ -538,8 +550,15 @@ export const db = {
     },
 
     async updateUserStatus(userId: string, status: 'Active' | 'Suspended'): Promise<void> {
-      // Backend not fully implemented for status update, placeholder
-      console.warn('Update user status not implemented in backend yet');
+      const response = await fetch(`${API_URL}/admin/users/${userId}/status`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAdminAuthHeader()
+        },
+        body: JSON.stringify({ status })
+      });
+      await handleResponse(response);
     },
 
     async deleteUser(userId: string): Promise<void> {
@@ -578,7 +597,10 @@ export const db = {
     },
 
     async getLogs(): Promise<AdminLog[]> {
-      return [];
+      const response = await fetch(`${API_URL}/admin/logs`, {
+        headers: getAdminAuthHeader(),
+      });
+      return handleResponse(response);
     },
 
 
@@ -683,14 +705,14 @@ export const db = {
 
   school: {
     async getDetails() {
-      const response = await fetch(`${API_URL}/school`, {
+      const response = await fetch(`${API_URL}/school-admin/details`, {
         headers: getAuthHeader()
       });
       return handleResponse(response);
     },
 
     async addTeacher(name: string, email: string, gender?: string) {
-      const response = await fetch(`${API_URL}/school/teachers`, {
+      const response = await fetch(`${API_URL}/school-admin/teachers`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -702,8 +724,8 @@ export const db = {
     },
 
     async updateTeacherStatus(teacherId: string, teacherStatus: string) {
-      const response = await fetch(`${API_URL}/school/teachers/${teacherId}`, {
-        method: 'PATCH',
+      const response = await fetch(`${API_URL}/school-admin/teachers/${teacherId}/status`, {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           ...getAuthHeader()
@@ -714,7 +736,7 @@ export const db = {
     },
 
     async removeTeacher(teacherId: string) {
-      const response = await fetch(`${API_URL}/school/teachers/${teacherId}`, {
+      const response = await fetch(`${API_URL}/school-admin/teachers/${teacherId}`, {
         method: 'DELETE',
         headers: getAuthHeader()
       });
@@ -722,8 +744,8 @@ export const db = {
     },
 
     async toggleTeacherAdmin(teacherId: string, isAdmin: boolean) {
-      const response = await fetch(`${API_URL}/school/teachers/${teacherId}/admin`, {
-        method: 'PATCH',
+      const response = await fetch(`${API_URL}/school-admin/teachers/${teacherId}/toggle-admin`, {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           ...getAuthHeader()
@@ -734,8 +756,8 @@ export const db = {
     },
 
     async updateSettings(settings: { allowAdminAccess: boolean }) {
-      const response = await fetch(`${API_URL}/school/settings`, {
-        method: 'PATCH',
+      const response = await fetch(`${API_URL}/school-admin/settings`, {
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           ...getAuthHeader()
@@ -745,13 +767,24 @@ export const db = {
       return handleResponse(response);
     },
     async updateTeacherLimit(teacherId: string, limit: number) {
-      const response = await fetch(`${API_URL}/school/teachers/${teacherId}/limit`, {
-        method: 'PATCH',
+      const response = await fetch(`${API_URL}/school-admin/teachers/${teacherId}/limit`, {
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           ...getAuthHeader()
         },
         body: JSON.stringify({ monthlyLessonLimit: limit })
+      });
+      return handleResponse(response);
+    },
+    async updateProfile(details: { name: string, address?: string, phone?: string, email?: string, website?: string, capacity?: number }) {
+      const response = await fetch(`${API_URL}/school-admin/profile`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeader()
+        },
+        body: JSON.stringify(details)
       });
       return handleResponse(response);
     }
@@ -796,5 +829,5 @@ export const db = {
       });
       return handleResponse(response);
     }
-  }
+  },
 };

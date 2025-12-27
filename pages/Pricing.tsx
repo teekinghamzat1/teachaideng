@@ -201,7 +201,15 @@ const Pricing: React.FC = () => {
 
                                 {user ? (
                                     <div className="mt-8">
-                                        {user.subscriptionPlan && user.subscriptionPlan !== 'Free' ? (
+                                        {user?.schoolId && !user?.isSchoolAdmin ? (
+                                            <button
+                                                className="block w-full bg-slate-500 border-slate-500 rounded-md py-2 text-sm font-semibold text-white text-center cursor-not-allowed"
+                                                title="Your subscription is managed by your school"
+                                                onClick={() => showAlert.info('School Managed', 'Your subscription is managed by your school. Please contact your administrator for plan upgrades.')}
+                                            >
+                                                Managed by School
+                                            </button>
+                                        ) : user.subscriptionPlan && user.subscriptionPlan !== 'Free' ? (
                                             <button
                                                 onClick={() => {
                                                     setPendingPlan('Pro');

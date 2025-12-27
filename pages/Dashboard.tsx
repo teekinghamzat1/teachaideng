@@ -49,7 +49,7 @@ const Dashboard: React.FC = () => {
     const checkUsage = async () => {
       try {
         if (currentUser) {
-          const usageData = await db.auth.getUsage();
+          const usageData = await db.auth.getUsage(currentUser.schoolId);
           setUsage(usageData);
         }
       } catch (e) {

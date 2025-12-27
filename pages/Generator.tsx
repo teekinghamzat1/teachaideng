@@ -63,7 +63,7 @@ const Generator: React.FC = () => {
       try {
         const user = db.auth.getCurrentUser();
         if (user) {
-          const stats = await db.auth.getUsage();
+          const stats = await db.auth.getUsage(user.schoolId);
           // Only set usage if we got valid stats
           if (stats) setUsage(stats);
         }

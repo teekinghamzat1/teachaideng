@@ -59,12 +59,25 @@ const PaymentSuccess: React.FC = () => {
                 </div>
 
                 <div className="space-y-3">
-                    <button
-                        onClick={() => navigate('/dashboard')}
-                        className="w-full bg-brand-600 text-white py-3 rounded-lg font-semibold hover:bg-brand-700 transition-colors"
-                    >
-                        Go to Dashboard
-                    </button>
+                    {plan === 'School' ? (
+                        <button
+                            onClick={() => navigate('/school')}
+                            className="w-full bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700 transition-all shadow-lg flex items-center justify-center gap-2"
+                        >
+                            <span>Manage Your School</span>
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                            </svg>
+                        </button>
+                    ) : (
+                        <button
+                            onClick={() => navigate('/dashboard')}
+                            className="w-full bg-brand-600 text-white py-3 rounded-lg font-semibold hover:bg-brand-700 transition-colors"
+                        >
+                            Go to Dashboard
+                        </button>
+                    )}
+
                     <button
                         onClick={() => navigate('/generator')}
                         className="w-full bg-slate-100 text-slate-700 py-3 rounded-lg font-semibold hover:bg-slate-200 transition-colors"
