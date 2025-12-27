@@ -26,6 +26,7 @@ const { provisionSchool } = require('../controllers/adminController');
 const { deleteUserPermanently } = require('../controllers/adminController');
 const { protect } = require('../middlewares/authMiddleware');
 const { admin } = require('../middlewares/adminMiddleware');
+const { superAdmin } = require('../middlewares/superAdminMiddleware');
 const validate = require('../middlewares/validate');
 const { z } = require('zod');
 
@@ -45,7 +46,7 @@ router.get('/analytics', getAnalytics);
 router.get('/users', getUsers);
 router.post('/users', createUser);
 router.get('/orders', getOrders);
-router.post('/create-admin', validate(createAdminSchema), createAdmin);
+router.post('/create-admin', validate(createAdminSchema), superAdmin, createAdmin);
 
 // Content Management
 router.get('/content/notes', getAllNotes);
