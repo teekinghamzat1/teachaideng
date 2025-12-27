@@ -111,8 +111,8 @@ const generateAssessment = asyncHandler(async (req, res) => {
   const estimates = await getEstimates();
   const estimate = estimates.assessment;
 
-  // Enforce dynamic generation limit
-  const canGen = await usageService.canGenerateLesson(userId); // Use lesson quota for assessments
+  // Enforce dynamic generation limit (Fair use for assessments, separate from lessons)
+  const canGen = await usageService.canGenerateAssessment(userId);
   if (!canGen.canGenerate) {
     res.status(403);
     return res.json(formatResponse(false, canGen.reason));
@@ -122,7 +122,8 @@ const generateAssessment = asyncHandler(async (req, res) => {
   try {
     genResult = await genai.generateAssessmentViaGenAI({
       topic, subject, classLevel, questionCount,
-      maxTokens: estimates.maxTokens
+      maxTokens: estimates.maxTokens,
+      model: 'gemini-1.5-flash'
     });
   } catch (err) {
     console.error('generateAssessment ERROR:', err);
@@ -145,7 +146,7 @@ const generateAssessment = asyncHandler(async (req, res) => {
   try {
     const metrics = {
       plan: req.user.subscriptionPlan,
-      model: process.env.GENAI_MODEL || 'gemini-2.5-flash',
+      model: 'gemini-1.5-flash',
       tokens: usageTokens,
       inputLength: (topic + subject + classLevel).length,
       outputLength: genResult.text ? genResult.text.length : 0

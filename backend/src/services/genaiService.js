@@ -81,7 +81,7 @@ async function generateLessonNoteViaGenAI(options) {
   ENSURE ALL FIELDS ARE POPULATED with high-quality, educational content. Return raw JSON.`;
 
   const response = await withRetry(() => ai.models.generateContent({
-    model: process.env.GENAI_MODEL || 'gemini-2.0-flash',
+    model: process.env.GENAI_MODEL || 'gemini-2.5-flash',
     contents: `${systemPrompt}\nUser Topic: ${topic}\nUser Sub-topic: ${subtopic || 'Auto-generate Appropriate Sub-topic'}\nSubject: ${subject}\nClass: ${classLevel}\nDuration: ${duration}`,
     config: {
       responseMimeType: 'application/json',
@@ -114,7 +114,7 @@ async function generateAssessmentViaGenAI(options) {
   For ShortAnswer, options should be null or an empty array.`;
 
   const response = await withRetry(() => ai.models.generateContent({
-    model: process.env.GENAI_MODEL || 'gemini-2.0-flash',
+    model: options.model || 'gemini-1.5-flash',
     contents: `${systemPrompt}\nSubject: ${subject}\nClass: ${classLevel}\nTopic: ${topic}\nNumber of Questions: ${questionCount}`,
     config: {
       responseMimeType: 'application/json',

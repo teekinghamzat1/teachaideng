@@ -11,6 +11,56 @@ const prisma = require('../config/db');
  * @param {string} userId 
  * @returns {Promise<{canGenerate: boolean, reason?: string}>}
  */
+/**
+ * Check if user can generate an assessment (fair-use limit)
+ * Assessments do not consume lesson note credits.
+ * @param {string} userId 
+ * @returns {Promise<{canGenerate: boolean, reason?: string}>}
+ */
+async function canGenerateAssessment(userId) {
+    const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: {
+            subscriptionPlan: true
+        }
+    });
+
+    if (!user) {
+        return { canGenerate: false, reason: 'User not found' };
+    }
+
+    // Define internal fair-use limits for assessments
+    const assessmentLimits = {
+        'Free': 50,
+        'Pro': 200,
+        'School': 1000
+    };
+
+    const plan = user.subscriptionPlan ? user.subscriptionPlan.charAt(0).toUpperCase() + user.subscriptionPlan.slice(1).toLowerCase() : 'Free';
+    const limit = assessmentLimits[plan] || assessmentLimits['Free'];
+
+    // Count assessments generated this month using UsageLog
+    const now = new Date();
+    const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const count = await prisma.usageLog.count({
+        where: {
+            userId,
+            action: 'ASSESSMENT_GENERATION',
+            createdAt: { gte: firstOfMonth }
+        }
+    });
+
+    if (count >= limit) {
+        return {
+            canGenerate: false,
+            reason: 'Assessment fair-use limit reached for this month. Please try again next month.'
+        };
+    }
+
+    return { canGenerate: true };
+}
+
 async function canGenerateLesson(userId) {
     const user = await prisma.user.findUnique({
         where: { id: userId },
@@ -240,6 +290,7 @@ async function getPlanLimits(plan) {
 
 module.exports = {
     canGenerateLesson,
+    canGenerateAssessment,
     recordLessonGeneration,
     getUserUsage,
     checkAndResetUsage,
