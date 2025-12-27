@@ -173,9 +173,14 @@ const getOrders = asyncHandler(async (req, res) => {
 
 // @desc    Create a new admin
 // @route   POST /api/admin/create-admin
-// @access  Private/SuperAdmin (or Admin for now)
+// @access  Private/SuperAdmin
 const createAdmin = asyncHandler(async (req, res) => {
-    const { name, email, password } = req.body;
+    const { name, email, password, role } = req.body;
+
+    if (role && (role.toLowerCase() !== 'admin' && role.toLowerCase() !== 'superadmin')) {
+        res.status(400);
+        throw new Error('Invalid role specified. Can only be "admin" or "superadmin".');
+    }
 
     const adminExists = await prisma.user.findUnique({
         where: { email },
@@ -194,14 +199,13 @@ const createAdmin = asyncHandler(async (req, res) => {
             name,
             email,
             password: hashedPassword,
-            role: 'superadmin', // or admin
+            role: role || 'admin',
         },
     });
 
     if (admin) {
         res.status(201).json(
             formatResponse(true, 'Admin created successfully', {
-                _id: admin.id,
                 id: admin.id,
                 name: admin.name,
                 email: admin.email,
@@ -265,6 +269,11 @@ const updateNoteStatus = asyncHandler(async (req, res) => {
 // @access  Private/Admin
 const createUser = asyncHandler(async (req, res) => {
     const { name, email, password, role } = req.body;
+
+    if (role && (role.toLowerCase() === 'admin' || role.toLowerCase() === 'superadmin')) {
+        res.status(403);
+        throw new Error('Forbidden: Admins cannot create other admins or superadmins.');
+    }
 
     const userExists = await prisma.user.findUnique({
         where: { email },
