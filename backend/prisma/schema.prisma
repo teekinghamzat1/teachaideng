@@ -422,20 +422,21 @@ model NotificationRead {
 
 // Shared generated content cache to avoid repeated costly AI calls
 model SharedContent {
-  id         String   @id @default(uuid())
-  type       String   // e.g. 'lesson', 'assessment'
-  subject    String
-  classLevel String
-  topic      String
+  id          String   @id @default(uuid())
+  type        String   // e.g. 'lesson', 'assessment'
+  subject     String
+  classLevel  String
+  topic       String
+  subtopic    String   @default("")
   // store content as JSON string for SQLite compatibility
-  content    String
+  content     String
   createdById String?
-  createdBy  User?    @relation(fields: [createdById], references: [id], onDelete: SetNull)
-  usageCount Int      @default(0)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  createdBy   User?    @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  usageCount  Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  @@index([type, subject, classLevel, topic])
+  @@index([type, subject, classLevel, topic, subtopic])
 }
 
 // Usage tracking for important actions (optional - alternative to counting LessonNote rows)

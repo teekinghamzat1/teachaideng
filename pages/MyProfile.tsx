@@ -1,21 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { db } from '../database';
+import { db, getAuthHeader, getAdminAuthHeader } from '../database';
 import { showAlert } from '../utils/alerts';
 
-const getAuthHeader = () => {
-  const userStr = localStorage.getItem('teachaide_session');
-  if (userStr) {
-    const user = JSON.parse(userStr);
-    if (user.token) return { Authorization: `Bearer ${user.token}` };
-  }
-  return {};
-};
+interface MyProfileProps {
+  isAdminView?: boolean;
+}
 
-const MyProfile: React.FC = () => {
-  const current = db.auth.getCurrentUser();
+const MyProfile: React.FC<MyProfileProps> = ({ isAdminView = false }) => {
+  const current = isAdminView ? db.adminAuth.getCurrentUser() : db.auth.getCurrentUser();
   const [name, setName] = useState(current?.name || '');
   const [email, setEmail] = useState(current?.email || '');
-  const [role, setRole] = useState(current?.role || 'user');
+  const [role, setRole] = useState(current?.role || 'Teacher');
   const [avatar, setAvatar] = useState<string>(current?.avatar || '');
   const [password, setPassword] = useState('');
   const [saving, setSaving] = useState(false);
@@ -25,15 +20,17 @@ const MyProfile: React.FC = () => {
 
   useEffect(() => {
     // Load school details if user belongs to a school
-    (async () => {
-      try {
-        const info = await db.school.getDetails();
-        setSchoolInfo(info?.school || null);
-      } catch (e) {
-        // ignore if user not in a school
-      }
-    })();
-  }, []);
+    if (!isAdminView) {
+      (async () => {
+        try {
+          const info = await db.school.getDetails();
+          setSchoolInfo(info?.school || null);
+        } catch (e) {
+          // ignore if user not in a school
+        }
+      })();
+    }
+  }, [isAdminView]);
 
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files && e.target.files[0];
@@ -46,7 +43,7 @@ const MyProfile: React.FC = () => {
       const res = await fetch('/api/upload/image', {
         method: 'POST',
         headers: {
-          ...getAuthHeader()
+          ...(isAdminView ? getAdminAuthHeader() : getAuthHeader())
         },
         body: form,
       });
@@ -67,9 +64,14 @@ const MyProfile: React.FC = () => {
       const updateData: any = { name, email, role };
       if (avatar) updateData.avatar = avatar;
       if (password) updateData.password = password;
-      await db.auth.updateProfile(updateData);
-      // refresh local user from server
-      await db.auth.refreshUser();
+
+      if (isAdminView) {
+        await db.adminAuth.updateProfile(updateData);
+        await db.adminAuth.refreshUser();
+      } else {
+        await db.auth.updateProfile(updateData);
+        await db.auth.refreshUser();
+      }
       showAlert.success('Profile Updated', 'Your changes have been saved.');
     } catch (err: any) {
       showAlert.error('Update Failed', err?.message || 'Failed to update profile');
@@ -79,6 +81,10 @@ const MyProfile: React.FC = () => {
   };
 
   const handleDeleteAccount = async () => {
+    if (isAdminView) {
+      showAlert.error('Action Restricted', 'Administrators cannot delete their own accounts from this panel.');
+      return;
+    }
     if (await showAlert.confirm('Delete Account', 'This will permanently delete your account and all related data. This action cannot be undone. Continue?')) {
       try {
         await db.auth.deleteAccount();
@@ -93,63 +99,99 @@ const MyProfile: React.FC = () => {
     }
   };
 
+  const isSystemAdmin = current?.role.toLowerCase() === 'admin' || current?.role.toLowerCase() === 'superadmin';
+
   return (
     <div className="p-6 bg-white dark:bg-slate-800 rounded-lg shadow border border-slate-100 dark:border-slate-700">
-      <h3 className="text-lg font-medium text-slate-900 dark:text-slate-100 mb-4">My Profile</h3>
+      <h3 className="text-lg font-medium text-slate-900 dark:text-slate-100 mb-4">
+        {isAdminView ? 'Admin Account Settings' : 'My Profile'}
+      </h3>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="col-span-1 flex flex-col items-center">
-          <div className="w-32 h-32 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden flex items-center justify-center">
-            {avatar ? (
-              <img src={avatar} alt="avatar" className="w-full h-full object-cover" />
-            ) : (
-              <span className="text-2xl text-slate-400">{(name || 'U').charAt(0)}</span>
+          <div className="relative group">
+            <div className="w-32 h-32 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden flex items-center justify-center border-4 border-slate-50 dark:border-slate-800 shadow-inner">
+              {avatar ? (
+                <img src={avatar} alt="avatar" className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-4xl font-bold text-brand-600">{(name || 'U').charAt(0)}</span>
+              )}
+            </div>
+            {uploading && (
+              <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center">
+                <div className="w-6 h-6 border-2 border-white border-t-transparent animate-spin rounded-full"></div>
+              </div>
             )}
           </div>
-          <label className="mt-3 text-sm text-slate-600 dark:text-slate-300">Change avatar</label>
-          <input type="file" accept="image/*" onChange={handleFile} className="mt-2" />
-          {uploading && <div className="text-sm text-slate-500 dark:text-slate-300 mt-2">Uploading...</div>}
-          {uploadError && <div className="text-sm text-red-500 mt-2">{uploadError}</div>}
+
+          <div className="mt-4 w-full">
+            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider text-center mb-2">Change Profile Photo</label>
+            <input type="file" accept="image/*" onChange={handleFile} className="block w-full text-xs text-slate-500 file:mr-2 file:py-1 file:px-2 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-brand-50 file:text-brand-700 hover:file:bg-brand-100" />
+            {uploadError && <div className="text-xs text-red-500 mt-1 text-center">{uploadError}</div>}
+          </div>
         </div>
 
         <div className="col-span-2">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm text-slate-700 dark:text-slate-300">Full name</label>
-              <input value={name} onChange={(e) => setName(e.target.value)} className="mt-1 block w-full rounded-md border border-slate-300 dark:border-slate-700 p-2 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100" />
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Full Name</label>
+              <input value={name} onChange={(e) => setName(e.target.value)} className="mt-1 block w-full rounded-md border border-slate-300 dark:border-slate-700 p-2 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-brand-500 outline-none" placeholder="Your Name" />
             </div>
             <div>
-              <label className="block text-sm text-slate-700 dark:text-slate-300">Email</label>
-              <input value={email} onChange={(e) => setEmail(e.target.value)} className="mt-1 block w-full rounded-md border border-slate-300 dark:border-slate-700 p-2 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100" />
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Email Address</label>
+              <input value={email} onChange={(e) => setEmail(e.target.value)} className="mt-1 block w-full rounded-md border border-slate-300 dark:border-slate-700 p-2 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-brand-500 outline-none" placeholder="email@example.com" />
             </div>
             <div>
-              <label className="block text-sm text-slate-700 dark:text-slate-300">Role</label>
-              <select value={role} onChange={(e) => setRole(e.target.value)} className="mt-1 block w-full rounded-md border border-slate-300 dark:border-slate-700 p-2 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100">
-                <option value="user">User</option>
-                <option value="teacher">Teacher</option>
-                <option value="school_admin">School Admin</option>
-                <option value="admin">Admin</option>
-              </select>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Professional Title</label>
+              {isSystemAdmin ? (
+                <div className="mt-1 block w-full rounded-md border border-slate-100 dark:border-slate-800 p-2 bg-slate-50 dark:bg-slate-900 text-slate-500 cursor-not-allowed">
+                  {current?.role || 'Admin'} (System Role)
+                </div>
+              ) : (
+                <select value={role} onChange={(e) => setRole(e.target.value)} className="mt-1 block w-full rounded-md border border-slate-300 dark:border-slate-700 p-2 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-brand-500 outline-none">
+                  <option value="Teacher">Teacher</option>
+                  <option value="Principal">Principal</option>
+                  <option value="Proprietor/Proprietress">Proprietor/Proprietress</option>
+                  <option value="Headmaster/Headmistress">Headmaster/Headmistress</option>
+                  <option value="Educator">Educator</option>
+                  <option value="Student">Student</option>
+                  <option value="School Admin">School Admin</option>
+                </select>
+              )}
             </div>
-            <div>
-              <label className="block text-sm text-slate-700 dark:text-slate-300">New Password</label>
-              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="mt-1 block w-full rounded-md border border-slate-300 dark:border-slate-700 p-2 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100" placeholder="Leave blank to keep current" />
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">New Password</label>
+              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="mt-1 block w-full rounded-md border border-slate-300 dark:border-slate-700 p-2 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-brand-500 outline-none" placeholder="Leave blank to keep current password" />
             </div>
           </div>
 
-          <div className="mt-4">
-            <button onClick={handleSave} disabled={saving} className="px-4 py-2 bg-brand-600 text-white rounded-md hover:bg-brand-700">
-              {saving ? 'Saving...' : 'Save Profile'}
+          <div className="mt-8 flex items-center gap-3">
+            <button onClick={handleSave} disabled={saving} className="px-6 py-2 bg-brand-600 text-white rounded-lg font-semibold hover:bg-brand-700 transition-colors shadow-sm disabled:opacity-50">
+              {saving ? 'Saving...' : 'Save Profile Changes'}
             </button>
-            <button onClick={handleDeleteAccount} className="ml-4 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700">Delete Account</button>
+            {!isAdminView && (
+              <button onClick={handleDeleteAccount} className="px-4 py-2 border border-red-200 text-red-600 rounded-lg text-sm hover:bg-red-50 transition-colors">
+                Delete Account
+              </button>
+            )}
           </div>
 
-          {schoolInfo && (
-            <div className="mt-6 p-4 bg-slate-50 dark:bg-slate-800 rounded border border-slate-100 dark:border-slate-700">
-              <h4 className="font-medium">School Details</h4>
-              <p className="text-sm text-slate-600">Name: {schoolInfo.name}</p>
-              <p className="text-sm text-slate-600">Owner: {schoolInfo.owner?.name}</p>
-              <p className="text-sm text-slate-600">Teachers: {schoolInfo.teachers?.length || 0}</p>
+          {!isAdminView && schoolInfo && (
+            <div className="mt-10 p-4 bg-brand-50/50 dark:bg-slate-900 rounded-xl border border-brand-100 dark:border-slate-800">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-2 h-2 rounded-full bg-brand-500"></div>
+                <h4 className="font-bold text-sm text-slate-700 dark:text-slate-200 uppercase tracking-wider">Linked School</h4>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-xs text-slate-500 uppercase">School Name</p>
+                  <p className="font-semibold text-slate-900 dark:text-slate-100">{schoolInfo.name}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500 uppercase">Teacher Capacity</p>
+                  <p className="font-semibold text-slate-900 dark:text-slate-100">{schoolInfo.teachers?.length || 0} Teachers</p>
+                </div>
+              </div>
             </div>
           )}
         </div>

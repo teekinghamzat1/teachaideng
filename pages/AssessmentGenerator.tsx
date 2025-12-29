@@ -63,6 +63,40 @@ const AssessmentGenerator: React.FC = () => {
         setLoading(true);
         setSaved(false);
         try {
+            // First, check shared cache
+            try {
+                const matches = await db.shared.findGenerated(
+                    'assessment',
+                    formData.subject.trim(),
+                    formData.classLevel.trim(),
+                    formData.topic.trim()
+                );
+                if (matches && Array.isArray(matches) && matches.length > 0) {
+                    const best = matches[0];
+                    const currentUser = db.auth.getCurrentUser();
+                    const isOwner = best.createdById === currentUser?.id;
+
+                    if (isOwner) {
+                        const confirmViewOld = await showAlert.confirm(
+                            "Previously Generated",
+                            "You already generated an assessment for this topic. Would you like to view it for free or generate a new one?",
+                            "View Existing"
+                        );
+
+                        if (confirmViewOld) {
+                            try { await db.shared.incrementUsage(best.id); } catch (e) { }
+                            let contentToUse = best.content;
+                            if (typeof contentToUse === 'string') contentToUse = JSON.parse(contentToUse);
+                            setResult(contentToUse);
+                            setLoading(false);
+                            return;
+                        }
+                    }
+                }
+            } catch (cacheErr) {
+                console.warn('Cache lookup failed', cacheErr);
+            }
+
             const data = await generateAssessment(formData.topic, formData.classLevel, formData.subject, formData.questionCount);
             setResult(data);
         } catch (error: any) {

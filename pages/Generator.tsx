@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { db } from '../database';
 import { Subject, ClassLevel, LessonNote } from '../types';
 import { generateLessonNote } from '../services/geminiService';
+import { showAlert } from '../utils/alerts';
 import { Loader2, Sparkles, WifiOff } from '../components/Icons';
 
 const Generator: React.FC = () => {
@@ -99,12 +100,6 @@ const Generator: React.FC = () => {
         userPlan,
         limitReached
       );
-      // Save generated result to shared cache (best-effort)
-      try {
-        await db.shared.saveGenerated('lesson', formData.subject, formData.classLevel, formData.topic, result);
-      } catch (saveErr) {
-        console.warn('Failed to save to shared cache', saveErr);
-      }
       // Navigate to result page with the data
       navigate('/result', { state: { lessonNote: result } });
     } catch (err: any) {
@@ -140,32 +135,45 @@ const Generator: React.FC = () => {
     try {
       // First, check server-side shared cache for existing generated content
       try {
-        const matches = await db.shared.findGenerated('lesson', formData.subject, formData.classLevel, formData.topic);
+        const matches = await db.shared.findGenerated(
+          'lesson',
+          formData.subject.trim(),
+          formData.classLevel.trim(),
+          formData.topic.trim(),
+          formData.subtopic.trim()
+        );
         if (matches && Array.isArray(matches) && matches.length > 0) {
-          // Automatically use the best cached match (no choice)
           const best = matches[0];
-          try {
-            await db.shared.incrementUsage(best.id);
-          } catch (e) {
-            console.warn('Failed to increment usage for cached entry', e);
-          }
+          const currentUser = db.auth.getCurrentUser();
+          const isOwner = best.createdById === currentUser?.id;
 
-          // Ensure we pass parsed content if stored as JSON string
-          let contentToUse: any = best.content;
-          if (typeof contentToUse === 'string') {
-            try {
-              contentToUse = JSON.parse(contentToUse);
-            } catch (e) {
-              // not JSON, keep as-is
+          // Only prompt for free reuse if the user owns the content
+          if (isOwner) {
+            const confirmViewOld = await showAlert.confirm(
+              "Previously Generated",
+              "You've already generated a note for this topic. Would you like to view it for free or generate a new one (deducts 1 credit)?",
+              "View Existing"
+            );
+
+            if (confirmViewOld) {
+              try {
+                await db.shared.incrementUsage(best.id);
+              } catch (e) {
+                console.warn('Failed to increment usage', e);
+              }
+
+              let contentToUse: any = best.content;
+              if (typeof contentToUse === 'string') {
+                try { contentToUse = JSON.parse(contentToUse); } catch (e) { /* keep as-is */ }
+              }
+
+              navigate('/result', { state: { lessonNote: contentToUse } });
+              setLoading(false);
+              return;
             }
           }
-
-          navigate('/result', { state: { lessonNote: contentToUse } });
-          setLoading(false);
-          return;
         }
       } catch (cacheErr) {
-        // ignore cache errors and continue to generate
         console.warn('Cache lookup failed', cacheErr);
       }
       const currentUser = db.auth.getCurrentUser();

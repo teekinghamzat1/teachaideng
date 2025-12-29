@@ -163,7 +163,7 @@ const Signup: React.FC = () => {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Role</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Professional Title</label>
                 <select
                   id="role"
                   name="role"
@@ -173,8 +173,11 @@ const Signup: React.FC = () => {
                   onChange={handleChange}
                 >
                   <option value="Teacher">Teacher</option>
-                  <option value="Tutor">Tutor</option>
-                  <option value="Student Teacher">Student Teacher</option>
+                  <option value="Principal">Principal</option>
+                  <option value="Proprietor/Proprietress">Proprietor/Proprietress</option>
+                  <option value="Headmaster/Headmistress">Headmaster/Headmistress</option>
+                  <option value="Educator">Educator</option>
+                  <option value="Student">Student</option>
                 </select>
               </div>
               <div>
@@ -341,8 +344,8 @@ const Signup: React.FC = () => {
             </button>
           </div>
         </form>
-      </div>
-    </div>
+      </div >
+    </div >
   );
 };
 

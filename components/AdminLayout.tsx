@@ -61,6 +61,7 @@ const AdminLayout: React.FC = () => {
         { name: 'Overview', path: '/admin', icon: LayoutDashboard },
         { name: 'Users', path: '/admin/users', icon: Users },
         { name: 'Content', path: '/admin/content', icon: FileText },
+        { name: 'My Account', path: '/admin/profile', icon: SettingsIcon },
     ];
 
     if (!currentUser.isSchoolAdmin) {

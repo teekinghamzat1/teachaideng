@@ -21,24 +21,59 @@ const getEstimates = async () => {
 
 // @route POST /api/generate/lesson
 // Checks tokens, estimates price, invokes GenAI and charges tokens based on usage
+// @route POST /api/generate/lesson
+// Checks tokens, estimates price, invokes GenAI and charges tokens based on usage
 const generateLesson = asyncHandler(async (req, res) => {
   const userId = req.user.id;
-  const { topic, subject, classLevel, duration, subtopic } = req.body;
+  const { topic, subject, classLevel, duration, subtopic, skipCache } = req.body;
 
   const estimates = await getEstimates();
   const estimate = estimates.lesson;
 
-  // Enforce dynamic generation limit BEFORE calling GenAI
+  // Enforce dynamic generation limit BEFORE calling GenAI or Cache
   const canGen = await usageService.canGenerateLesson(userId);
   if (!canGen.canGenerate) {
     res.status(403);
     return res.json(formatResponse(false, canGen.reason || 'Generation limit reached. Upgrade to continue.'));
   }
 
-  // User tokens are no longer used for billing (backend tracking only)
-  // We skip token checks to ensure a smooth dynamic experience based on lesson counts
+  // 1. Check Cache First (Silent Deduction Logic)
+  if (!skipCache) {
+    const cachedEntry = await prisma.sharedContent.findFirst({
+      where: {
+        type: 'lesson',
+        subject: subject.trim(),
+        classLevel: classLevel.trim(),
+        topic: { equals: topic.trim(), mode: 'insensitive' },
+        subtopic: { equals: (subtopic || '').trim(), mode: 'insensitive' }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
 
-  // Call GenAI
+    if (cachedEntry) {
+      console.log(`[CACHE_HIT] Reusing lesson for topic: ${topic}`);
+
+      // Still log usage so it counts against user's daily/weekly limit
+      try {
+        await createUsageLog(userId, 'LESSON_GENERATION', { topic, subject, classLevel, cached: true });
+        await usageService.recordLessonGeneration(userId, 0, 0); // Cost 0 tokens but +1 lesson count
+        await prisma.sharedContent.update({
+          where: { id: cachedEntry.id },
+          data: { usageCount: { increment: 1 } }
+        });
+      } catch (logErr) {
+        console.warn('Failed to log cached usage', logErr);
+      }
+
+      return res.json(formatResponse(true, 'Generated (Library)', {
+        text: cachedEntry.content,
+        usage: { totalTokens: 0, cached: true },
+        charged: 0
+      }));
+    }
+  }
+
+  // 2. Call GenAI (Cache Miss or Skip)
   let genResult;
   try {
     genResult = await genai.generateLessonNoteViaGenAI({
@@ -55,34 +90,43 @@ const generateLesson = asyncHandler(async (req, res) => {
     return res.json(formatResponse(false, message));
   }
 
-  // Backend-only token tracking for cost control (no charge to user)
+  // Backend-only token tracking
   let usageTokens = estimate;
   if (genResult && genResult.usage) {
     if (genResult.usage.totalTokens) usageTokens = Number(genResult.usage.totalTokens);
     else if (genResult.usage.tokenCount) usageTokens = Number(genResult.usage.tokenCount);
   }
-  // If charge fails, return error
 
-
-  // Log usage for successful AI generation so the weekly limit counts generation attempts.
+  // 3. Log usage for successful AI generation
   try {
     const metrics = {
       plan: req.user.subscriptionPlan,
-      model: process.env.GENAI_MODEL || 'gemini-2.5-flash',
+      model: process.env.GENAI_MODEL || 'gemini-1.5-flash',
       tokens: usageTokens,
       inputLength: (topic + subject + classLevel).length,
       outputLength: genResult.text ? genResult.text.length : 0
     };
-    const log = await createUsageLog(userId, 'LESSON_GENERATION', metrics);
-    if (!log) console.warn(`generateLesson: createUsageLog returned null for user=${userId}`);
+    await createUsageLog(userId, 'LESSON_GENERATION', metrics);
 
-    // NEW: Record lesson usage with token tracking
     const inputTokens = genResult.usage?.promptTokenCount || 0;
     const outputTokens = genResult.usage?.candidatesTokenCount || 0;
     await usageService.recordLessonGeneration(userId, inputTokens, outputTokens);
+
+    // 4. Save to Cache for future silent reuse
+    await prisma.sharedContent.create({
+      data: {
+        type: 'lesson',
+        subject: subject.trim(),
+        classLevel: classLevel.trim(),
+        topic: topic.trim(),
+        subtopic: (subtopic || '').trim(),
+        content: genResult.text,
+        createdById: userId,
+        usageCount: 1
+      }
+    });
   } catch (err) {
-    console.error('Failed to create usage log after generation', err);
-    // Do not fail the request if logging fails
+    console.error('Failed post-generation tasks (logging/caching)', err);
   }
 
   const { sanitizeObjectMarkdown } = require('../utils/markdownUtils');
@@ -92,10 +136,8 @@ const generateLesson = asyncHandler(async (req, res) => {
     finalJson = sanitizeObjectMarkdown(finalJson);
   } catch (pErr) {
     console.error('Failed to parse or sanitize AI response', pErr);
-    // If it fails to parse as JSON, we still have raw text which we can't easily sanitize as object
   }
 
-  // Return generated text and usage info
   res.json(formatResponse(true, 'Generated', {
     text: finalJson ? JSON.stringify(finalJson) : genResult.text,
     usage: genResult.usage,
@@ -106,18 +148,52 @@ const generateLesson = asyncHandler(async (req, res) => {
 // @route POST /api/generate/assessment
 const generateAssessment = asyncHandler(async (req, res) => {
   const userId = req.user.id;
-  const { topic, subject, classLevel, questionCount = 5 } = req.body;
+  const { topic, subject, classLevel, questionCount = 5, skipCache } = req.body;
 
   const estimates = await getEstimates();
   const estimate = estimates.assessment;
 
-  // Enforce dynamic generation limit (Fair use for assessments, separate from lessons)
+  // Enforce dynamic generation limit
   const canGen = await usageService.canGenerateAssessment(userId);
   if (!canGen.canGenerate) {
     res.status(403);
     return res.json(formatResponse(false, canGen.reason));
   }
 
+  // 1. Silent Cache Hit
+  if (!skipCache) {
+    const cachedEntry = await prisma.sharedContent.findFirst({
+      where: {
+        type: 'assessment',
+        subject: subject.trim(),
+        classLevel: classLevel.trim(),
+        topic: { equals: topic.trim(), mode: 'insensitive' }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    if (cachedEntry) {
+      try {
+        await createUsageLog(userId, 'ASSESSMENT_GENERATION', { topic, subject, classLevel, cached: true });
+        // Add assessment-specific record usage if exists, otherwise use lesson logic or just log
+        // For now, let's assume usageLog is enough or if there's a specific assessment tracker
+        await prisma.sharedContent.update({
+          where: { id: cachedEntry.id },
+          data: { usageCount: { increment: 1 } }
+        });
+      } catch (e) {
+        console.warn('Failed to log cached assessment usage', e);
+      }
+
+      return res.json(formatResponse(true, 'Assessment generated (Library)', {
+        text: cachedEntry.content,
+        usage: { totalTokens: 0, cached: true },
+        charged: 0
+      }));
+    }
+  }
+
+  // 2. Generate new
   let genResult;
   try {
     genResult = await genai.generateAssessmentViaGenAI({
@@ -141,8 +217,7 @@ const generateAssessment = asyncHandler(async (req, res) => {
     else if (genResult.usage.tokenCount) usageTokens = Number(genResult.usage.tokenCount);
   }
 
-
-  // Log usage for Assessment
+  // 3. Log usage & Cache
   try {
     const metrics = {
       plan: req.user.subscriptionPlan,
@@ -152,8 +227,21 @@ const generateAssessment = asyncHandler(async (req, res) => {
       outputLength: genResult.text ? genResult.text.length : 0
     };
     await createUsageLog(userId, 'ASSESSMENT_GENERATION', metrics);
+
+    // Save to Cache
+    await prisma.sharedContent.create({
+      data: {
+        type: 'assessment',
+        subject: subject.trim(),
+        classLevel: classLevel.trim(),
+        topic: topic.trim(),
+        content: genResult.text,
+        createdById: userId,
+        usageCount: 1
+      }
+    });
   } catch (logErr) {
-    console.error('Failed to log assessment usage', logErr);
+    console.error('Failed post-assessment generation tasks', logErr);
   }
 
   const { sanitizeObjectMarkdown } = require('../utils/markdownUtils');

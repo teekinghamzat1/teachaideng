@@ -3,7 +3,7 @@ import { User, LessonNote, Assessment, Student, Timetable, AppSettings, AdminLog
 // Helper for API calls
 const API_URL = '/api';
 
-const getAuthHeader = () => {
+export const getAuthHeader = () => {
   const userStr = localStorage.getItem('teachaide_session');
   if (userStr) {
     const user = JSON.parse(userStr);
@@ -14,7 +14,7 @@ const getAuthHeader = () => {
   return {};
 };
 
-const getAdminAuthHeader = () => {
+export const getAdminAuthHeader = () => {
   const userStr = localStorage.getItem('teachaide_admin_session');
   if (userStr) {
     const user = JSON.parse(userStr);
@@ -25,22 +25,39 @@ const getAdminAuthHeader = () => {
   return {};
 };
 
+export const getAnyAuthHeader = () => {
+  const adminHeader = getAdminAuthHeader();
+  if (adminHeader.Authorization) return adminHeader;
+  return getAuthHeader();
+};
+
 const handleResponse = async (response: Response) => {
   if (response.status === 401) {
     const url = response.url;
-    // Determine which session to clear based on the request context or try clearing both if unsure,
-    // but better to be specific.
+    const isLoginPage = window.location.pathname === '/login' || window.location.pathname === '/admin/login';
+
     // If it's an admin endpoint, clear admin session
     if (url.includes('/api/admin')) {
       console.error(`401 Unauthorized from Admin API: ${url}`);
       localStorage.removeItem('teachaide_admin_session');
-      window.location.href = '/admin/login'; // Redirect to admin login
+      if (!isLoginPage) {
+        window.location.href = '/admin/login';
+      }
       throw new Error('Admin session expired.');
     } else if (!url.includes('/auth/login') && !url.includes('/auth/register')) {
-      console.error(`401 Unauthorized from: ${url}`);
-      localStorage.removeItem('teachaide_session');
-      window.dispatchEvent(new Event('auth-change'));
-      window.location.href = '/login';
+      console.warn(`[FRONTEND_401] Observed 401 from: ${url}`);
+      // For shared/public endpoints that MIGHT return 401 (though they shouldn't)
+      // we only redirect if we aren't already on a login page and it's not a "soft" check
+      const isSoftCheck = url.includes('/settings/public') || url.includes('/branding');
+
+      if (!isLoginPage && !isSoftCheck) {
+        console.error(`401 Unauthorized from: ${url}. Redirecting to login.`);
+        localStorage.removeItem('teachaide_session');
+        window.dispatchEvent(new Event('auth-change'));
+        window.location.href = '/login';
+      } else {
+        console.warn(`401 Unauthorized from: ${url}. Suppressing redirect loop.`);
+      }
       throw new Error('Session expired. Please login again.');
     }
     // For login failure, just throw
@@ -48,9 +65,19 @@ const handleResponse = async (response: Response) => {
   }
 
   if (!response.ok) {
-    const errorData = await response.json();
+    const contentType = response.headers.get('content-type');
+    if (contentType && contentType.includes('text/html')) {
+      throw new Error('Server limit exceeded or timeout (504). Please try again in 30 seconds.');
+    }
+    const errorData = await response.json().catch(() => ({}));
     throw new Error(errorData.message || 'API Error');
   }
+
+  const contentType = response.headers.get('content-type');
+  if (contentType && contentType.includes('text/html')) {
+    throw new Error('Received HTML instead of JSON. The server might be busy or down.');
+  }
+
   const data = await response.json();
   return data.data; // Assuming backend returns { success: true, message: '', data: ... }
 };
@@ -196,6 +223,41 @@ export const db = {
     getCurrentUser(): User | null {
       const sessionStr = localStorage.getItem('teachaide_admin_session');
       return sessionStr ? JSON.parse(sessionStr) : null;
+    },
+
+    async updateProfile(data: Partial<User> & { password?: string }): Promise<User> {
+      const response = await fetch(`${API_URL}/users/profile`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAdminAuthHeader(),
+        },
+        body: JSON.stringify(data),
+      });
+      const updated = await handleResponse(response);
+      if (updated) {
+        const current = this.getCurrentUser();
+        localStorage.setItem('teachaide_admin_session', JSON.stringify({ ...current, ...updated }));
+      }
+      return updated;
+    },
+
+    async refreshUser(): Promise<User | null> {
+      try {
+        const response = await fetch(`${API_URL}/users/profile`, {
+          headers: getAdminAuthHeader()
+        });
+        const result = await handleResponse(response);
+        if (result) {
+          const current = this.getCurrentUser();
+          localStorage.setItem('teachaide_admin_session', JSON.stringify({ ...current, ...result }));
+          return result;
+        }
+        return null;
+      } catch (error) {
+        console.error('Failed to refresh admin user:', error);
+        return null;
+      }
     }
   },
 
@@ -512,27 +574,27 @@ export const db = {
   admin: {
     async getStats() {
       const response = await fetch(`${API_URL}/admin/dashboard`, {
-        headers: getAdminAuthHeader(),
+        headers: getAnyAuthHeader(),
       });
       return handleResponse(response);
     },
 
     async getAnalytics() {
       const response = await fetch(`${API_URL}/admin/analytics`, {
-        headers: getAdminAuthHeader(),
+        headers: getAnyAuthHeader(),
       });
       return handleResponse(response);
     },
 
     async getAllUsers(): Promise<User[]> {
       const response = await fetch(`${API_URL}/admin/users`, {
-        headers: getAdminAuthHeader(),
+        headers: getAnyAuthHeader(),
       });
       return handleResponse(response);
     },
     async getAllSchools(): Promise<School[]> {
       const response = await fetch(`${API_URL}/admin/schools`, {
-        headers: getAdminAuthHeader(),
+        headers: getAnyAuthHeader(),
       });
       return handleResponse(response);
     },
@@ -606,7 +668,7 @@ export const db = {
 
     async getSystemSettings(): Promise<SystemSettings> {
       const response = await fetch(`${API_URL}/settings`, {
-        headers: getAdminAuthHeader(),
+        headers: getAnyAuthHeader(),
       });
       return handleResponse(response);
     },
@@ -625,7 +687,7 @@ export const db = {
 
     async getCurriculum(): Promise<Curriculum> {
       const response = await fetch(`${API_URL}/curriculum`, {
-        headers: getAdminAuthHeader(),
+        headers: getAnyAuthHeader(),
       });
       return handleResponse(response);
     },
@@ -789,21 +851,25 @@ export const db = {
       return handleResponse(response);
     }
   },
+
   // Shared server-side cache for generated content
   shared: {
-    async findGenerated(type: string, subject: string, classLevel: string, topic?: string) {
+    async findGenerated(type: string, subject: string, classLevel: string, topic: string, subtopic?: string) {
       const params = new URLSearchParams();
       params.set('type', type);
       params.set('subject', subject);
       params.set('classLevel', classLevel);
-      if (topic) params.set('topic', topic);
+      params.set('topic', topic);
+      if (subtopic) params.set('subtopic', subtopic);
+      params.set('_t', Date.now().toString());
+
       const response = await fetch(`${API_URL}/cache?${params.toString()}`, {
         headers: getAuthHeader()
       });
       return handleResponse(response);
     },
-    async saveGenerated(type: string, subject: string, classLevel: string, topic: string, content: any) {
-      // Ensure content is stored as a string (SQLite uses String for content)
+    async saveGenerated(type: string, subject: string, classLevel: string, topic: string, content: any, subtopic?: string) {
+      // Ensure content is stored as a string (SharedContent uses String for content)
       const payloadContent = typeof content === 'string' ? content : JSON.stringify(content);
       const response = await fetch(`${API_URL}/cache`, {
         method: 'POST',
@@ -811,7 +877,14 @@ export const db = {
           'Content-Type': 'application/json',
           ...getAuthHeader()
         },
-        body: JSON.stringify({ type, subject, classLevel, topic, content: payloadContent })
+        body: JSON.stringify({
+          type,
+          subject,
+          classLevel,
+          topic,
+          subtopic: subtopic || '',
+          content: payloadContent
+        })
       });
       return handleResponse(response);
     },

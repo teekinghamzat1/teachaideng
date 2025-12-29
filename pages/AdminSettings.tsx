@@ -283,6 +283,108 @@ const AdminSettings: React.FC = () => {
                                     </div>
                                 </div>
                             </div>
+
+                            {/* Logo Upload Section */}
+                            <div className="mt-8 pt-8 border-t border-slate-200 dark:border-slate-700">
+                                <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-6">Logos & Icons</h3>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                    {/* Light Mode Logo */}
+                                    <div className="space-y-3">
+                                        <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Light Mode Logo</label>
+                                        <div className="border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-lg p-4 text-center">
+                                            {config.siteLogo ? (
+                                                <div className="space-y-2">
+                                                    <img src={config.siteLogo} alt="Logo" className="h-16 mx-auto object-contain" />
+                                                    <button
+                                                        onClick={() => setConfig({ ...config, siteLogo: '' })}
+                                                        className="text-xs text-red-500 hover:text-red-700"
+                                                    >
+                                                        Remove
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <div>
+                                                    <input
+                                                        type="file"
+                                                        accept="image/*"
+                                                        onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0], 'siteLogo')}
+                                                        className="hidden"
+                                                        id="logo-light"
+                                                    />
+                                                    <label htmlFor="logo-light" className="cursor-pointer text-sm text-brand-600 hover:text-brand-700">
+                                                        {uploadingLogo ? 'Uploading...' : 'Upload Logo'}
+                                                    </label>
+                                                    <p className="text-xs text-slate-500 mt-1">PNG, JPG (max 2MB)</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Dark Mode Logo */}
+                                    <div className="space-y-3">
+                                        <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Dark Mode Logo</label>
+                                        <div className="border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-lg p-4 text-center bg-slate-900">
+                                            {config.siteLogoDark ? (
+                                                <div className="space-y-2">
+                                                    <img src={config.siteLogoDark} alt="Dark Logo" className="h-16 mx-auto object-contain" />
+                                                    <button
+                                                        onClick={() => setConfig({ ...config, siteLogoDark: '' })}
+                                                        className="text-xs text-red-500 hover:text-red-700"
+                                                    >
+                                                        Remove
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <div>
+                                                    <input
+                                                        type="file"
+                                                        accept="image/*"
+                                                        onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0], 'siteLogoDark')}
+                                                        className="hidden"
+                                                        id="logo-dark"
+                                                    />
+                                                    <label htmlFor="logo-dark" className="cursor-pointer text-sm text-brand-400 hover:text-brand-300">
+                                                        {uploadingLogo ? 'Uploading...' : 'Upload Logo'}
+                                                    </label>
+                                                    <p className="text-xs text-slate-400 mt-1">PNG, JPG (max 2MB)</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Favicon */}
+                                    <div className="space-y-3">
+                                        <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Favicon</label>
+                                        <div className="border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-lg p-4 text-center">
+                                            {config.siteFavicon ? (
+                                                <div className="space-y-2">
+                                                    <img src={config.siteFavicon} alt="Favicon" className="h-16 mx-auto object-contain" />
+                                                    <button
+                                                        onClick={() => setConfig({ ...config, siteFavicon: '' })}
+                                                        className="text-xs text-red-500 hover:text-red-700"
+                                                    >
+                                                        Remove
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <div>
+                                                    <input
+                                                        type="file"
+                                                        accept="image/*"
+                                                        onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0], 'siteFavicon')}
+                                                        className="hidden"
+                                                        id="favicon"
+                                                    />
+                                                    <label htmlFor="favicon" className="cursor-pointer text-sm text-brand-600 hover:text-brand-700">
+                                                        {uploadingLogo ? 'Uploading...' : 'Upload Icon'}
+                                                    </label>
+                                                    <p className="text-xs text-slate-500 mt-1">ICO, PNG (32x32)</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     )}
 

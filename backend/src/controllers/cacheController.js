@@ -5,8 +5,11 @@ const formatResponse = require('../utils/formatResponse');
 // @desc Save generated content to shared cache
 // @route POST /api/cache
 // @access Private
+// @desc Save generated content to shared cache
+// @route POST /api/cache
+// @access Private
 const saveGenerated = asyncHandler(async (req, res) => {
-  const { type, subject, classLevel, topic, content } = req.body;
+  const { type, subject, classLevel, topic, subtopic, content } = req.body;
 
   if (!type || !subject || !classLevel || !topic || !content) {
     res.status(400);
@@ -15,11 +18,12 @@ const saveGenerated = asyncHandler(async (req, res) => {
 
   const entry = await prisma.sharedContent.create({
     data: {
-      type,
-      subject,
-      classLevel,
-      topic,
-      content,
+      type: type.trim(),
+      subject: subject.trim(),
+      classLevel: classLevel.trim(),
+      topic: topic.trim(),
+      subtopic: (subtopic || '').trim(),
+      content: typeof content === 'string' ? content : JSON.stringify(content),
       createdById: req.user ? req.user.id : undefined,
     }
   });
@@ -31,43 +35,25 @@ const saveGenerated = asyncHandler(async (req, res) => {
 // @route GET /api/cache
 // @access Private (readable by authenticated users)
 const queryGenerated = asyncHandler(async (req, res) => {
-  const { type, subject, classLevel, topic, limit = 10 } = req.query;
+  const { type, subject, classLevel, topic, subtopic, limit = 10 } = req.query;
 
-  if (!type || !subject || !classLevel) {
+  if (!type || !subject || !classLevel || !topic) {
     res.status(400);
-    throw new Error('type, subject and classLevel are required');
+    throw new Error('type, subject, classLevel and topic are required');
   }
 
-  // Try to find exact topic match first
-  const whereExact = {
-    type: String(type),
-    subject: String(subject),
-    classLevel: String(classLevel),
-    topic: String(topic || ''),
-  };
-
-  let results = [];
-
-  if (whereExact.topic) {
-    results = await prisma.sharedContent.findMany({
-      where: whereExact,
-      orderBy: { usageCount: 'desc' },
-      take: Number(limit)
-    });
-  }
-
-  // If no exact results, find similar (same subject/class)
-  if (results.length === 0) {
-    results = await prisma.sharedContent.findMany({
-      where: {
-        type: String(type),
-        subject: String(subject),
-        classLevel: String(classLevel)
-      },
-      orderBy: { usageCount: 'desc' },
-      take: Number(limit)
-    });
-  }
+  // Exact match only for all criteria
+  const results = await prisma.sharedContent.findMany({
+    where: {
+      type: String(type).trim(),
+      subject: String(subject).trim(),
+      classLevel: String(classLevel).trim(),
+      topic: { equals: String(topic).trim(), mode: 'insensitive' },
+      subtopic: { equals: String(subtopic || '').trim(), mode: 'insensitive' },
+    },
+    orderBy: { usageCount: 'desc' },
+    take: Number(limit)
+  });
 
   res.json(formatResponse(true, 'Shared content retrieved', results));
 });

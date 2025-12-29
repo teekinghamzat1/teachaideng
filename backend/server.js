@@ -9,6 +9,9 @@ dotenv.config();
 
 const app = express();
 
+// Trust proxy for Nginx
+app.set('trust proxy', 1);
+
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -106,7 +109,7 @@ if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
         }
 
         console.log(`Server running on port ${PORT}`);
-    });
+    }).timeout = 300000;
 }
 
 // Export for Vercel serverless functions

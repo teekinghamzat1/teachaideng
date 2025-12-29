@@ -57,6 +57,7 @@ const protect = asyncHandler(async (req, res, next) => {
   }
 
   if (!token) {
+    console.warn(`[AUTH_BLOCKED] No token for ${req.originalUrl} from ${req.ip}`);
     res.status(401);
     throw new Error('Not authorized, no token');
   }
@@ -66,6 +67,7 @@ const admin = (req, res, next) => {
   if (req.user && (req.user.role.toLowerCase() === 'admin' || req.user.role.toLowerCase() === 'superadmin') && !req.user.isSchoolAdmin) {
     next();
   } else {
+    console.warn(`[ADMIN_BLOCKED] User ${req.user?.email || 'Unknown'} (Role: ${req.user?.role}) blocked from ${req.originalUrl}`);
     res.status(401);
     throw new Error('Not authorized as an admin');
   }

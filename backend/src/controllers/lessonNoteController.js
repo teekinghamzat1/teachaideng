@@ -17,6 +17,7 @@ const parseNote = (note) => {
 // @desc    Create a lesson note
 // @route   POST /api/notes
 // @access  Private
+const usageService = require('../services/usageService');
 const { createUsageLog, checkWeeklyLessonLimit } = require('../utils/usage');
 
 const createNote = asyncHandler(async (req, res) => {
@@ -25,15 +26,6 @@ const createNote = asyncHandler(async (req, res) => {
         references, objectives, instructionalMaterials, previousKnowledge,
         introduction, lessonContent, presentation, evaluation, assignment, conclusion
     } = req.body;
-
-    // If this note is an AI-generated note, enforce dynamic limits
-    if (req.body && req.body.generatedByAI) {
-        const canGen = await usageService.canGenerateLesson(req.user.id);
-        if (!canGen.canGenerate) {
-            res.status(403);
-            return res.json(formatResponse(false, canGen.reason));
-        }
-    }
 
     // Check for duplicates before creating
     const existingNote = await prisma.lessonNote.findFirst({

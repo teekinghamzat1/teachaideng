@@ -46,15 +46,29 @@ export const generateLessonNote = async (
     const data = await response.json();
 
     if (!response.ok) {
-      // Pass through specific error messages from backend (like Limit Reached)
       throw new Error(data.message || "Failed to generate lesson note");
     }
 
-    // Backend returns { success: true, message: 'Generated', data: { text: ..., usage: ... } }
     const resultData = data.data || data;
+    let parsedNote: any = resultData.text ? JSON.parse(resultData.text) : resultData;
 
-    // Parse the text JSON string from GenAI
-    return resultData.text ? JSON.parse(resultData.text) : resultData;
+    // Ensure metadata from the request is preserved (AI might omit it)
+    const normalizedNote: LessonNote = {
+      ...parsedNote,
+      topic: parsedNote.topic || topic,
+      subject: parsedNote.subject || subject,
+      classLevel: parsedNote.classLevel || classLevel,
+      subtopic: parsedNote.subtopic || subtopic || "",
+      duration: parsedNote.duration || duration || "40 minutes",
+      // Normalize array fields in case AI returns strings instead of arrays
+      objectives: Array.isArray(parsedNote.objectives) ? parsedNote.objectives : [],
+      references: Array.isArray(parsedNote.references) ? parsedNote.references : [],
+      evaluation: Array.isArray(parsedNote.evaluation) ? parsedNote.evaluation : [],
+      instructionalMaterials: Array.isArray(parsedNote.instructionalMaterials) ? parsedNote.instructionalMaterials : [],
+      presentation: Array.isArray(parsedNote.presentation) ? parsedNote.presentation : [],
+    };
+
+    return normalizedNote;
 
   } catch (error: any) {
     console.error("Error generating lesson note:", error);

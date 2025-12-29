@@ -25,7 +25,11 @@ const createNoteSchema = z.object({
         previousKnowledge: z.string().optional(),
         introduction: z.string().optional(),
         lessonContent: z.string().optional(),
-        presentation: z.array(z.string()).optional(),
+        presentation: z.array(z.object({
+            step: z.string(),
+            teacherActivity: z.string(),
+            pupilActivity: z.string()
+        })).optional(),
         evaluation: z.array(z.string()).optional(),
         assignment: z.string().optional(),
         conclusion: z.string().optional(),
