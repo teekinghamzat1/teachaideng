@@ -108,8 +108,8 @@ const updateTeacherStatus = asyncHandler(async (req, res) => {
     throw new Error('Teacher not found in this school');
   }
 
-  await prisma.user.update({
-    where: { id: req.params.id },
+  await prisma.user.updateMany({
+    where: { id: req.params.id, schoolId: schoolId },
     data: { teacherStatus }
   });
 
@@ -134,7 +134,7 @@ const removeTeacher = asyncHandler(async (req, res) => {
     throw new Error('Teacher not found');
   }
 
-  await prisma.user.delete({ where: { id: req.params.id } });
+  await prisma.user.deleteMany({ where: { id: req.params.id, schoolId: schoolId } });
 
   await createAdminLog(req.user.id, schoolId, 'REMOVE_TEACHER', {
     teacherId: req.params.id,
@@ -159,8 +159,8 @@ const toggleTeacherAdmin = asyncHandler(async (req, res) => {
     throw new Error('Teacher not found');
   }
 
-  await prisma.user.update({
-    where: { id: req.params.id },
+  await prisma.user.updateMany({
+    where: { id: req.params.id, schoolId: schoolId },
     data: { isSchoolAdmin: isAdmin }
   });
 
@@ -203,8 +203,8 @@ const updateTeacherLimit = asyncHandler(async (req, res) => {
     throw new Error('Teacher not found');
   }
 
-  await prisma.user.update({
-    where: { id: req.params.id },
+  await prisma.user.updateMany({
+    where: { id: req.params.id, schoolId: schoolId },
     data: { monthlyLessonLimit: parseInt(monthlyLessonLimit) }
   });
 
