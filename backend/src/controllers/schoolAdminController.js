@@ -51,46 +51,57 @@ const getSchoolDetails = asyncHandler(async (req, res) => {
 // @desc    Add teacher to school
 // @route   POST /api/school-admin/teachers
 const addTeacher = asyncHandler(async (req, res) => {
-  const { name, email, gender } = req.body;
-  const schoolId = req.user.schoolId;
+    const { name, email, gender } = req.body;
+    const schoolId = req.user.schoolId;
 
-  const school = await prisma.school.findUnique({
-    where: { id: schoolId },
-    include: { teachers: true }
-  });
+    const tempPassword = Math.random().toString(36).slice(-8);
+    const hashedPassword = await bcrypt.hash(tempPassword, 10);
 
-  if (school.teachers.length >= school.teacherLimit) {
-    res.status(400);
-    throw new Error('Teacher limit reached for this school.');
-  }
+    const teacher = await prisma.$transaction(async (tx) => {
+        const school = await tx.school.findUnique({
+            where: { id: schoolId },
+            include: { teachers: { select: { id: true } } }, // Select only IDs for efficiency
+        });
 
-  const existingUser = await prisma.user.findUnique({ where: { email } });
-  if (existingUser) {
-    res.status(400);
-    throw new Error('User with this email already exists.');
-  }
+        if (!school) {
+            // This case should ideally not be hit if isSchoolAdmin middleware is effective
+            res.status(404);
+            throw new Error('School not found.');
+        }
 
-  const tempPassword = Math.random().toString(36).slice(-8);
-  const hashedPassword = await bcrypt.hash(tempPassword, 10);
+        if (school.teachers.length >= school.teacherLimit) {
+            res.status(400);
+            throw new Error('Teacher limit reached for this school.');
+        }
 
-  const teacher = await prisma.user.create({
-    data: {
-      name,
-      email,
-      password: hashedPassword,
-      role: 'teacher',
-      schoolId,
-      teacherStatus: 'Invited',
-      subscriptionPlan: 'School'
-    }
-  });
+        const existingUser = await tx.user.findUnique({ where: { email } });
+        if (existingUser) {
+            res.status(400);
+            throw new Error('User with this email already exists.');
+        }
 
-  await createAdminLog(req.user.id, schoolId, 'ADD_TEACHER', { email, name });
+        const newTeacher = await tx.user.create({
+            data: {
+                name,
+                email,
+                password: hashedPassword,
+                role: 'teacher',
+                schoolId,
+                teacherStatus: 'Invited',
+                subscriptionPlan: 'School',
+                // gender can be added to prisma schema if needed
+            },
+        });
 
-  res.status(201).json(formatResponse(true, 'Teacher invited', {
-    teacher: { id: teacher.id, name, email },
-    tempPassword
-  }));
+        return newTeacher;
+    });
+
+    await createAdminLog(req.user.id, schoolId, 'ADD_TEACHER', { email, name });
+
+    res.status(201).json(formatResponse(true, 'Teacher invited', {
+        teacher: { id: teacher.id, name: teacher.name, email: teacher.email },
+        tempPassword,
+    }));
 });
 
 // @desc    Update teacher status
