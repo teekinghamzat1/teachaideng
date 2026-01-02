@@ -46,7 +46,7 @@ const Result: React.FC = () => {
     }, []);
 
     const stripMarkdown = (text: string | null | undefined): string => {
-        if (!text) return '';
+        if (!text || typeof text !== 'string') return '';
         return text
             .replace(/\*\*(.*?)\*\*/g, '$1')
             .replace(/__(.*?)__/g, '$1')

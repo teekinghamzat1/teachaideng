@@ -14,26 +14,27 @@ const { z } = require('zod');
 const createNoteSchema = z.object({
     body: z.object({
         topic: z.string().min(1),
-        subtopic: z.string().optional(),
+        subtopic: z.string().optional().nullable(),
         classLevel: z.string().min(1),
         subject: z.string().min(1),
-        duration: z.string().optional(),
-        date: z.string().optional(),
-        references: z.array(z.string()).optional(),
-        objectives: z.array(z.string()).optional(),
-        instructionalMaterials: z.array(z.string()).optional(),
-        previousKnowledge: z.string().optional(),
-        introduction: z.string().optional(),
-        lessonContent: z.string().optional(),
+        duration: z.string().optional().nullable(),
+        date: z.string().optional().nullable(),
+        references: z.array(z.string()).optional().nullable(),
+        objectives: z.array(z.string()).optional().nullable(),
+        instructionalMaterials: z.array(z.string()).optional().nullable(),
+        previousKnowledge: z.string().optional().nullable(),
+        introduction: z.string().optional().nullable(),
+        lessonContent: z.string().optional().nullable(),
         presentation: z.array(z.object({
-            step: z.string(),
-            teacherActivity: z.string(),
-            pupilActivity: z.string()
-        })).optional(),
-        evaluation: z.array(z.string()).optional(),
-        assignment: z.string().optional(),
-        conclusion: z.string().optional(),
+            step: z.string().optional().nullable(),
+            teacherActivity: z.string().optional().nullable(),
+            pupilActivity: z.string().optional().nullable()
+        })).optional().nullable(),
+        evaluation: z.array(z.string()).optional().nullable(),
+        assignment: z.string().optional().nullable(),
+        conclusion: z.string().optional().nullable(),
         generatedByAI: z.boolean().optional(),
+        schoolId: z.string().optional().nullable(),
     }),
 });
 

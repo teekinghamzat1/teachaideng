@@ -7,8 +7,7 @@ const formatResponse = require('../utils/formatResponse');
 // @access  Public
 const getBrandingSettings = asyncHandler(async (req, res) => {
     try {
-        const settings = await prisma.systemSetting.findUnique({
-            where: { id: 1 },
+        const settings = await prisma.systemSetting.findFirst({
             select: {
                 siteName: true,
                 siteTagline: true,

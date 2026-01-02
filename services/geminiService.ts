@@ -50,7 +50,25 @@ export const generateLessonNote = async (
     }
 
     const resultData = data.data || data;
-    let parsedNote: any = resultData.text ? JSON.parse(resultData.text) : resultData;
+
+    // Helper to clean JSON string from Markdown code blocks
+    const cleanJson = (str: string) => {
+      if (typeof str !== 'string') return str;
+      return str.replace(/```json\s*|\s*```/g, '').trim();
+    };
+
+    let parsedNote: any;
+    if (resultData.text && typeof resultData.text === 'string') {
+      try {
+        parsedNote = JSON.parse(cleanJson(resultData.text));
+      } catch (e) {
+        console.error("JSON parse error:", e);
+        console.log("Raw text:", resultData.text);
+        throw new Error("Failed to parse AI response. Please try again.");
+      }
+    } else {
+      parsedNote = resultData;
+    }
 
     // Ensure metadata from the request is preserved (AI might omit it)
     const normalizedNote: LessonNote = {
@@ -66,6 +84,22 @@ export const generateLessonNote = async (
       evaluation: Array.isArray(parsedNote.evaluation) ? parsedNote.evaluation : [],
       instructionalMaterials: Array.isArray(parsedNote.instructionalMaterials) ? parsedNote.instructionalMaterials : [],
       presentation: Array.isArray(parsedNote.presentation) ? parsedNote.presentation : [],
+      // Normalize string fields in case AI returns them as arrays
+      lessonContent: Array.isArray(parsedNote.lessonContent)
+        ? parsedNote.lessonContent.join('\n\n')
+        : (parsedNote.lessonContent || ''),
+      previousKnowledge: Array.isArray(parsedNote.previousKnowledge)
+        ? parsedNote.previousKnowledge.join('\n\n')
+        : (parsedNote.previousKnowledge || ''),
+      introduction: Array.isArray(parsedNote.introduction)
+        ? parsedNote.introduction.join('\n\n')
+        : (parsedNote.introduction || ''),
+      assignment: Array.isArray(parsedNote.assignment)
+        ? parsedNote.assignment.join('\n\n')
+        : (parsedNote.assignment || ''),
+      conclusion: Array.isArray(parsedNote.conclusion)
+        ? parsedNote.conclusion.join('\n\n')
+        : (parsedNote.conclusion || ''),
     };
 
     return normalizedNote;
@@ -113,7 +147,8 @@ export const generateAssessment = async (
     let assessmentData;
     if (resultData.text && typeof resultData.text === 'string') {
       try {
-        assessmentData = JSON.parse(resultData.text);
+        const cleanJson = (str: string) => str.replace(/```json\s*|\s*```/g, '').trim();
+        assessmentData = JSON.parse(cleanJson(resultData.text));
       } catch (e) {
         console.error("JSON parse error in assessment", e);
         // Fallback or attempt to extract JSON if needed

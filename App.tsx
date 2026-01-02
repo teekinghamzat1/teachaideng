@@ -48,7 +48,7 @@ const App: React.FC = () => {
 
   return (
     <BrandingProvider>
-      <Router>
+      <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <Routes>
           {/* Main Application Routes */}
           <Route path="/" element={<Layout><Home /></Layout>} />

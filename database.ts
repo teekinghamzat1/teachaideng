@@ -70,6 +70,11 @@ const handleResponse = async (response: Response) => {
       throw new Error('Server limit exceeded or timeout (504). Please try again in 30 seconds.');
     }
     const errorData = await response.json().catch(() => ({}));
+    if (errorData.errors) {
+      console.error('Validation Errors:', errorData.errors);
+      const detailedMessage = errorData.errors.map((e: any) => `${e.path.join('.')}: ${e.message}`).join(', ');
+      throw new Error(`${errorData.message}: ${detailedMessage}`);
+    }
     throw new Error(errorData.message || 'API Error');
   }
 
@@ -352,7 +357,29 @@ export const db = {
   notes: {
     async save(note: LessonNote): Promise<{ success: boolean; message: string; data: LessonNote }> {
       const user = JSON.parse(localStorage.getItem('teachaide_session') || '{}');
-      const payload = { ...note, schoolId: user.schoolId };
+
+      // Normalize the note to ensure all fields match expected types
+      const normalizedNote = {
+        ...note,
+        // Convert array fields to strings if needed
+        lessonContent: Array.isArray(note.lessonContent)
+          ? note.lessonContent.join('\n\n')
+          : note.lessonContent,
+        previousKnowledge: Array.isArray(note.previousKnowledge)
+          ? note.previousKnowledge.join('\n\n')
+          : note.previousKnowledge,
+        introduction: Array.isArray(note.introduction)
+          ? note.introduction.join('\n\n')
+          : note.introduction,
+        assignment: Array.isArray(note.assignment)
+          ? note.assignment.join('\n\n')
+          : note.assignment,
+        conclusion: Array.isArray(note.conclusion)
+          ? note.conclusion.join('\n\n')
+          : note.conclusion,
+      };
+
+      const payload = { ...normalizedNote, schoolId: user.schoolId };
       const response = await fetch(`${API_URL}/notes`, {
         method: 'POST',
         headers: {
