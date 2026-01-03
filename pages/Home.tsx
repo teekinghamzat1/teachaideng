@@ -12,6 +12,16 @@ interface Testimonial {
   avatarUrl?: string;
 }
 
+interface BlogPostStub {
+  id: string;
+  title: string;
+  slug: string;
+  summary: string;
+  image: string;
+  author: string;
+  createdAt: string;
+}
+
 const Home: React.FC = () => {
   const user = db.auth.getCurrentUser();
 
@@ -20,29 +30,29 @@ const Home: React.FC = () => {
       {/* Hero Section */}
       <section className="relative overflow-hidden bg-white dark:bg-slate-900 pt-16 pb-20 lg:pt-24 lg:pb-28">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
-            <span className="inline-block py-1 px-3 rounded-full bg-brand-50 text-brand-700 text-sm font-semibold mb-6 border border-brand-100">
-              For Nigerian Teachers & Students
-            </span>
-            <h1 className="text-4xl tracking-tight font-extrabold text-slate-900 dark:text-slate-100 sm:text-5xl md:text-6xl mb-6">
-              Generate Lesson Notes in <span className="text-brand-600">Seconds</span>
-            </h1>
-            <p className="mt-4 max-w-2xl mx-auto text-xl text-slate-500 dark:text-slate-300">
-              Stop spending hours writing notes by hand. Create standard, Ministry-compliant lesson notes, classwork, and exam questions instantly with AI.
-            </p>
-            <div className="mt-10 flex justify-center gap-4">
-              <Link
-                to={user ? "/generator" : "/login"}
-                className="inline-flex items-center px-8 py-3 border border-transparent text-base font-medium rounded-full shadow-lg text-white bg-brand-600 hover:bg-brand-700 hover:shadow-xl transition-all transform hover:-translate-y-1"
-              >
-                Start Generating <ArrowRight className="ml-2 w-5 h-5" />
-              </Link>
-              <Link
-                to="/pricing"
-                className="inline-flex items-center px-8 py-3 border border-slate-300 text-base font-medium rounded-full text-slate-700 bg-white dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
-              >
-                View Pricing
-              </Link>
-            </div>
+          <span className="inline-block py-1 px-3 rounded-full bg-brand-50 text-brand-700 text-sm font-semibold mb-6 border border-brand-100">
+            For Nigerian Teachers & Students
+          </span>
+          <h1 className="text-4xl tracking-tight font-extrabold text-slate-900 dark:text-slate-100 sm:text-5xl md:text-6xl mb-6">
+            Generate Lesson Notes in <span className="text-brand-600">Seconds</span>
+          </h1>
+          <p className="mt-4 max-w-2xl mx-auto text-xl text-slate-500 dark:text-slate-300">
+            Stop spending hours writing notes by hand. Create standard, Ministry-compliant lesson notes, classwork, and exam questions instantly with AI.
+          </p>
+          <div className="mt-10 flex justify-center gap-4">
+            <Link
+              to={user ? "/generator" : "/login"}
+              className="inline-flex items-center px-8 py-3 border border-transparent text-base font-medium rounded-full shadow-lg text-white bg-brand-600 hover:bg-brand-700 hover:shadow-xl transition-all transform hover:-translate-y-1"
+            >
+              Start Generating <ArrowRight className="ml-2 w-5 h-5" />
+            </Link>
+            <Link
+              to="/pricing"
+              className="inline-flex items-center px-8 py-3 border border-slate-300 text-base font-medium rounded-full text-slate-700 bg-white dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+            >
+              View Pricing
+            </Link>
+          </div>
         </div>
 
         {/* Abstract Background Shapes */}
@@ -54,46 +64,46 @@ const Home: React.FC = () => {
       <section className="py-16 bg-slate-50 dark:bg-slate-900">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl overflow-hidden border border-slate-200 dark:border-slate-700">
-             <div className="bg-slate-100 dark:bg-slate-700 px-4 py-3 border-b border-slate-200 dark:border-slate-700 flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-red-400"></div>
-                <div className="w-3 h-3 rounded-full bg-yellow-400"></div>
-                <div className="w-3 h-3 rounded-full bg-green-400"></div>
-                <span className="ml-4 text-xs font-mono text-slate-500">Lesson_Note_Preview.pdf</span>
-             </div>
-             <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="space-y-4">
-                    <div className="h-4 bg-slate-100 dark:bg-slate-700 rounded w-3/4"></div>
-                      <div className="h-4 bg-slate-100 dark:bg-slate-700 rounded w-1/2"></div>
-                    <div className="h-32 bg-slate-50 dark:bg-slate-800 rounded border border-slate-100 dark:border-slate-700 p-4 space-y-2">
-                        <div className="h-3 bg-slate-200 dark:bg-slate-600 rounded w-full"></div>
-                        <div className="h-3 bg-slate-200 dark:bg-slate-600 rounded w-full"></div>
-                        <div className="h-3 bg-slate-200 dark:bg-slate-600 rounded w-5/6"></div>
-                    </div>
-                     <div className="h-4 bg-slate-100 dark:bg-slate-700 rounded w-1/3"></div>
-                     <div className="h-20 bg-slate-50 dark:bg-slate-800 rounded border border-slate-100 dark:border-slate-700"></div>
+            <div className="bg-slate-100 dark:bg-slate-700 px-4 py-3 border-b border-slate-200 dark:border-slate-700 flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-red-400"></div>
+              <div className="w-3 h-3 rounded-full bg-yellow-400"></div>
+              <div className="w-3 h-3 rounded-full bg-green-400"></div>
+              <span className="ml-4 text-xs font-mono text-slate-500">Lesson_Note_Preview.pdf</span>
+            </div>
+            <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="space-y-4">
+                <div className="h-4 bg-slate-100 dark:bg-slate-700 rounded w-3/4"></div>
+                <div className="h-4 bg-slate-100 dark:bg-slate-700 rounded w-1/2"></div>
+                <div className="h-32 bg-slate-50 dark:bg-slate-800 rounded border border-slate-100 dark:border-slate-700 p-4 space-y-2">
+                  <div className="h-3 bg-slate-200 dark:bg-slate-600 rounded w-full"></div>
+                  <div className="h-3 bg-slate-200 dark:bg-slate-600 rounded w-full"></div>
+                  <div className="h-3 bg-slate-200 dark:bg-slate-600 rounded w-5/6"></div>
                 </div>
-                <div className="flex flex-col justify-center items-start space-y-4">
-                  <h3 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Standard Structure</h3>
-                    <ul className="space-y-3">
-                    <li className="flex items-center text-slate-600 dark:text-slate-300">
-                            <CheckCircle className="w-5 h-5 text-brand-500 mr-2" />
-                            Behavioural Objectives
-                        </li>
-                    <li className="flex items-center text-slate-600 dark:text-slate-300">
-                            <CheckCircle className="w-5 h-5 text-brand-500 mr-2" />
-                            Instructional Materials
-                        </li>
-                    <li className="flex items-center text-slate-600 dark:text-slate-300">
-                            <CheckCircle className="w-5 h-5 text-brand-500 mr-2" />
-                            Presentation Steps (Teacher/Pupil)
-                        </li>
-                    <li className="flex items-center text-slate-600 dark:text-slate-300">
-                            <CheckCircle className="w-5 h-5 text-brand-500 mr-2" />
-                            Evaluation & Assignments
-                        </li>
-                    </ul>
-                </div>
-             </div>
+                <div className="h-4 bg-slate-100 dark:bg-slate-700 rounded w-1/3"></div>
+                <div className="h-20 bg-slate-50 dark:bg-slate-800 rounded border border-slate-100 dark:border-slate-700"></div>
+              </div>
+              <div className="flex flex-col justify-center items-start space-y-4">
+                <h3 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Standard Structure</h3>
+                <ul className="space-y-3">
+                  <li className="flex items-center text-slate-600 dark:text-slate-300">
+                    <CheckCircle className="w-5 h-5 text-brand-500 mr-2" />
+                    Behavioural Objectives
+                  </li>
+                  <li className="flex items-center text-slate-600 dark:text-slate-300">
+                    <CheckCircle className="w-5 h-5 text-brand-500 mr-2" />
+                    Instructional Materials
+                  </li>
+                  <li className="flex items-center text-slate-600 dark:text-slate-300">
+                    <CheckCircle className="w-5 h-5 text-brand-500 mr-2" />
+                    Presentation Steps (Teacher/Pupil)
+                  </li>
+                  <li className="flex items-center text-slate-600 dark:text-slate-300">
+                    <CheckCircle className="w-5 h-5 text-brand-500 mr-2" />
+                    Evaluation & Assignments
+                  </li>
+                </ul>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -129,7 +139,7 @@ const Home: React.FC = () => {
                 desc: 'Build and organize your teaching schedule and export it as a document.',
                 icon: Calendar
               },
-               {
+              {
                 title: 'Audio Lessons (TTS)',
                 desc: 'Listen to your lesson notes read aloud for better accessibility and review.',
                 icon: Volume
@@ -161,11 +171,30 @@ const Home: React.FC = () => {
         </div>
       </section>
 
+      {/* Latest Blog Posts */}
+      <section className="py-20 bg-slate-50 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-end mb-12">
+            <div>
+              <h2 className="text-3xl font-extrabold text-slate-900 dark:text-white">Latest from our Blog</h2>
+              <p className="mt-2 text-slate-500 dark:text-slate-400">Insights, teaching tips, and updates.</p>
+            </div>
+            <Link to="/blog" className="hidden sm:inline-flex items-center text-brand-600 font-medium hover:text-brand-700">
+              View all posts <ArrowRight className="ml-1 w-4 h-4" />
+            </Link>
+          </div>
+          <LatestPostsBlock />
+          <div className="mt-8 text-center sm:hidden">
+            <Link to="/blog" className="text-brand-600 font-medium hover:text-brand-700">View all posts &rarr;</Link>
+          </div>
+        </div>
+      </section>
+
       {/* Testimonials */}
       <section className="bg-brand-900 py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <h2 className="text-3xl font-extrabold text-white mb-12">Loved by Nigerian Teachers</h2>
-            <TestimonialsBlock />
+          <h2 className="text-3xl font-extrabold text-white mb-12">Loved by Nigerian Teachers</h2>
+          <TestimonialsBlock />
         </div>
       </section>
     </div>
@@ -207,6 +236,96 @@ const TestimonialsBlock: React.FC = () => {
             <p className="text-brand-100 italic mb-4">"{t.content}"</p>
             <p className="text-white font-bold">{t.name}{t.role ? `, ${t.role}` : ''}</p>
             {t.organization && <p className="text-brand-200 text-sm">{t.organization}</p>}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+const LatestPostsBlock: React.FC = () => {
+  const [posts, setPosts] = useState<BlogPostStub[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+    const fetchPosts = async () => {
+      try {
+        const response = await fetch('/api/blog');
+        if (response.ok) {
+          const data = await response.json();
+          if (mounted) {
+            // Take only first 3
+            setPosts(Array.isArray(data) ? data.slice(0, 3) : []);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch posts');
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+    fetchPosts();
+    return () => { mounted = false; };
+  }, []);
+
+  if (loading) return <div className="flex justify-center p-12"><Loader2 className="w-8 h-8 animate-spin text-brand-600" /></div>;
+
+  // Fallback if no posts
+  const displayPosts = posts.length > 0 ? posts : [
+    {
+      id: '1', title: 'Why Every Nigerian Teacher Needs AI Lesson Notes', slug: 'why-every-teacher-needs-ai',
+      summary: 'Discover how AI is revolutionizing classroom preparation in Nigeria.',
+      image: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&q=80&w=600', author: 'Teachaide Team', createdAt: new Date().toISOString()
+    },
+    {
+      id: '2', title: 'Maximizing Student Engagement with Technology', slug: 'student-engagement-tech',
+      summary: 'Practical tips for using technology to keep students focused and interested.',
+      image: 'https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&q=80&w=600', author: 'Teeking Hamzat', createdAt: new Date().toISOString()
+    },
+    {
+      id: '3', title: 'The Future of Education: 2025 and Beyond', slug: 'future-education-2025',
+      summary: 'What trends should educators look out for in the coming years?',
+      image: 'https://images.unsplash.com/photo-1497633762265-9d179a990aa6?auto=format&fit=crop&q=80&w=600', author: 'Sarah Johnson', createdAt: new Date().toISOString()
+    }
+  ];
+
+  return (
+    <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+      {displayPosts.map((post) => (
+        <div key={post.id} className="flex flex-col rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300 overflow-hidden bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700">
+          <Link to={`/blog/${post.slug}`} className="block h-48 overflow-hidden group">
+            <img
+              src={post.image || `https://source.unsplash.com/random/800x600?education,${post.id}`}
+              alt={post.title}
+              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+              onError={(e) => { (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1497633762265-9d179a990aa6?auto=format&fit=crop&q=80&w=600'; }}
+            />
+          </Link>
+          <div className="p-6 flex-1 flex flex-col">
+            <div className="flex-1">
+              <Link to={`/blog/${post.slug}`} className="block">
+                <h3 className="text-xl font-bold text-slate-900 dark:text-white hover:text-brand-600 transition-colors line-clamp-2">
+                  {post.title}
+                </h3>
+                <p className="mt-3 text-sm text-slate-500 dark:text-slate-400 line-clamp-3">
+                  {post.summary}
+                </p>
+              </Link>
+            </div>
+            <div className="mt-6 flex items-center">
+              <div className="flex-shrink-0">
+                <div className="h-8 w-8 rounded-full bg-brand-100 dark:bg-slate-700 flex items-center justify-center">
+                  <span className="font-bold text-brand-700 dark:text-brand-400 text-xs">{post.author.charAt(0)}</span>
+                </div>
+              </div>
+              <div className="ml-3">
+                <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{post.author}</p>
+                <div className="flex space-x-1 text-xs text-slate-500 dark:text-slate-400">
+                  <time dateTime={post.createdAt}>{new Date(post.createdAt).toLocaleDateString()}</time>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       ))}
