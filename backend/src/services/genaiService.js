@@ -89,27 +89,46 @@ LESSON TYPE HANDLING (CRITICAL LOGIC):
    - If the lesson type is Normal Lesson, teach the topic according to the selected class level.
    - Adjust depth automatically.
    - No unnecessary complexity for lower classes.
+   - Generate complete lesson content with all sections filled.
 
 2. Vocabulary / New Words (Pre-Comprehension Lesson):
-   - This lesson type is mainly for Primary classes.
-   - You must NOT ask for a comprehension passage.
-   - You must NOT request a textbook reference.
-   - You must generate vocabulary based on the topic or theme provided.
-   - Generate 5–8 simple new words (depending on class level)
-   - Provide simple meanings written in child-friendly language
-   - Include very simple sentences using the words
-   - Primary 1–2: very short sentences, very common words.
-   - Primary 3–6: slightly richer words and clearer sentences.
-   - Purpose: This lesson prepares pupils for a comprehension passage they will read later.
+   IMPORTANT: This is a TWO-PART lesson that must be structured in this EXACT order:
+   
+   PART A - Vocabulary Development (New Words):
+   - First, generate a comprehension passage based on the topic/theme provided
+   - Then, identify 5-8 words FROM THE PASSAGE that are likely new to learners at this class level
+   - For each new word, provide:
+     * The word itself
+     * Simple, child-friendly meaning
+     * An example sentence using the word
+   - Primary 1–2: very simple words, very short sentences
+   - Primary 3–6: slightly richer vocabulary, clearer sentences
+   
+   PART B - Comprehension Passage:
+   - Include the FULL comprehension passage immediately after the vocabulary section
+   - The passage must be the SAME passage from which you extracted the new words
+   - Passage length must match class level (Primary = short, JSS/SSS = longer)
+   
+   PART C - Teacher Hint:
+   - Add this exact note in the lessonContent or presentation section:
+     "TEACHER NOTE: Teach the new words first (Day 1). Then read the Comprehension Passage with learners (Day 2)."
+   
+   CRITICAL: The new words MUST come from the passage, NOT from the topic title.
+   CRITICAL: All three parts (Vocabulary, Passage, Teacher Hint) must be grouped together.
+   CRITICAL: Ensure all sections contain actual content - no empty sections.
 
 3. Comprehension Lesson:
    - Generate a comprehension passage appropriate for the class level
-   - Include comprehension questions
+   - Extract 5-8 new words FROM THE PASSAGE (not from the topic)
+   - For each word: provide meaning and example sentence
+   - Include comprehension questions based on the passage
    - Provide possible answers or marking guide
-   - Passage length must match class level.
-   - Language must be age-appropriate.
-   - Primary comprehension passages must be short and simple.
-   - JSS and SSS passages may be longer and more complex.
+   - Add teacher hint: "Teach the new words first (Day 1). Then read the passage with learners (Day 2)."
+   - Passage length must match class level
+   - Language must be age-appropriate
+   - Primary: short and simple passages
+   - JSS and SSS: longer and more complex passages
+   - Ensure ALL sections have complete content
 
 SUBJECT-SPECIFIC INTELLIGENCE:
 For subjects like English Language, Mathematics, Basic Science, Social Studies, Civic Education, CRS/IRS:
@@ -137,6 +156,17 @@ Date Context: Today is ${today}.
 
 FORMATTING RULES:
 - DO NOT use markdown formatting. Return raw JSON ONLY.
+- ALL fields must contain actual content. NO empty strings or missing sections.
+
+SPECIAL FORMATTING FOR VOCABULARY / COMPREHENSION LESSONS:
+When Lesson Type is "Vocabulary / New Words" or "Comprehension":
+- The "lessonContent" field MUST contain ALL THREE PARTS in this order:
+  1. VOCABULARY DEVELOPMENT (NEW WORDS) - List all words with meanings and examples
+  2. COMPREHENSION PASSAGE - The full passage text
+  3. TEACHER NOTE - "Teach the new words first (Day 1). Then read the Comprehension Passage with learners (Day 2)."
+- The "presentation" array should include steps for teaching the words, then reading the passage
+- The "evaluation" should include comprehension questions based on the passage
+- Ensure the passage and vocabulary are from the SAME content
 
 The JSON object must have ONLY the following fields:
 - subject, topic, subtopic, classLevel, duration, date, objectives, references, instructionalMaterials, previousKnowledge, introduction, lessonContent, presentation (array of {step, teacherActivity, pupilActivity}), evaluation, conclusion, assignment.`;
