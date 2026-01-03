@@ -22,7 +22,8 @@ const Generator: React.FC = () => {
     classLevel: '',
     topic: '',
     subtopic: '',
-    duration: '40 minutes'
+    duration: '40 minutes',
+    lessonType: 'Normal Lesson'
   });
 
   useEffect(() => {
@@ -97,6 +98,7 @@ const Generator: React.FC = () => {
         formData.classLevel,
         formData.duration,
         formData.subtopic,
+        formData.lessonType,
         userPlan,
         limitReached
       );
@@ -187,6 +189,7 @@ const Generator: React.FC = () => {
         formData.classLevel,
         formData.duration,
         formData.subtopic,
+        formData.lessonType,
         userPlan,
         limitReached
       );
@@ -284,8 +287,50 @@ const Generator: React.FC = () => {
               </div>
             </div>
 
+            {/* Lesson Type - Smart UI Logic */}
             <div>
-              <label htmlFor="topic" className="block text-sm font-medium text-slate-700">Topic Area / Main Subject</label>
+              <label htmlFor="lessonType" className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                Lesson Type
+              </label>
+              <select
+                id="lessonType"
+                name="lessonType"
+                value={formData.lessonType}
+                onChange={handleChange}
+                className="mt-1 block w-full pl-3 pr-10 py-3 text-base border-slate-300 focus:outline-none focus:ring-brand-500 focus:border-brand-500 sm:text-sm rounded-lg border bg-slate-50 dark:bg-slate-700 dark:text-slate-100 dark:border-slate-700"
+              >
+                <option value="Normal Lesson">Normal Lesson</option>
+                {/* Show Vocabulary for Primary and JSS */}
+                {(formData.classLevel.includes('Primary') || formData.classLevel.includes('JSS')) && (
+                  <option value="Vocabulary / New Words">Vocabulary / New Words</option>
+                )}
+                <option value="Comprehension">Comprehension</option>
+              </select>
+
+              {/* Smart Hints Based on Class Level and Lesson Type */}
+              {formData.classLevel.includes('Primary') && formData.lessonType === 'Vocabulary / New Words' && (
+                <p className="mt-2 text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-3 py-2 rounded-md border border-blue-200 dark:border-blue-800">
+                  💡 Perfect for Monday lessons! This prepares pupils for comprehension passages they'll read later.
+                </p>
+              )}
+
+              {formData.classLevel.includes('SSS') && formData.lessonType === 'Normal Lesson' && (
+                <p className="mt-2 text-xs text-slate-600 dark:text-slate-400">
+                  Full academic treatment suitable for WAEC/NECO preparation
+                </p>
+              )}
+
+              {formData.lessonType === 'Comprehension' && (
+                <p className="mt-2 text-xs text-slate-600 dark:text-slate-400">
+                  AI will generate a passage, questions, and marking guide appropriate for {formData.classLevel || 'the selected class'}
+                </p>
+              )}
+            </div>
+
+            <div>
+              <label htmlFor="topic" className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                {formData.lessonType === 'Vocabulary / New Words' ? 'Theme / Topic Area' : 'Topic'}
+              </label>
               <div className="mt-1">
                 <input
                   type="text"
@@ -293,7 +338,13 @@ const Generator: React.FC = () => {
                   id="topic"
                   required
                   className="shadow-sm focus:ring-brand-500 focus:border-brand-500 block w-full sm:text-sm border-slate-300 rounded-lg py-3 px-4 border bg-slate-50 dark:bg-slate-700 dark:text-slate-100 dark:border-slate-700"
-                  placeholder="e.g., Noun, Solar System, Fractions"
+                  placeholder={
+                    formData.lessonType === 'Vocabulary / New Words'
+                      ? 'e.g., At the Market, My School, Animals'
+                      : formData.lessonType === 'Comprehension'
+                        ? 'e.g., The Farmer and His Sons, Our Environment'
+                        : 'e.g., Noun, Solar System, Fractions'
+                  }
                   value={formData.topic}
                   onChange={handleChange}
                 />

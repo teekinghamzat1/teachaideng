@@ -19,6 +19,7 @@ export const generateLessonNote = async (
   classLevel: string,
   duration: string = "40 minutes",
   subtopic: string = "",
+  lessonType: string = "Normal Lesson",
   userPlan: 'Free' | 'Pro' | 'School' = 'Free',
   limitReached: boolean = false
 ): Promise<LessonNote> => {
@@ -39,7 +40,8 @@ export const generateLessonNote = async (
         subject,
         classLevel,
         duration,
-        subtopic
+        subtopic,
+        lessonType
       }),
     });
 
