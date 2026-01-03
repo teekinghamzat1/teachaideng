@@ -13,6 +13,8 @@ Visit your live API health endpoint in a browser:
   - The deployment FAILED or the server didn't restart. Proceed to Step 2.
 
 ## Step 2: Manual Fix on VPS (SSH)
+**UPDATE:** I have successfully pushed the latest code (version `1.2.0`) to GitHub. It is ready to pull.
+
 Connect to your VPS via SSH and run these commands manually to force an update.
 
 1. **Navigate to the project folder:**
