@@ -139,7 +139,7 @@ METADATA HANDLING (CRITICAL):
      * Use User's Topic and Subtopic as provided.
 
 2. Reference Materials:
-   - If no specific book is known, use: ["TeachAide AI Generated Content"]
+   - If no specific book is known, use: ["TeachAide AI"]
    - Do NOT say "No specific references provided".
 
 3. Content Guarantee:
