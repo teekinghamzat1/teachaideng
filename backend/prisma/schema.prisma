@@ -451,3 +451,22 @@ model UsageLog {
   schoolId String?
   school   School? @relation(fields: [schoolId], references: [id])
 }
+
+model BlogPost {
+  id        String   @id @default(uuid())
+  title     String
+  slug      String   @unique
+  content   String   // Markdown or HTML
+  summary   String?
+  image     String?  // Cover image URL
+  author    String   // Author name
+  published Boolean  @default(false)
+  
+  // SEO fields
+  metaTitle       String?
+  metaDescription String?
+  keywords        String? // Comma separated
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

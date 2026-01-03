@@ -22,6 +22,8 @@ import { sessionManager } from './utils/sessionManager';
 import { HelpCenter } from './pages/HelpCenter';
 import { ContactUs } from './pages/ContactUs';
 import { PrivacyPolicy } from './pages/PrivacyPolicy';
+import BlogHome from './pages/Blog/BlogHome';
+import BlogPost from './pages/Blog/BlogPost';
 import NotFound from './pages/NotFound';
 
 // Admin Pages
@@ -106,6 +108,8 @@ const App: React.FC = () => {
           } />
 
           {/* Public Routes */}
+          <Route path="/blog" element={<Layout><BlogHome /></Layout>} />
+          <Route path="/blog/:slug" element={<Layout><BlogPost /></Layout>} />
           <Route path="/pricing" element={<Layout><Pricing /></Layout>} />
           <Route path="/login" element={<Layout><Login /></Layout>} />
           <Route path="/admin/login" element={<Layout><AdminLogin /></Layout>} />

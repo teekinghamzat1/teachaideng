@@ -92,6 +92,7 @@ app.use('/api/tokens', require('./src/routes/tokensRoutes'));
 app.use('/api/testimonials', require('./src/routes/testimonialRoutes'));
 app.use('/api/branding', require('./src/routes/branding'));
 app.use('/api/usage', require('./src/routes/usage'));
+app.use('/api/blog', require('./src/routes/blogRoutes'));
 
 // Error Handler
 app.use(errorHandler);
