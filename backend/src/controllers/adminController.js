@@ -297,12 +297,22 @@ const updateNoteStatus = asyncHandler(async (req, res) => {
     const { id } = req.params;
     const { status } = req.body; // 'Approved' | 'Flagged'
 
-    const note = await prisma.lessonNote.update({
-        where: { id },
+    let where = { id };
+    if (req.user.isSchoolAdmin && req.user.schoolId) {
+        where.user = { schoolId: req.user.schoolId };
+    }
+
+    const result = await prisma.lessonNote.updateMany({
+        where,
         data: { status }
     });
 
-    res.json(formatResponse(true, `Content ${status}`, note));
+    if (result.count === 0) {
+        res.status(404);
+        throw new Error('Note not found or you do not have permission to update it.');
+    }
+
+    res.json(formatResponse(true, `Content ${status}`, { id, status }));
 });
 
 // @desc    Create a new user (by Admin)
@@ -393,6 +403,11 @@ const getSchools = asyncHandler(async (req, res) => {
 const provisionSchool = asyncHandler(async (req, res) => {
     const { userId, schoolName, slug } = req.body;
 
+    if (req.user.role !== 'superadmin') {
+        res.status(403);
+        throw new Error('Unauthorized: Only Super Admins can provision new schools.');
+    }
+
     if (!userId || !schoolName) {
         res.status(400);
         throw new Error('userId and schoolName are required');
@@ -433,6 +448,11 @@ const deleteUserPermanently = asyncHandler(async (req, res) => {
         throw new Error('User not found');
     }
 
+    if (req.user.isSchoolAdmin && user.schoolId !== req.user.schoolId) {
+        res.status(403);
+        throw new Error('Unauthorized: You can only delete users from your own school.');
+    }
+
     // Delete related data in a safe order to avoid FK constraint issues
     await prisma.$transaction([
         prisma.notificationRead.deleteMany({ where: { userId } }),
@@ -464,6 +484,11 @@ const deleteUserPermanently = asyncHandler(async (req, res) => {
 const updateSchoolTeacherLimit = asyncHandler(async (req, res) => {
     const { id } = req.params;
     const { teacherLimit } = req.body;
+
+    if (req.user.isSchoolAdmin && req.user.schoolId !== id) {
+        res.status(403);
+        throw new Error('Unauthorized: You can only update your own school.');
+    }
 
     if (!teacherLimit || teacherLimit < 1) {
         res.status(400);
@@ -519,6 +544,17 @@ const testSmtp = asyncHandler(async (req, res) => {
 // @access  Private/Admin
 const resetUserLimit = asyncHandler(async (req, res) => {
     const userId = req.params.id;
+
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+        res.status(404);
+        throw new Error('User not found');
+    }
+
+    if (req.user.isSchoolAdmin && user.schoolId !== req.user.schoolId) {
+        res.status(403);
+        throw new Error('Unauthorized: You can only reset limits for users in your own school.');
+    }
 
     // Update user's lastLimitReset to now
     await prisma.user.update({
