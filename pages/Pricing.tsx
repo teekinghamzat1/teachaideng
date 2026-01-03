@@ -30,7 +30,8 @@ const Pricing: React.FC = () => {
     }, []);
 
     // TO USER: Replace with your actual Paystack Public Key in .env
-    const publicKey = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || "pk_test_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";
+    // Priority: 1. DB Settings, 2. Env Variable, 3. Fallback Test Key
+    const publicKey = settings?.paystackPublicKey || import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || "pk_test_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";
 
     const handleSuccess = async (reference: any, plan: 'Pro' | 'School') => {
         setLoading(true);

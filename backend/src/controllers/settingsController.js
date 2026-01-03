@@ -22,11 +22,19 @@ const getPublicPricing = asyncHandler(async (req, res) => {
                 freePlanLessonLimit: true,
                 proPlanLessonLimit: true,
                 schoolPlanLessonLimit: true,
+                paystackPublicKey: true,
             }
         });
 
         // If not found, these will be null. Pricing.tsx handles nulls with defaults.
-        res.json(formatResponse(true, 'Pricing settings retrieved', settings || {}));
+        const responseData = settings || {};
+
+        // Ensure paystackPublicKey is always provided, fallback to environment variable if not in DB
+        if (!responseData.paystackPublicKey) {
+            responseData.paystackPublicKey = process.env.PAYSTACK_PUBLIC_KEY || "";
+        }
+
+        res.json(formatResponse(true, 'Pricing settings retrieved', responseData));
     } catch (err) {
         console.error('Failed to retrieve pricing settings', err);
         res.status(500);
