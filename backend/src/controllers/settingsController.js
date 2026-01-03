@@ -85,7 +85,7 @@ const getSettings = asyncHandler(async (req, res) => {
         const maskedSettings = { ...settings };
         const sensitiveFields = [
             'smtpPassword', 'googleGeminiApiKey', 'cloudinaryApiKey',
-            'cloudinaryApiSecret', 'paystackSecretKey', 'paystackPublicKey',
+            'cloudinaryApiSecret', 'paystackSecretKey',
             'jwtSecret', 'databaseUrl'
         ];
 
