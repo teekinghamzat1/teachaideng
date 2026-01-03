@@ -435,56 +435,54 @@ ${lessonNote.assignment}
                                 )}
                             </button>
                         </div>
-                    </button>
-                </div>
-                <div className="text-slate-800 dark:text-slate-100 leading-loose p-4 bg-slate-50/50 dark:bg-slate-800 rounded-lg border border-slate-100 dark:border-slate-700 break-words lesson-content-html">
-                    <div dangerouslySetInnerHTML={{ __html: lessonNote.lessonContent.replace(/\n/g, '<br/>') }} />
-                </div>
-            </section>
+                        <div className="text-slate-800 dark:text-slate-100 leading-loose p-4 bg-slate-50/50 dark:bg-slate-800 rounded-lg border border-slate-100 dark:border-slate-700 break-words lesson-content-html">
+                            <div dangerouslySetInnerHTML={{ __html: lessonNote.lessonContent.replace(/\n/g, '<br/>') }} />
+                        </div>
+                    </section>
 
-            <section>
-                <h3 className="font-bold text-lg text-slate-900 dark:text-slate-100 uppercase mb-4 border-l-4 border-black dark:border-slate-100 pl-3 bg-slate-50 dark:bg-slate-800 py-1">Presentation</h3>
-                <div className="overflow-x-auto border border-slate-300 dark:border-slate-700 rounded-lg">
-                    <table className="min-w-full divide-y divide-slate-300 dark:divide-slate-700">
-                        <thead className="bg-slate-100 dark:bg-slate-800">
-                            <tr>
-                                <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-sm font-bold text-slate-900 dark:text-slate-100 sm:pl-6 w-20">Step</th>
-                                <th scope="col" className="px-3 py-3.5 text-left text-sm font-bold text-slate-900 dark:text-slate-100">Teacher's Activity</th>
-                                <th scope="col" className="px-3 py-3.5 text-left text-sm font-bold text-slate-900 dark:text-slate-100">Pupil's Activity</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-200 dark:divide-slate-700 bg-white dark:bg-slate-900">
-                            {(lessonNote.presentation || []).map((step, idx) => (
-                                <tr key={idx}>
-                                    <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-slate-900 dark:text-slate-100 sm:pl-6 align-top">{step.step}</td>
-                                    <td className="whitespace-normal px-3 py-4 text-sm text-slate-700 dark:text-slate-300 align-top">{stripMarkdown(step.teacherActivity)}</td>
-                                    <td className="whitespace-normal px-3 py-4 text-sm text-slate-700 dark:text-slate-300 align-top">{stripMarkdown(step.pupilActivity)}</td>
-                                </tr>
+                    <section>
+                        <h3 className="font-bold text-lg text-slate-900 dark:text-slate-100 uppercase mb-4 border-l-4 border-black dark:border-slate-100 pl-3 bg-slate-50 dark:bg-slate-800 py-1">Presentation</h3>
+                        <div className="overflow-x-auto border border-slate-300 dark:border-slate-700 rounded-lg">
+                            <table className="min-w-full divide-y divide-slate-300 dark:divide-slate-700">
+                                <thead className="bg-slate-100 dark:bg-slate-800">
+                                    <tr>
+                                        <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-sm font-bold text-slate-900 dark:text-slate-100 sm:pl-6 w-20">Step</th>
+                                        <th scope="col" className="px-3 py-3.5 text-left text-sm font-bold text-slate-900 dark:text-slate-100">Teacher's Activity</th>
+                                        <th scope="col" className="px-3 py-3.5 text-left text-sm font-bold text-slate-900 dark:text-slate-100">Pupil's Activity</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-200 dark:divide-slate-700 bg-white dark:bg-slate-900">
+                                    {(lessonNote.presentation || []).map((step, idx) => (
+                                        <tr key={idx}>
+                                            <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-slate-900 dark:text-slate-100 sm:pl-6 align-top">{step.step}</td>
+                                            <td className="whitespace-normal px-3 py-4 text-sm text-slate-700 dark:text-slate-300 align-top">{stripMarkdown(step.teacherActivity)}</td>
+                                            <td className="whitespace-normal px-3 py-4 text-sm text-slate-700 dark:text-slate-300 align-top">{stripMarkdown(step.pupilActivity)}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+
+                    <section>
+                        <h3 className="font-bold text-lg text-slate-900 dark:text-slate-100 uppercase mb-2 border-l-4 border-black dark:border-slate-100 pl-3 bg-slate-50 dark:bg-slate-800 py-1">Evaluation</h3>
+                        <ul className="list-decimal list-inside space-y-1 ml-2 text-slate-800 dark:text-slate-300">
+                            {(lessonNote.evaluation || []).map((qs, i) => (
+                                <li key={i}>{stripMarkdown(qs)}</li>
                             ))}
-                        </tbody>
-                    </table>
+                        </ul>
+                    </section>
+
+                    <section>
+                        <h3 className="font-bold text-lg text-slate-900 dark:text-slate-100 uppercase mb-2 border-l-4 border-black dark:border-slate-100 pl-3 bg-slate-50 dark:bg-slate-800 py-1">Conclusion</h3>
+                        <p className="text-slate-800 dark:text-slate-300 ml-2 whitespace-pre-wrap break-words">{stripMarkdown(lessonNote.conclusion)}</p>
+                    </section>
+
+                    <section>
+                        <h3 className="font-bold text-lg text-slate-900 dark:text-slate-100 uppercase mb-2 border-l-4 border-black dark:border-slate-100 pl-3 bg-slate-50 dark:bg-slate-800 py-1">Assignment</h3>
+                        <p className="text-slate-800 dark:text-slate-300 ml-2 whitespace-pre-wrap break-words">{stripMarkdown(lessonNote.assignment)}</p>
+                    </section>
                 </div>
-            </section>
-
-            <section>
-                <h3 className="font-bold text-lg text-slate-900 dark:text-slate-100 uppercase mb-2 border-l-4 border-black dark:border-slate-100 pl-3 bg-slate-50 dark:bg-slate-800 py-1">Evaluation</h3>
-                <ul className="list-decimal list-inside space-y-1 ml-2 text-slate-800 dark:text-slate-300">
-                    {(lessonNote.evaluation || []).map((qs, i) => (
-                        <li key={i}>{stripMarkdown(qs)}</li>
-                    ))}
-                </ul>
-            </section>
-
-            <section>
-                <h3 className="font-bold text-lg text-slate-900 dark:text-slate-100 uppercase mb-2 border-l-4 border-black dark:border-slate-100 pl-3 bg-slate-50 dark:bg-slate-800 py-1">Conclusion</h3>
-                <p className="text-slate-800 dark:text-slate-300 ml-2 whitespace-pre-wrap break-words">{stripMarkdown(lessonNote.conclusion)}</p>
-            </section>
-
-            <section>
-                <h3 className="font-bold text-lg text-slate-900 dark:text-slate-100 uppercase mb-2 border-l-4 border-black dark:border-slate-100 pl-3 bg-slate-50 dark:bg-slate-800 py-1">Assignment</h3>
-                <p className="text-slate-800 dark:text-slate-300 ml-2 whitespace-pre-wrap break-words">{stripMarkdown(lessonNote.assignment)}</p>
-            </section>
-        </div>
             </div >
         </div >
     );
