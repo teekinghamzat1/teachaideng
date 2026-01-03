@@ -55,7 +55,7 @@ app.get('/api/health', (req, res) => {
         status: 'UP',
         version: '1.2.0-comprehensive-lesson-fix',
         deployedAt: new Date().toISOString(), // This will update every time the server restarts
-        buildTimestamp: '2026-01-03T09:47:00+01:00', // Static marker of THIS code version
+        buildTimestamp: new Date().toISOString(), // Static marker of THIS code version
         env: {
             nodeEnv: process.env.NODE_ENV,
             hasDbUrl: !!process.env.DATABASE_URL,
