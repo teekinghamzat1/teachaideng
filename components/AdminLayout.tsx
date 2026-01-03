@@ -68,6 +68,7 @@ const AdminLayout: React.FC = () => {
         navItems.push(
             { name: 'Testimonials', path: '/admin/testimonials', icon: Activity },
             { name: 'Curriculum', path: '/admin/curriculum', icon: BookOpen },
+            { name: 'Blog', path: '/admin/blog', icon: FileText },
             { name: 'Settings', path: '/admin/settings', icon: SettingsIcon }
         );
     }

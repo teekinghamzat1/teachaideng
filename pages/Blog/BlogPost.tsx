@@ -60,7 +60,7 @@ const BlogPost: React.FC = () => {
     useEffect(() => {
         const fetchPost = async () => {
             try {
-                const response = await fetch(`/api/blog/${slug}`);
+                const response = await fetch(`/api/blog/slug/${slug}`);
                 if (response.ok) {
                     const data = await response.json();
                     setPost(data);

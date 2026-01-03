@@ -68,8 +68,73 @@ const createPost = asyncHandler(async (req, res) => {
     res.status(201).json(post);
 });
 
+// @desc    Get ALL blog posts (Admin - including drafts)
+// @route   GET /api/blog/admin/all
+// @access  Private/Admin
+const getAllPosts = asyncHandler(async (req, res) => {
+    const posts = await prisma.blogPost.findMany({
+        orderBy: { createdAt: 'desc' }
+    });
+    res.json(posts);
+});
+
+// @desc    Update a blog post
+// @route   PUT /api/blog/:id
+// @access  Private/Admin
+const updatePost = asyncHandler(async (req, res) => {
+    const { title, content, summary, image, author, published, slug, metaTitle, metaDescription, keywords } = req.body;
+
+    const post = await prisma.blogPost.findUnique({
+        where: { id: req.params.id }
+    });
+
+    if (post) {
+        const updatedPost = await prisma.blogPost.update({
+            where: { id: req.params.id },
+            data: {
+                title: title || post.title,
+                content: content || post.content,
+                summary: summary || post.summary,
+                image: image || post.image,
+                author: author || post.author,
+                published: published !== undefined ? published : post.published,
+                slug: slug || post.slug,
+                metaTitle: metaTitle || post.metaTitle,
+                metaDescription: metaDescription || post.metaDescription,
+                keywords: keywords || post.keywords
+            }
+        });
+        res.json(updatedPost);
+    } else {
+        res.status(404);
+        throw new Error('Post not found');
+    }
+});
+
+// @desc    Delete a blog post
+// @route   DELETE /api/blog/:id
+// @access  Private/Admin
+const deletePost = asyncHandler(async (req, res) => {
+    const post = await prisma.blogPost.findUnique({
+        where: { id: req.params.id }
+    });
+
+    if (post) {
+        await prisma.blogPost.delete({
+            where: { id: req.params.id }
+        });
+        res.json({ message: 'Post removed' });
+    } else {
+        res.status(404);
+        throw new Error('Post not found');
+    }
+});
+
 module.exports = {
     getPosts,
+    getAllPosts,
     getPostBySlug,
-    createPost
+    createPost,
+    updatePost,
+    deletePost
 };
