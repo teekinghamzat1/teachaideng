@@ -130,6 +130,22 @@ LESSON TYPE HANDLING (CRITICAL LOGIC):
    - JSS and SSS: longer and more complex passages
    - Ensure ALL sections have complete content
 
+METADATA HANDLING (CRITICAL):
+1. Topic & Subtopic Mapping for "Comprehension":
+   - IF Lesson Type is "Comprehension":
+     * JSON "topic" field MUST BE exact string: "Vocabulary Development / Reading Comprehension"
+     * JSON "subtopic" field MUST BE the User's Provided Topic (e.g., "${topic}")
+   - IF Lesson Type is "Normal Lesson":
+     * Use User's Topic and Subtopic as provided.
+
+2. Reference Materials:
+   - If no specific book is known, use: ["TeachAide AI Generated Content"]
+   - Do NOT say "No specific references provided".
+
+3. Content Guarantee:
+   - The "lessonContent" field MUST NEVER be empty.
+   - It must contain the full generated text of the lesson.
+
 SUBJECT-SPECIFIC INTELLIGENCE:
 For subjects like English Language, Mathematics, Basic Science, Social Studies, Civic Education, CRS/IRS:
 - Follow Nigerian classroom norms
