@@ -15,10 +15,12 @@
     "react-paystack": "^6.0.0",
     "react-router-dom": "^6.28.0",
     "sweetalert2": "^11.26.10",
-    "sweetalert2-react-content": "^5.1.1"
+    "sweetalert2-react-content": "^5.1.1",
+    "react-quill": "^2.0.0"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
+    "@types/react-quill": "^2.0.0",
     "@vitejs/plugin-react": "^5.0.0",
     "autoprefixer": "^10.4.23",
     "postcss": "^8.5.6",
