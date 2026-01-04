@@ -6,6 +6,8 @@ const stripMarkdown = (text) => {
     if (!text || typeof text !== 'string') return text;
 
     return text
+        // Strip HTML tags
+        .replace(/<[^>]*>?/gm, '')
         // Strip bold markers **text** or __text__
         .replace(/\*\*(.*?)\*\*/g, '$1')
         .replace(/__(.*?)__/g, '$1')

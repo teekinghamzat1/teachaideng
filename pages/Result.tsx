@@ -6,6 +6,7 @@ import { Download, BookOpen, Copy, CheckCircle, Save, Loader2, Volume, Share, St
 import { db } from '../database';
 import { showAlert } from '../utils/alerts';
 import { useBranding } from '../contexts/BrandingContext';
+import { stripFormatting as stripMarkdown } from '../utils/textUtils';
 
 const Result: React.FC = () => {
     const location = useLocation();
@@ -45,16 +46,6 @@ const Result: React.FC = () => {
         };
     }, []);
 
-    const stripMarkdown = (text: string | null | undefined): string => {
-        if (!text || typeof text !== 'string') return '';
-        return text
-            .replace(/\*\*(.*?)\*\*/g, '$1')
-            .replace(/__(.*?)__/g, '$1')
-            .replace(/\*(.*?)\*/g, '$1')
-            .replace(/_(.*?)_/g, '$1')
-            .replace(/^#+\s+/gm, '')
-            .replace(/^\s*[\*\-]\s+/gm, '• ');
-    };
 
     if (!lessonNote) {
         return <Navigate to="/generator" replace />;
@@ -80,7 +71,7 @@ const Result: React.FC = () => {
 
     const handleCopyContent = async () => {
         try {
-            await navigator.clipboard.writeText(lessonNote.lessonContent);
+            await navigator.clipboard.writeText(stripMarkdown(lessonNote.lessonContent));
             setIsCopied(true);
             setTimeout(() => setIsCopied(false), 2000);
         } catch (err) {
@@ -128,10 +119,10 @@ const Result: React.FC = () => {
                 const text = `
                 Subject: ${lessonNote.subject}.
                 Class: ${lessonNote.classLevel}.
-                Topic: ${lessonNote.topic}.
-                Sub-topic: ${lessonNote.subtopic}.
-                Objectives: ${lessonNote.objectives.join('. ')}.
-                Lesson Content: ${lessonNote.lessonContent}
+                Topic: ${stripMarkdown(lessonNote.topic)}.
+                Sub-topic: ${stripMarkdown(lessonNote.subtopic)}.
+                Objectives: ${(lessonNote.objectives || []).map(o => stripMarkdown(o)).join('. ')}.
+                Lesson Content: ${stripMarkdown(lessonNote.lessonContent)}
               `;
 
                 const utterance = new SpeechSynthesisUtterance(text);
@@ -151,8 +142,8 @@ const Result: React.FC = () => {
         if (navigator.share) {
             try {
                 await navigator.share({
-                    title: `Lesson Note: ${lessonNote.topic}`,
-                    text: `Check out this lesson note for ${lessonNote.subject}.\n\n${lessonNote.lessonContent.substring(0, 100)}...`,
+                    title: `Lesson Note: ${stripMarkdown(lessonNote.topic)}`,
+                    text: `Check out this lesson note for ${lessonNote.subject}.\n\n${stripMarkdown(lessonNote.lessonContent).substring(0, 100)}...`,
                     url: window.location.href
                 });
             } catch (err) {
@@ -215,21 +206,21 @@ const Result: React.FC = () => {
         const element = document.createElement("a");
         const content = `SUBJECT: ${lessonNote.subject}
 CLASS: ${lessonNote.classLevel}
-TOPIC: ${lessonNote.topic}
-SUB-TOPIC: ${lessonNote.subtopic}
+TOPIC: ${stripMarkdown(lessonNote.topic)}
+SUB-TOPIC: ${stripMarkdown(lessonNote.subtopic)}
 DURATION: ${lessonNote.duration}
 
 OBJECTIVES:
-${(lessonNote.objectives || []).map(o => '- ' + o).join('\n')}
+${(lessonNote.objectives || []).map(o => '- ' + stripMarkdown(o)).join('\n')}
 
 LESSON CONTENT:
-${lessonNote.lessonContent}
+${stripMarkdown(lessonNote.lessonContent)}
 
 EVALUATION:
-${(lessonNote.evaluation || []).map(e => '- ' + e).join('\n')}
+${(lessonNote.evaluation || []).map(e => '- ' + stripMarkdown(e)).join('\n')}
 
 ASSIGNMENT:
-${lessonNote.assignment}
+${stripMarkdown(lessonNote.assignment)}
 `;
         const file = new Blob([content], { type: 'text/plain' });
         element.href = URL.createObjectURL(file);

@@ -5,6 +5,7 @@ import { Assessment, Subject, ClassLevel } from '../types';
 import { Loader2, Clipboard, Save, CheckCircle, Share, WifiOff } from '../components/Icons';
 import { useNavigate } from 'react-router-dom';
 import { showAlert } from '../utils/alerts';
+import { stripFormatting } from '../utils/textUtils';
 
 const AssessmentGenerator: React.FC = () => {
     const navigate = useNavigate();
@@ -113,7 +114,7 @@ const AssessmentGenerator: React.FC = () => {
     };
 
     const handleShare = () => {
-        const text = result?.questions.map((q, i) => `${i + 1}. ${q.question}\n`).join('');
+        const text = result?.questions.map((q, i) => `${i + 1}. ${stripFormatting(q.question)}\n`).join('');
         navigator.clipboard.writeText(text || '');
         showAlert.success("Copied", "Assessment questions copied to clipboard!");
     }
