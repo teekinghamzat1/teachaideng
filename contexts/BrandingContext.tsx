@@ -14,7 +14,7 @@ interface BrandingSettings {
 
 const defaultBranding: BrandingSettings = {
     siteName: 'TeachAide AI',
-    siteTagline: 'Lesson Notes in Seconds',
+    siteTagline: 'AI Lesson Notes & Teaching Assistant for Nigerian Educators',
     siteLogo: '',
     siteLogoDark: '',
     siteFavicon: '',
@@ -50,7 +50,7 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
                     // Apply site title
                     if (data.data.siteName) {
-                        document.title = `${data.data.siteName} - ${data.data.siteTagline}`;
+                        document.title = `${data.data.siteName} | ${data.data.siteTagline}`;
                     }
 
                     // Apply font

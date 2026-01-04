@@ -1,5 +1,24 @@
 {
   "name": "TeachAide AI",
-  "description": "A comprehensive AI assistant for Nigerian teachers to generate lesson notes, classwork, and exam questions instantly.",
+  "description": "TeachAide AI helps Nigerian teachers generate structured, curriculum-aligned lesson notes, comprehension passages, vocabulary development, assessments, and timetables in seconds.",
+  "keywords": [
+    "TeachAide",
+    "TeachAide AI",
+    "AI for teachers",
+    "lesson note generator",
+    "Nigerian curriculum",
+    "primary school lesson notes",
+    "secondary school lesson notes",
+    "WAEC",
+    "NECO",
+    "lesson planning tool",
+    "education technology Nigeria",
+    "AI education platform",
+    "teacher productivity tools",
+    "classroom management software"
+  ],
+  "author": "TeachAide",
+  "website": "https://www.teachaide.ng",
+  "locale": "en-NG",
   "requestFramePermissions": []
 }

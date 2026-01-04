@@ -25,7 +25,7 @@ const getBrandingSettings = asyncHandler(async (req, res) => {
             // Return defaults if no settings exist
             return res.json(formatResponse(true, 'Default branding settings', {
                 siteName: 'TeachAide AI',
-                siteTagline: 'Lesson Notes in Seconds',
+                siteTagline: 'AI Lesson Notes & Teaching Assistant for Nigerian Educators',
                 siteLogo: '',
                 siteLogoDark: '',
                 siteFavicon: '',
