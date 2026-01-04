@@ -54,37 +54,56 @@ const addTeacher = asyncHandler(async (req, res) => {
   const { name, email, gender } = req.body;
   const schoolId = req.user.schoolId;
 
-  const school = await prisma.school.findUnique({
-    where: { id: schoolId },
-    include: { teachers: true }
-  });
-
-  if (school.teachers.length >= school.teacherLimit) {
-    res.status(400);
-    throw new Error('Teacher limit reached for this school.');
-  }
-
-  const existingUser = await prisma.user.findUnique({ where: { email } });
-  if (existingUser) {
-    res.status(400);
-    throw new Error('User with this email already exists.');
-  }
-
+  // Generate temporary password before the transaction to avoid side-effects within it.
   const tempPassword = Math.random().toString(36).slice(-8);
   const hashedPassword = await bcrypt.hash(tempPassword, 10);
 
-  const teacher = await prisma.user.create({
-    data: {
-      name,
-      email,
-      password: hashedPassword,
-      role: 'teacher',
-      schoolId,
-      teacherStatus: 'Invited',
-      subscriptionPlan: 'School'
+  const teacher = await prisma.$transaction(async (tx) => {
+    // Step 1: Check for an existing user with the same email.
+    const existingUser = await tx.user.findUnique({ where: { email } });
+    if (existingUser) {
+      const error = new Error('User with this email already exists.');
+      error.statusCode = 400; // Bad Request
+      throw error;
     }
+
+    // Step 2: Atomically fetch the school and its current teacher count.
+    // This prevents race conditions where multiple requests could bypass the limit.
+    const school = await tx.school.findUnique({
+      where: { id: schoolId },
+      include: { _count: { select: { teachers: true } } },
+    });
+
+    if (!school) {
+      const error = new Error('School not found.');
+      error.statusCode = 404; // Not Found
+      throw error;
+    }
+
+    // Step 3: Verify if the school has capacity for another teacher.
+    if (school._count.teachers >= school.teacherLimit) {
+      const error = new Error('Teacher limit reached for this school.');
+      error.statusCode = 400; // Bad Request
+      throw error;
+    }
+
+    // Step 4: If all checks pass, create the new teacher.
+    const newTeacher = await tx.user.create({
+      data: {
+        name,
+        email,
+        password: hashedPassword,
+        role: 'teacher',
+        schoolId,
+        teacherStatus: 'Invited',
+        subscriptionPlan: 'School'
+      }
+    });
+
+    return newTeacher;
   });
 
+  // Perform audit logging outside of the main transaction.
   await createAdminLog(req.user.id, schoolId, 'ADD_TEACHER', { email, name });
 
   res.status(201).json(formatResponse(true, 'Teacher invited', {
