@@ -4,6 +4,7 @@ const prisma = require('../config/db');
 const formatResponse = require('../utils/formatResponse');
 const { getWeeklyLessonUsage } = require('../utils/usage');
 const { createAdminLog } = require('../utils/auditLogger');
+const usageService = require('../services/usageService');
 
 // @desc    Get admin dashboard stats
 // @route   GET /api/admin/dashboard
@@ -179,10 +180,16 @@ const getUsers = asyncHandler(async (req, res) => {
         },
     });
     const usersWithUsage = await Promise.all(users.map(async (user) => {
-        const usage = await getWeeklyLessonUsage(user.id);
-        // Map teacherStatus to status for frontend compatibility
+        const usage = await usageService.getUserUsage(user.id);
         const { teacherStatus, ...rest } = user;
-        return { ...rest, status: teacherStatus, usage };
+        // Map usage fields to match the frontend expectations (used, limit, remaining)
+        const formattedUsage = {
+            used: usage.lessonsUsed,
+            limit: usage.monthlyLimit,
+            remaining: usage.lessonsRemaining,
+            resetDate: usage.resetDate
+        };
+        return { ...rest, status: teacherStatus, usage: formattedUsage };
     }));
 
     res.json(formatResponse(true, 'Users retrieved', usersWithUsage));
@@ -556,10 +563,15 @@ const resetUserLimit = asyncHandler(async (req, res) => {
         throw new Error('Unauthorized: You can only reset limits for users in your own school.');
     }
 
-    // Update user's lastLimitReset to now
+    // Update user's usage counters to 0 and set reset date to now
     await prisma.user.update({
         where: { id: req.params.id },
-        data: { lastLimitReset: new Date() }
+        data: {
+            lessonsUsedThisMonth: 0,
+            tokensUsedThisMonth: 0,
+            lastUsageReset: new Date(),
+            lastLimitReset: new Date() // Keeping this for audit purposes
+        }
     });
 
     await createAdminLog(req.user.id, req.user.schoolId, 'RESET_USER_LIMIT', {

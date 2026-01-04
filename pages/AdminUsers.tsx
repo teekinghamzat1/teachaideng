@@ -211,6 +211,7 @@ const AdminUsers: React.FC = () => {
             try {
                 await db.admin.resetUserLimit(userId);
                 showAlert.success("Limit Reset", "User limit reset successfully");
+                loadUsers(); // Refresh the table to show the new usage numbers
             } catch (error) {
                 showAlert.error("Error", "Failed to reset limit");
             }
