@@ -51,45 +51,62 @@ const getSchoolDetails = asyncHandler(async (req, res) => {
 // @desc    Add teacher to school
 // @route   POST /api/school-admin/teachers
 const addTeacher = asyncHandler(async (req, res) => {
-  const { name, email, gender } = req.body;
+  const { name, email } = req.body;
   const schoolId = req.user.schoolId;
-
-  const school = await prisma.school.findUnique({
-    where: { id: schoolId },
-    include: { teachers: true }
-  });
-
-  if (school.teachers.length >= school.teacherLimit) {
-    res.status(400);
-    throw new Error('Teacher limit reached for this school.');
-  }
-
-  const existingUser = await prisma.user.findUnique({ where: { email } });
-  if (existingUser) {
-    res.status(400);
-    throw new Error('User with this email already exists.');
-  }
 
   const tempPassword = Math.random().toString(36).slice(-8);
   const hashedPassword = await bcrypt.hash(tempPassword, 10);
 
-  const teacher = await prisma.user.create({
-    data: {
-      name,
-      email,
-      password: hashedPassword,
-      role: 'teacher',
-      schoolId,
-      teacherStatus: 'Invited',
-      subscriptionPlan: 'School'
+  const teacher = await prisma.$transaction(async (tx) => {
+    // Check for existing user first within the transaction
+    const existingUser = await tx.user.findUnique({ where: { email } });
+    if (existingUser) {
+      res.status(400); // Set status here
+      throw new Error('User with this email already exists.');
     }
+
+    const school = await tx.school.findUnique({
+      where: { id: schoolId },
+      include: {
+        _count: {
+          select: { teachers: true },
+        },
+      },
+    });
+
+    // School not found check
+    if (!school) {
+        res.status(404);
+        throw new Error('School not found.');
+    }
+
+    // Check teacher limit
+    if (school._count.teachers >= school.teacherLimit) {
+      res.status(400); // Set status here
+      throw new Error('Teacher limit reached for this school.');
+    }
+
+    // Create the new teacher
+    const newTeacher = await tx.user.create({
+      data: {
+        name,
+        email,
+        password: hashedPassword,
+        role: 'teacher',
+        schoolId,
+        teacherStatus: 'Invited',
+        subscriptionPlan: 'School',
+      },
+    });
+
+    return newTeacher;
   });
 
+  // If transaction is successful, log and respond
   await createAdminLog(req.user.id, schoolId, 'ADD_TEACHER', { email, name });
 
   res.status(201).json(formatResponse(true, 'Teacher invited', {
     teacher: { id: teacher.id, name, email },
-    tempPassword
   }));
 });
 
