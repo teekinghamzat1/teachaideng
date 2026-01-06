@@ -9,7 +9,7 @@ const { sendWelcomeEmail } = require('../utils/emailService');
 // @route   POST /api/auth/register
 // @access  Public
 const registerUser = asyncHandler(async (req, res) => {
-    const { name, email, password, role, accountType } = req.body;
+    const { name, email, password, accountType } = req.body;
 
     if (!name || !email || !password) {
         res.status(400);
@@ -33,7 +33,7 @@ const registerUser = asyncHandler(async (req, res) => {
             name,
             email,
             password: hashedPassword,
-            role: role || 'user',
+            role: 'user',
             // store accountType for future billing/feature gating; defaults to 'individual'
             accountType: accountType || 'individual',
             tokens: 2000 // Welcome bonus: 2000 tokens (approx 3-4 lessons)
