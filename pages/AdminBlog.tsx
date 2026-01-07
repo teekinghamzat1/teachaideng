@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { db } from '../database'; // Using db helper for auth headers if needed, or straight fetch
+import { db, getAnyAuthHeader } from '../database'; // Using db helper for auth headers if needed, or straight fetch
 import {
     Edit, Trash, Plus, CheckCircle, X, Search, FileText, Eye, EyeOff
 } from '../components/Icons';
@@ -40,9 +40,8 @@ const AdminBlog: React.FC = () => {
     const fetchPosts = async () => {
         try {
             setLoading(true);
-            const token = db.auth.getToken();
             const response = await fetch('/api/blog/admin/all', {
-                headers: { 'Authorization': `Bearer ${token}` }
+                headers: getAnyAuthHeader()
             });
             if (response.ok) {
                 const data = await response.json();
@@ -61,10 +60,9 @@ const AdminBlog: React.FC = () => {
         const confirmed = await showAlert.confirm('Delete Post?', 'Are you sure you want to delete this post? This cannot be undone.', 'Yes, Delete It');
         if (confirmed) {
             try {
-                const token = db.auth.getToken();
                 const response = await fetch(`/api/blog/${id}`, {
                     method: 'DELETE',
-                    headers: { 'Authorization': `Bearer ${token}` }
+                    headers: getAnyAuthHeader()
                 });
 
                 if (response.ok) {
@@ -82,7 +80,6 @@ const AdminBlog: React.FC = () => {
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            const token = db.auth.getToken();
             const url = isEditing ? `/api/blog/${currentPost.id}` : '/api/blog';
             const method = isEditing ? 'PUT' : 'POST';
 
@@ -90,7 +87,7 @@ const AdminBlog: React.FC = () => {
                 method,
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
+                    ...getAnyAuthHeader()
                 },
                 body: JSON.stringify(currentPost)
             });
@@ -118,12 +115,9 @@ const AdminBlog: React.FC = () => {
             const formData = new FormData();
             formData.append('image', file);
 
-            const token = db.auth.getToken();
             const response = await fetch('/api/upload/image', {
                 method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                },
+                headers: getAnyAuthHeader(),
                 body: formData
             });
 

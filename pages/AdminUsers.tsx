@@ -159,25 +159,13 @@ const AdminUsers: React.FC = () => {
         if (!selectedSchool) return;
 
         try {
-            const response = await fetch(`http://localhost:5001/api/admin/schools/${selectedSchool.id}/teacher-limit`, {
-                method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${db.auth.getCurrentUser()?.token}`
-                },
-                body: JSON.stringify({ teacherLimit: newLimit })
-            });
-
-            if (response.ok) {
-                showAlert.success('Limit Updated', 'Teacher limit updated successfully.');
-                setShowLimitModal(false);
-                loadUsers();
-            } else {
-                showAlert.error('Error', 'Failed to update teacher limit');
-            }
-        } catch (error) {
+            await db.admin.updateTeacherLimit(selectedSchool.id, newLimit);
+            showAlert.success('Limit Updated', 'Teacher limit updated successfully.');
+            setShowLimitModal(false);
+            loadUsers();
+        } catch (error: any) {
             console.error('Error updating teacher limit:', error);
-            showAlert.error('Error', 'Error updating teacher limit');
+            showAlert.error('Error', error.message || 'Error updating teacher limit');
         }
     };
 

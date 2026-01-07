@@ -733,7 +733,7 @@ export const db = {
 
     async getAllTestimonials(): Promise<any[]> {
       const response = await fetch(`${API_URL}/admin/testimonials`, {
-        headers: getAdminAuthHeader()
+        headers: getAnyAuthHeader()
       });
       return handleResponse(response);
     },
@@ -743,7 +743,7 @@ export const db = {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...getAuthHeader()
+          ...getAnyAuthHeader()
         },
         body: JSON.stringify(data)
       });
@@ -755,7 +755,7 @@ export const db = {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          ...getAuthHeader()
+          ...getAnyAuthHeader()
         },
         body: JSON.stringify(data)
       });
@@ -765,7 +765,7 @@ export const db = {
     async deleteTestimonial(id: string): Promise<void> {
       const response = await fetch(`${API_URL}/admin/testimonials/${id}`, {
         method: 'DELETE',
-        headers: getAuthHeader()
+        headers: getAnyAuthHeader()
       });
       await handleResponse(response);
     },
@@ -773,11 +773,22 @@ export const db = {
     async toggleTestimonialActive(id: string): Promise<void> {
       const response = await fetch(`${API_URL}/admin/testimonials/${id}/toggle`, {
         method: 'PATCH',
-        headers: getAuthHeader()
+        headers: getAnyAuthHeader()
+      });
+      await handleResponse(response);
+    },
+
+    async updateTeacherLimit(schoolId: string, limit: number): Promise<void> {
+      const response = await fetch(`${API_URL}/admin/schools/${schoolId}/teacher-limit`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAdminAuthHeader()
+        },
+        body: JSON.stringify({ teacherLimit: limit })
       });
       await handleResponse(response);
     }
-
   },
 
   testimonials: {

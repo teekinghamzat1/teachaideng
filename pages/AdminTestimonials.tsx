@@ -1,20 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { db } from '../database';
+import { db, getAnyAuthHeader } from '../database';
 import { Trash, Edit, Plus, CheckCircle, X } from '../components/Icons';
 import { showAlert } from '../utils/alerts';
-
-const getAuthHeader = () => {
-  const userStr = localStorage.getItem('teachaide_session');
-  if (userStr) {
-    try {
-      const user = JSON.parse(userStr as string);
-      if (user.token) return { Authorization: `Bearer ${user.token}` };
-    } catch (e) {
-      return {};
-    }
-  }
-  return {};
-};
 
 type FormState = {
   name: string;
@@ -155,13 +142,9 @@ const AdminTestimonials: React.FC = () => {
                     setUploading(true);
                     setUploadError('');
                     try {
-                      const headers: Record<string, string> = {};
-                      const auth = getAuthHeader();
-                      if (auth && (auth as any).Authorization) headers.Authorization = (auth as any).Authorization;
-
                       const resp = await fetch('/api/upload/image', {
                         method: 'POST',
-                        headers,
+                        headers: getAnyAuthHeader() as Record<string, string>,
                         body: fd
                       });
                       const result = await resp.json().catch(() => null);
