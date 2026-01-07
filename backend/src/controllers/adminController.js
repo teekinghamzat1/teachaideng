@@ -460,6 +460,17 @@ const deleteUserPermanently = asyncHandler(async (req, res) => {
         throw new Error('Unauthorized: You can only delete users from your own school.');
     }
 
+    // First, block the undeletable case
+    if (user.role === 'superadmin') {
+        res.status(403);
+        throw new Error('Unauthorized: Superadmins cannot be deleted.');
+    }
+    // Then, handle the admin-on-admin case
+    if (user.role === 'admin' && req.user.role !== 'superadmin') {
+        res.status(403);
+        throw new Error('Unauthorized: Only superadmins can delete other admins.');
+    }
+
     // Delete related data in a safe order to avoid FK constraint issues
     await prisma.$transaction([
         prisma.notificationRead.deleteMany({ where: { userId } }),
@@ -624,6 +635,12 @@ const updateUserStatus = asyncHandler(async (req, res) => {
     if (req.user.isSchoolAdmin && user.schoolId !== req.user.schoolId) {
         res.status(403);
         throw new Error('Unauthorized: You can only manage users in your own school');
+    }
+
+    // Prevent admins from updating other admins or superadmins
+    if ((user.role === 'admin' || user.role === 'superadmin') && req.user.role !== 'superadmin') {
+        res.status(403);
+        throw new Error('Unauthorized: You cannot update the status of another admin.');
     }
 
     const updatedUser = await prisma.user.update({
