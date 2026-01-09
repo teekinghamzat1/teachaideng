@@ -455,6 +455,16 @@ const deleteUserPermanently = asyncHandler(async (req, res) => {
         throw new Error('User not found');
     }
 
+    // CRITICAL: Prevent privilege escalation and self-destruction
+    if (user.role === 'superadmin') {
+        res.status(403);
+        throw new Error('Forbidden: Superadmins cannot be deleted.');
+    }
+    if (user.role === 'admin' && req.user.role !== 'superadmin') {
+        res.status(403);
+        throw new Error('Forbidden: Admins can only be deleted by Superadmins.');
+    }
+
     if (req.user.isSchoolAdmin && user.schoolId !== req.user.schoolId) {
         res.status(403);
         throw new Error('Unauthorized: You can only delete users from your own school.');
