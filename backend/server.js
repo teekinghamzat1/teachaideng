@@ -39,10 +39,16 @@ app.use(cors({
         // Allow requests with no origin (like mobile apps or curl)
         if (!origin) return callback(null, true);
 
-        // Check if origin is in the allowed list or is a Vercel subdomain
-        if (allowedOrigins.indexOf(origin) !== -1 || origin.endsWith('.vercel.app')) {
+        const normalizedOrigin = origin.toLowerCase();
+        const isAllowed = allowedOrigins.some(o => o.toLowerCase() === normalizedOrigin) ||
+            normalizedOrigin.endsWith('.vercel.app') ||
+            normalizedOrigin.endsWith('.teachaide.ng') ||
+            normalizedOrigin.endsWith('.teachaide.ai');
+
+        if (isAllowed) {
             callback(null, true);
         } else {
+            console.error(`[CORS_REJECTED] Origin: ${origin}`);
             callback(new Error('Not allowed by CORS'));
         }
     },
