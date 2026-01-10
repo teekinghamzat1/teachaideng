@@ -449,10 +449,28 @@ const provisionSchool = asyncHandler(async (req, res) => {
 const deleteUserPermanently = asyncHandler(async (req, res) => {
     const userId = req.params.id;
 
+    // Rule: Prevent self-deletion
+    if (userId === req.user.id) {
+        res.status(400);
+        throw new Error('You cannot delete your own account.');
+    }
+
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) {
         res.status(404);
         throw new Error('User not found');
+    }
+
+    // Rule: SuperAdmins cannot be deleted via the API
+    if (user.role === 'superadmin') {
+        res.status(403);
+        throw new Error('Forbidden: SuperAdmins cannot be deleted.');
+    }
+
+    // Rule: Admins cannot delete other Admins or SuperAdmins
+    if (req.user.role === 'admin' && (user.role === 'admin' || user.role === 'superadmin')) {
+        res.status(403);
+        throw new Error('Forbidden: Admins cannot delete other admins.');
     }
 
     if (req.user.isSchoolAdmin && user.schoolId !== req.user.schoolId) {
