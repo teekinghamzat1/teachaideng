@@ -24,6 +24,13 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS
         'http://127.0.0.1:5174',
         'http://localhost:3000',
         'https://teachaide.ai',
+        'https://www.teachaide.ai',
+        'http://teachaide.ai',
+        'http://www.teachaide.ai',
+        'https://teachaide.ng',
+        'https://www.teachaide.ng',
+        'http://teachaide.ng',
+        'http://www.teachaide.ng',
         'https://teachaide-ai.vercel.app'
     ];
 
