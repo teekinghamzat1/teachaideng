@@ -641,6 +641,12 @@ const updateUserStatus = asyncHandler(async (req, res) => {
     res.json(formatResponse(true, `User status updated to ${status}`, updatedUser));
 });
 
+const errorLogController = require('./errorLogController');
+
+const getErrorLogs = errorLogController.getErrorLogs;
+const logError = errorLogController.logError;
+const resolveError = errorLogController.resolveError;
+
 module.exports = {
     getDashboardStats,
     getUsers,
@@ -657,5 +663,8 @@ module.exports = {
     updateUserStatus,
     getAnalytics,
     getSchools,
-    getAdminLogs
+    getAdminLogs,
+    getErrorLogs,
+    logError,
+    resolveError
 };

@@ -14,7 +14,10 @@ const {
     updateUserStatus,
     getAnalytics,
     getSchools,
-    getAdminLogs
+    getAdminLogs,
+    getErrorLogs,
+    logError,
+    resolveError
 } = require('../controllers/adminController');
 
 const {
@@ -41,12 +44,17 @@ const createAdminSchema = z.object({
     }),
 });
 
+// Public error logging endpoint (allows logging even if not logged in or admin)
+router.post('/error-logs', logError);
+
 router.use(protect);
 router.use(admin);
 
 router.get('/dashboard', getDashboardStats);
 router.get('/analytics', getAnalytics);
 router.get('/logs', getAdminLogs);
+router.get('/error-logs', getErrorLogs);
+router.put('/error-logs/:id/resolve', resolveError);
 router.get('/users', getUsers);
 router.post('/users', createUser);
 router.get('/orders', getOrders);

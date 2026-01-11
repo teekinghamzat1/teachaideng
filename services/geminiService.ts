@@ -108,6 +108,52 @@ export const generateLessonNote = async (
 
   } catch (error: any) {
     console.error("Error generating lesson note:", error);
+
+    // Log error to Admin Dashboard
+    db.admin.logError({
+      source: 'FRONTEND',
+      path: '/generator',
+      message: error.message || 'Frontend Lesson Generation Error',
+      stack: error.stack,
+      severity: 'high',
+      metadata: { topic, subject, classLevel, duration, subtopic }
+    });
+
+    throw error;
+  }
+};
+
+export const generateRemark = async (data: {
+  classLevel: string;
+  subject: string;
+  topic: string;
+  lessonOutcome: string;
+  students?: { name: string; observation: string }[];
+  style?: string;
+}): Promise<{ remark: string }> => {
+  try {
+    const token = db.auth.getToken();
+    if (!token) {
+      throw new Error("Authentication required");
+    }
+
+    const response = await fetch(`${API_URL}/generate/remark`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      },
+      body: JSON.stringify(data),
+    });
+
+    const result = await response.json();
+    if (!response.ok) {
+      throw new Error(result.message || "Failed to generate remark");
+    }
+
+    return result.data || result;
+  } catch (error: any) {
+    console.error("Error generating remark:", error);
     throw error;
   }
 };
@@ -183,6 +229,17 @@ export const generateAssessment = async (
     };
   } catch (error: any) {
     console.error("Error generating assessment", error);
+
+    // Log error to Admin Dashboard
+    db.admin.logError({
+      source: 'FRONTEND',
+      path: '/assessment',
+      message: error.message || 'Frontend Assessment Generation Error',
+      stack: error.stack,
+      severity: 'high',
+      metadata: { topic, classLevel, subject, questionCount }
+    });
+
     throw error;
   }
 };

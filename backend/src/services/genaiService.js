@@ -185,7 +185,7 @@ When Lesson Type is "Vocabulary / New Words" or "Comprehension":
 - Ensure the passage and vocabulary are from the SAME content
 
 The JSON object must have ONLY the following fields:
-- subject, topic, subtopic, classLevel, duration, date, objectives, references, instructionalMaterials, previousKnowledge, introduction, lessonContent, presentation (array of {step, teacherActivity, pupilActivity}), evaluation, conclusion, assignment.
+- subject, topic, subtopic, classLevel, duration, date, objectives, references, instructionalMaterials, previousKnowledge, introduction, lessonContent, presentation (array of {step, teacherActivity}), evaluation, conclusion, assignment.
 PROCEDURE ENFORCEMENT (TOKEN-EFFICIENT):
 - "presentation" MUST contain EXACTLY 6 steps, labeled Step I to Step VI.
 - Steps must appear in this exact order.
@@ -201,7 +201,7 @@ PROCEDURE ENFORCEMENT (TOKEN-EFFICIENT):
 - Introduction, Evaluation, and Assignment remain standalone and are NOT steps.
 Steps must appear in exact order from Step I to Step VI; do not shuffle.
 If no written exercise, Step V adapts to oral/guided practice.
-DO NOT INCLUDE Pupil's Activity
+CRITICAL: DO NOT INCLUDE Pupil's Activity in the JSON or as a concept. Focus only on Teacher's Activity to save tokens.
 `;
 
   const contents = [{
@@ -303,7 +303,61 @@ async function generateAssessmentViaGenAI(options) {
   return response;
 }
 
+/**
+ * Generate Lesson Evaluation / Student Remarks
+ */
+async function generateRemarkViaGenAI(options) {
+  const { classLevel, subject, topic, lessonOutcome, students, style, maxTokens } = options;
+  const apiKey = getApiKey();
+  const model = normalizeModel(process.env.GENAI_MODEL || 'gemini-2.5-flash');
+
+  const systemPrompt = `You are an expert teacher writing a lesson reflection/remark for your records.
+  
+  CONTEXT:
+  - Subject: ${subject}
+  - Class: ${classLevel}
+  - Topic: ${topic}
+  - Overall Lesson Outcome: ${lessonOutcome || 'Successful'}
+  
+  STUDENT OBSERVATIONS:
+  ${students && students.length > 0 ? students.map(s => `- ${s.name}: ${s.observation}`).join('\n') : 'No specific students mentioned.'}
+
+  STYLE: ${style || 'Professional'}
+
+  TASK:
+  Generate a cohesive, 2-4 sentence "Teacher's Remark". 
+  1. Start with a brief statement about how the lesson on ${topic} went overall.
+  2. If students are provided, naturally incorporate them into the paragraph (e.g., "The lesson was successful... John showed great mastery while Sarah struggled with...").
+  3. Use teacher-friendly, encouraging language.
+  4. Avoid generic filler. Use specific references to the topic.
+  5. Return raw JSON with a single field "remark".`;
+
+  const contents = [{
+    role: 'user',
+    parts: [{ text: systemPrompt }]
+  }];
+
+  const response = await withRetry(async () => {
+    const res = await axios.post(`${API_BASE}/models/${model}:generateContent?key=${apiKey}`, {
+      contents,
+      generationConfig: {
+        responseMimeType: 'application/json',
+        maxOutputTokens: maxTokens || 1024
+      }
+    }, { timeout: 30000 });
+
+    const candidate = res.data.candidates?.[0];
+    const text = candidate?.content?.parts?.[0]?.text;
+    const usage = res.data.usageMetadata || {};
+
+    return { text, usage };
+  });
+
+  return response;
+}
+
 module.exports = {
   generateLessonNoteViaGenAI,
-  generateAssessmentViaGenAI
+  generateAssessmentViaGenAI,
+  generateRemarkViaGenAI
 };

@@ -3,7 +3,7 @@ const bcrypt = require('bcryptjs');
 const prisma = require('../config/db');
 const generateToken = require('../utils/generateToken');
 const formatResponse = require('../utils/formatResponse');
-const { sendWelcomeEmail } = require('../utils/emailService');
+const { sendWelcomeEmail, sendAdminNotification } = require('../utils/emailService');
 
 // @desc    Register a new user
 // @route   POST /api/auth/register
@@ -58,6 +58,20 @@ const registerUser = asyncHandler(async (req, res) => {
 
         // Send welcome email asynchronously
         sendWelcomeEmail(user.email, user.name).catch(err => console.error('Failed to send welcome email:', err));
+
+        // Notify Admin
+        sendAdminNotification(
+            'New User Registration',
+            `
+            <p>A new user has registered on TeachAide!</p>
+            <ul>
+                <li><strong>Name:</strong> ${user.name}</li>
+                <li><strong>Email:</strong> ${user.email}</li>
+                <li><strong>Account Type:</strong> ${user.accountType}</li>
+                <li><strong>Registration Time:</strong> ${new Date().toLocaleString()}</li>
+            </ul>
+            `
+        ).catch(err => console.error('Failed to notify admin of registration:', err));
     } else {
         res.status(400);
         throw new Error('Invalid user data');

@@ -1,4 +1,5 @@
 const asyncHandler = require('express-async-handler');
+const { sendAdminNotification } = require('../utils/emailService');
 const prisma = require('../config/db');
 const formatResponse = require('../utils/formatResponse');
 const { hasTokens, chargeTokens } = require('../utils/tokens');
@@ -83,6 +84,24 @@ const generateLesson = asyncHandler(async (req, res) => {
     });
   } catch (err) {
     console.error('generateLesson ERROR:', err);
+
+    // Log error to Admin Dashboard
+    try {
+      await prisma.errorLog.create({
+        data: {
+          userId,
+          message: err.message || 'Generation failed',
+          stack: err.stack,
+          source: 'BACKEND',
+          path: '/api/generate/lesson',
+          severity: 'high',
+          metadata: JSON.stringify({ topic, subject, classLevel, subtopic })
+        }
+      });
+    } catch (logErr) {
+      console.error('Failed to log error to DB:', logErr);
+    }
+
     res.status(err.status || 500);
     const message = err.message?.includes('503') || err.message?.includes('UNAVAILABLE')
       ? 'The AI service is currently busy. Please try again in 10 seconds.'
@@ -125,6 +144,21 @@ const generateLesson = asyncHandler(async (req, res) => {
         usageCount: 1
       }
     });
+
+    // Notify Admin of Lesson Generation
+    sendAdminNotification(
+      'New Lesson Note Generated',
+      `
+      <p>A user has generated a new lesson note.</p>
+      <ul>
+          <li><strong>User:</strong> ${req.user.name} (${req.user.email})</li>
+          <li><strong>Topic:</strong> ${topic}</li>
+          <li><strong>Subject:</strong> ${subject}</li>
+          <li><strong>Class:</strong> ${classLevel}</li>
+          <li><strong>Tokens Used:</strong> ${usageTokens}</li>
+      </ul>
+      `
+    ).catch(err => console.error('Failed to notify admin of lesson generation:', err));
   } catch (err) {
     console.error('Failed post-generation tasks (logging/caching)', err);
   }
@@ -203,6 +237,24 @@ const generateAssessment = asyncHandler(async (req, res) => {
     });
   } catch (err) {
     console.error('generateAssessment ERROR:', err);
+
+    // Log error to Admin Dashboard
+    try {
+      await prisma.errorLog.create({
+        data: {
+          userId,
+          message: err.message || 'Assessment generation failed',
+          stack: err.stack,
+          source: 'BACKEND',
+          path: '/api/generate/assessment',
+          severity: 'high',
+          metadata: JSON.stringify({ topic, subject, classLevel, questionCount })
+        }
+      });
+    } catch (logErr) {
+      console.error('Failed to log assessment error to DB:', logErr);
+    }
+
     res.status(err.status || 500);
     const message = err.message?.includes('503') || err.message?.includes('UNAVAILABLE')
       ? 'The AI service is currently busy. Please try again in 10 seconds.'
@@ -240,6 +292,21 @@ const generateAssessment = asyncHandler(async (req, res) => {
         usageCount: 1
       }
     });
+
+    // Notify Admin of Assessment Generation
+    sendAdminNotification(
+      'New Quiz Generated',
+      `
+      <p>A user has generated a new quiz/assessment.</p>
+      <ul>
+          <li><strong>User:</strong> ${req.user.name} (${req.user.email})</li>
+          <li><strong>Topic:</strong> ${topic}</li>
+          <li><strong>Subject:</strong> ${subject}</li>
+          <li><strong>Class:</strong> ${classLevel}</li>
+          <li><strong>Question Count:</strong> ${questionCount}</li>
+      </ul>
+      `
+    ).catch(err => console.error('Failed to notify admin of assessment generation:', err));
   } catch (logErr) {
     console.error('Failed post-assessment generation tasks', logErr);
   }
@@ -260,7 +327,47 @@ const generateAssessment = asyncHandler(async (req, res) => {
   }));
 });
 
+// @route POST /api/generate/remark
+const generateRemark = asyncHandler(async (req, res) => {
+  const userId = req.user.id;
+  const { classLevel, subject, topic, lessonOutcome, students, style } = req.body;
+
+  if (!classLevel || !subject || !topic) {
+    res.status(400);
+    throw new Error('Subject, Topic, and Class Level are required');
+  }
+
+  let genResult;
+  try {
+    genResult = await genai.generateRemarkViaGenAI({
+      classLevel,
+      subject,
+      topic,
+      lessonOutcome,
+      students,
+      style,
+      maxTokens: 1024
+    });
+
+    const parsed = JSON.parse(genResult.text);
+
+    // Log usage
+    createUsageLog(userId, 'REMARK_GENERATION', { subject, topic, studentCount: students?.length || 0 }).catch(() => { });
+
+    res.json(formatResponse(true, 'Remark generated', {
+      remark: parsed.remark,
+      usage: genResult.usage
+    }));
+
+  } catch (err) {
+    console.error('generateRemark ERROR:', err);
+    res.status(err.status || 500);
+    throw new Error('Failed to generate remark: ' + err.message);
+  }
+});
+
 module.exports = {
   generateLesson,
   generateAssessment,
+  generateRemark
 };

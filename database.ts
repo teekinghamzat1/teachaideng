@@ -793,6 +793,45 @@ export const db = {
         body: JSON.stringify({ teacherLimit: limit })
       });
       await handleResponse(response);
+    },
+
+    async logError(errorData: { source: string; path: string; message: string; stack?: string; metadata?: any; severity?: string }) {
+      try {
+        await fetch(`${API_URL}/admin/error-logs`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...getAnyAuthHeader()
+          },
+          body: JSON.stringify(errorData)
+        });
+      } catch (e) {
+        console.error('Silent failure while logging error:', e);
+      }
+    },
+
+    async getErrorLogs(filters?: { severity?: string, source?: string, isResolved?: boolean }) {
+      const params = new URLSearchParams();
+      if (filters?.severity) params.append('severity', filters.severity);
+      if (filters?.source) params.append('source', filters.source);
+      if (filters?.isResolved !== undefined) params.append('isResolved', String(filters.isResolved));
+
+      const response = await fetch(`${API_URL}/admin/error-logs?${params.toString()}`, {
+        headers: getAdminAuthHeader()
+      });
+      return handleResponse(response);
+    },
+
+    async resolveError(id: string, isResolved: boolean = true) {
+      const response = await fetch(`${API_URL}/admin/error-logs/${id}/resolve`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAdminAuthHeader()
+        },
+        body: JSON.stringify({ isResolved })
+      });
+      return handleResponse(response);
     }
   },
 

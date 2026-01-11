@@ -601,6 +601,50 @@ const sendLessonNoteEmail = async (userEmail, lessonNote) => {
             errorStack: error.stack,
             fullError: error
         });
+    }
+};
+
+/**
+ * Send notification to admin about system events
+ */
+const sendAdminNotification = async (subject, htmlContent) => {
+    try {
+        const transporter = await getTransporter();
+        if (!transporter) return false;
+
+        const settings = await prisma.systemSetting.findUnique({ where: { id: 1 } });
+        if (!settings) return false;
+
+        const adminEmail = settings.smtpFromEmail || settings.smtpUser;
+        const fromEmail = settings.smtpFromEmail || settings.smtpUser;
+        const fromName = settings.smtpFromName || 'TeachAide AI System';
+
+        const mailOptions = {
+            from: `"${fromName}" <${fromEmail}>`,
+            to: adminEmail,
+            subject: `[ADMIN NOTIFY] ${subject}`,
+            html: `
+                <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
+                    <div style="background: #1e293b; color: white; padding: 15px; border-radius: 8px 8px 0 0;">
+                        <h2 style="margin: 0;">TeachAide Admin Notification</h2>
+                    </div>
+                    <div style="padding: 20px; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 8px 8px;">
+                        ${htmlContent}
+                        <hr style="margin: 20px 0; border: none; border-top: 1px solid #eee;" />
+                        <p style="font-size: 12px; color: #64748b;">
+                            This is an automated system notification for the administrator.
+                            Generated on: ${new Date().toLocaleString()}
+                        </p>
+                    </div>
+                </div>
+            `
+        };
+
+        await transporter.sendMail(mailOptions);
+        console.log(`Admin notification sent: ${subject}`);
+        return true;
+    } catch (error) {
+        console.error('Error sending admin notification:', error);
         return false;
     }
 };
@@ -612,5 +656,6 @@ module.exports = {
     sendTeacherRemovalNotification,
     sendWelcomeEmail,
     sendLessonNoteEmail,
+    sendAdminNotification,
     getTransporter
 };

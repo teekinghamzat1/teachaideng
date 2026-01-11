@@ -36,6 +36,7 @@ import AdminCurriculum from './pages/AdminCurriculum';
 import AdminSettings from './pages/AdminSettings';
 import AdminProfile from './pages/AdminProfile';
 import AdminBlog from './pages/AdminBlog';
+import AdminErrors from './pages/AdminErrors';
 
 import ProtectedRoute from './components/ProtectedRoute';
 import { BrandingProvider } from './contexts/BrandingContext';
@@ -133,6 +134,7 @@ const App: React.FC = () => {
             <Route path="settings" element={<AdminSettings />} />
             <Route path="profile" element={<AdminProfile />} />
             <Route path="blog" element={<AdminBlog />} />
+            <Route path="errors" element={<AdminErrors />} />
           </Route>
 
           {/* 404 Route */}

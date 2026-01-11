@@ -70,6 +70,7 @@ model User {
   timetables        Timetable[]
   notificationReads NotificationRead[]
   adminLogs         AdminLog[]
+  errorLogs         ErrorLog[]
 }
 
 model Product {
@@ -469,4 +470,19 @@ model BlogPost {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model ErrorLog {
+  id           String   @id @default(uuid())
+  userId       String?
+  source       String   // "FRONTEND" | "BACKEND"
+  path         String?  // URL path or component name
+  message      String
+  stack        String?  // Error stack trace if available
+  metadata     String?  // JSON string: { browser, os, ip, inputData, etc. }
+  isResolved   Boolean  @default(false)
+  severity     String   @default("low") // "low" | "medium" | "high" | "critical"
+  createdAt    DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
 }

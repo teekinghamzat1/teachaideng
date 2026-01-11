@@ -2,8 +2,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, Navigate, Link, useNavigate } from 'react-router-dom';
 import { LessonNote } from '../types';
-import { Download, BookOpen, Copy, CheckCircle, Save, Loader2, Volume, Share, StopCircle, FileText, Mail } from '../components/Icons';
+import { Download, BookOpen, Copy, CheckCircle, Save, Loader2, Volume, Share, StopCircle, FileText, Mail, MessageCircle, X, Sparkles, User as UserIcon, Plus } from '../components/Icons';
 import { db } from '../database';
+import { generateRemark } from '../services/geminiService';
 import { showAlert } from '../utils/alerts';
 import { useBranding } from '../contexts/BrandingContext';
 import { stripFormatting as stripMarkdown } from '../utils/textUtils';
@@ -20,6 +21,17 @@ const Result: React.FC = () => {
     const [isSpeaking, setIsSpeaking] = useState(false);
     const [showShareMenu, setShowShareMenu] = useState(false);
     const shareMenuRef = useRef<HTMLDivElement>(null);
+
+    // AI Remark Generator State
+    const [showRemarkGenerator, setShowRemarkGenerator] = useState(false);
+    const [remarkInputs, setRemarkInputs] = useState({
+        lessonOutcome: 'The lesson was highly successful and the students achieved the learning objectives.',
+        students: [] as { name: string; observation: string }[],
+        style: 'Professional'
+    });
+    const [newStudent, setNewStudent] = useState({ name: '', observation: '' });
+    const [generatedRemark, setGeneratedRemark] = useState('');
+    const [isGeneratingRemark, setIsGeneratingRemark] = useState(false);
 
     useEffect(() => {
         // Cleanup speech when component unmounts
@@ -142,6 +154,42 @@ const Result: React.FC = () => {
         } else {
             showAlert.error("Not Supported", "Text-to-Speech is not supported in this browser.");
         }
+    };
+
+    const handleGenerateRemark = async () => {
+        try {
+            setIsGeneratingRemark(true);
+            const result = await generateRemark({
+                classLevel: lessonNote.classLevel,
+                subject: lessonNote.subject,
+                topic: lessonNote.topic,
+                lessonOutcome: remarkInputs.lessonOutcome,
+                students: remarkInputs.students,
+                style: remarkInputs.style
+            });
+
+            setGeneratedRemark(result.remark);
+        } catch (error: any) {
+            console.error("Remark generation failed:", error);
+            showAlert.error("Generation Failed", error.message || "Failed to generate remark.");
+        } finally {
+            setIsGeneratingRemark(false);
+        }
+    };
+
+    const addStudentObservation = () => {
+        if (!newStudent.name.trim()) return;
+        setRemarkInputs({
+            ...remarkInputs,
+            students: [...remarkInputs.students, { ...newStudent }]
+        });
+        setNewStudent({ name: '', observation: '' });
+    };
+
+    const removeStudentObservation = (index: number) => {
+        const updated = [...remarkInputs.students];
+        updated.splice(index, 1);
+        setRemarkInputs({ ...remarkInputs, students: updated });
     };
     const handleShareNative = async () => {
         setShowShareMenu(false);
@@ -573,6 +621,166 @@ ${stripMarkdown(lessonNote.assignment)}
                         <h3 className="font-bold text-lg text-slate-900 dark:text-slate-100 uppercase mb-2 border-l-4 border-black dark:border-slate-100 pl-3 bg-slate-50 dark:bg-slate-800 py-1">Assignment</h3>
                         <p className="text-slate-800 dark:text-slate-300 ml-2 whitespace-pre-wrap break-words">{stripMarkdown(lessonNote.assignment)}</p>
                     </section>
+                </div>
+
+                {/* AI Student Remark Generator Section */}
+                <div className="mt-12 pt-8 border-t border-slate-200 dark:border-slate-700 print:hidden">
+                    <div className="bg-brand-50 dark:bg-brand-900/20 rounded-xl p-6 border border-brand-100 dark:border-brand-900/30">
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                            <div>
+                                <h3 className="text-xl font-bold text-brand-900 dark:text-brand-100 flex items-center">
+                                    <Sparkles className="w-5 h-5 mr-2 text-brand-600" />
+                                    AI Student Remark Generator
+                                </h3>
+                                <p className="text-brand-700 dark:text-brand-300 text-sm mt-1">
+                                    Generate personalized remarks for your students based on this lesson's topic.
+                                </p>
+                            </div>
+                            <button
+                                onClick={() => setShowRemarkGenerator(!showRemarkGenerator)}
+                                className="px-6 py-2.5 bg-brand-600 hover:bg-brand-700 text-white rounded-lg font-medium transition-all shadow-md flex items-center justify-center"
+                            >
+                                {showRemarkGenerator ? "Hide Generator" : "Try Generator"}
+                            </button>
+                        </div>
+
+                        {showRemarkGenerator && (
+                            <div className="space-y-6 animate-in fade-in slide-in-from-top-4 duration-300">
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">How did the lesson go overall? (Required)</label>
+                                        <textarea
+                                            value={remarkInputs.lessonOutcome}
+                                            onChange={(e) => setRemarkInputs({ ...remarkInputs, lessonOutcome: e.target.value })}
+                                            className="w-full px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:ring-2 focus:ring-brand-500 outline-none transition-all h-20"
+                                            placeholder="e.g. Most students understood the core concept, but a few needed help with the activity."
+                                        />
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Tone Style</label>
+                                            <select
+                                                value={remarkInputs.style}
+                                                onChange={(e) => setRemarkInputs({ ...remarkInputs, style: e.target.value })}
+                                                className="w-full px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:ring-2 focus:ring-brand-500 outline-none transition-all"
+                                            >
+                                                <option value="Professional">Professional</option>
+                                                <option value="Encouraging">Encouraging</option>
+                                                <option value="Concise">Concise</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
+                                        <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-3 flex items-center">
+                                            <UserIcon className="w-4 h-4 mr-1.5" />
+                                            Student-Specific Observations (Optional)
+                                        </h4>
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+                                            <input
+                                                type="text"
+                                                value={newStudent.name}
+                                                onChange={(e) => setNewStudent({ ...newStudent, name: e.target.value })}
+                                                placeholder="Student Name"
+                                                className="px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm"
+                                            />
+                                            <input
+                                                type="text"
+                                                value={newStudent.observation}
+                                                onChange={(e) => setNewStudent({ ...newStudent, observation: e.target.value })}
+                                                placeholder="Observation (e.g. Mastered the topic)"
+                                                className="md:col-span-2 px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm"
+                                            />
+                                        </div>
+                                        <button
+                                            onClick={addStudentObservation}
+                                            className="text-xs font-bold text-brand-600 hover:text-brand-700 flex items-center"
+                                        >
+                                            <Plus className="w-3.5 h-3.5 mr-1" />
+                                            Add Student Observation
+                                        </button>
+
+                                        {remarkInputs.students.length > 0 && (
+                                            <div className="mt-4 flex flex-wrap gap-2">
+                                                {remarkInputs.students.map((s, i) => (
+                                                    <div key={i} className="flex items-center bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full px-3 py-1 animate-in zoom-in-90">
+                                                        <span className="text-xs font-medium text-slate-700 dark:text-slate-300">
+                                                            <strong className="text-brand-600">{s.name}</strong>: {s.observation}
+                                                        </span>
+                                                        <button onClick={() => removeStudentObservation(i)} className="ml-2 text-slate-400 hover:text-red-500">
+                                                            <X className="w-3 h-3" />
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div className="flex justify-center">
+                                    <button
+                                        onClick={handleGenerateRemark}
+                                        disabled={isGeneratingRemark}
+                                        className="px-8 py-3 bg-brand-600 hover:bg-brand-700 disabled:bg-slate-400 text-white rounded-xl font-bold transition-all shadow-lg flex items-center"
+                                    >
+                                        {isGeneratingRemark ? (
+                                            <>
+                                                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                                                Analyzing Performance...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <MessageCircle className="w-5 h-5 mr-2" />
+                                                Generate Remark
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
+
+                                {generatedRemark && (
+                                    <div className="mt-8 p-6 bg-white dark:bg-slate-800 rounded-2xl border-2 border-brand-200 dark:border-brand-800 relative group animate-in zoom-in-95 duration-500">
+                                        <div className="absolute -top-3 left-6 px-3 py-1 bg-brand-600 text-white text-xs font-bold rounded-full">
+                                            LESSON REMARK / EVALUATION
+                                        </div>
+
+                                        <div className="flex items-start gap-4">
+                                            <div className="p-3 bg-brand-50 dark:bg-brand-900/30 rounded-full">
+                                                <FileText className="w-6 h-6 text-brand-600" />
+                                            </div>
+                                            <div className="flex-1">
+                                                <p className="text-slate-800 dark:text-slate-100 text-lg leading-relaxed">
+                                                    {generatedRemark}
+                                                </p>
+
+                                                <div className="mt-6 flex flex-wrap gap-3">
+                                                    <button
+                                                        onClick={() => {
+                                                            navigator.clipboard.writeText(generatedRemark);
+                                                            showAlert.success("Copied", "Remark copied to clipboard.");
+                                                        }}
+                                                        className="flex items-center text-sm font-bold text-brand-600 hover:text-brand-700 bg-brand-50 dark:bg-brand-900/20 px-4 py-2 rounded-lg transition-colors"
+                                                    >
+                                                        <Copy className="w-4 h-4 mr-2" />
+                                                        Copy to Clipboard
+                                                    </button>
+                                                    <button
+                                                        onClick={() => {
+                                                            setRemarkInputs({ ...remarkInputs, students: [], lessonOutcome: '' });
+                                                            setGeneratedRemark('');
+                                                        }}
+                                                        className="flex items-center text-sm font-bold text-slate-500 hover:text-slate-700 px-4 py-2 transition-colors"
+                                                    >
+                                                        Clear All
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div >
         </div >
