@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Calendar, UserIcon as User, ArrowRight } from '../../components/Icons';
+import SEO from '../../components/SEO';
 
 interface BlogPost {
     id: string;
@@ -76,6 +77,10 @@ const BlogHome: React.FC = () => {
 
     return (
         <div className="bg-slate-50 dark:bg-slate-900 min-h-screen py-12 px-4 sm:px-6 lg:px-8">
+            <SEO
+                title="Blog"
+                description="Insights, tips, and updates for modern Nigerian educators. Learn how to use AI to improve your teaching."
+            />
             <div className="max-w-7xl mx-auto">
                 <div className="text-center mb-16">
                     <h1 className="text-4xl font-extrabold text-slate-900 dark:text-white sm:text-5xl sm:tracking-tight lg:text-6xl">

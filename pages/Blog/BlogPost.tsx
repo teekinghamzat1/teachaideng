@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Calendar, UserIcon as User } from '../../components/Icons';
+import SEO from '../../components/SEO';
 
 interface BlogPostData {
     id: string;
@@ -11,6 +12,9 @@ interface BlogPostData {
     image: string;
     author: string;
     createdAt: string;
+    metaTitle?: string;
+    metaDescription?: string;
+    keywords?: string;
 }
 
 const BlogPost: React.FC = () => {
@@ -100,6 +104,11 @@ const BlogPost: React.FC = () => {
 
     return (
         <div className="bg-slate-50 dark:bg-slate-900 min-h-screen py-12 px-4 sm:px-6 lg:px-8">
+            <SEO
+                title={post.metaTitle || post.title}
+                description={post.metaDescription || post.summary}
+                keywords={post.keywords}
+            />
             <div className="max-w-4xl mx-auto">
                 <div className="mb-8">
                     <Link to="/blog" className="inline-flex items-center text-brand-600 dark:text-brand-400 hover:underline">

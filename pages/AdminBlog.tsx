@@ -14,6 +14,9 @@ interface BlogPost {
     image: string;
     author: string;
     published: boolean;
+    metaTitle?: string;
+    metaDescription?: string;
+    keywords?: string;
     createdAt: string;
 }
 
@@ -361,7 +364,7 @@ const AdminBlog: React.FC = () => {
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div>
                                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Author Name</label>
                                     <input
@@ -382,6 +385,43 @@ const AdminBlog: React.FC = () => {
                                     <label htmlFor="published" className="text-sm font-medium text-slate-700 dark:text-slate-300 select-none cursor-pointer">
                                         Publish this post immediately
                                     </label>
+                                </div>
+                            </div>
+
+                            {/* SEO Meta Tags Section */}
+                            <div className="pt-6 border-t border-slate-200 dark:border-slate-700 mt-6">
+                                <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">SEO Meta Tags (Optional)</h3>
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">SEO Title (Browser Tab Title)</label>
+                                        <input
+                                            type="text"
+                                            value={currentPost.metaTitle || ''}
+                                            onChange={e => setCurrentPost({ ...currentPost, metaTitle: e.target.value })}
+                                            placeholder="Leave empty to use the Article Title"
+                                            className="w-full rounded-lg border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 dark:text-white focus:ring-brand-500"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Meta Description (Search Snippet)</label>
+                                        <textarea
+                                            rows={2}
+                                            value={currentPost.metaDescription || ''}
+                                            onChange={e => setCurrentPost({ ...currentPost, metaDescription: e.target.value })}
+                                            placeholder="Leave empty to use the Article Summary"
+                                            className="w-full rounded-lg border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 dark:text-white focus:ring-brand-500"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Keywords (Comma Separated)</label>
+                                        <input
+                                            type="text"
+                                            value={currentPost.keywords || ''}
+                                            onChange={e => setCurrentPost({ ...currentPost, keywords: e.target.value })}
+                                            placeholder="lesson planning, AI for teachers, etc."
+                                            className="w-full rounded-lg border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 dark:text-white focus:ring-brand-500"
+                                        />
+                                    </div>
                                 </div>
                             </div>
 
