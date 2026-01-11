@@ -637,8 +637,74 @@ const updateUserStatus = asyncHandler(async (req, res) => {
         targetUserName: updatedUser.name,
         newStatus: status
     });
-
     res.json(formatResponse(true, `User status updated to ${status}`, updatedUser));
+});
+
+// @desc    Update user plan
+// @route   PUT /api/admin/users/:id/plan
+// @access  Private/SuperAdmin
+const updateUserPlan = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { plan } = req.body; // 'Free', 'Pro', 'School'
+
+    const user = await prisma.user.findUnique({ where: { id } });
+    if (!user) {
+        res.status(404);
+        throw new Error('User not found');
+    }
+
+    const normalizedPlan = plan.charAt(0).toUpperCase() + plan.slice(1).toLowerCase();
+
+    // 1. Update basic plan info
+    const updateData = {
+        subscriptionPlan: normalizedPlan,
+        isSchoolAdmin: normalizedPlan === 'School'
+    };
+
+    let updatedUser = await prisma.user.update({
+        where: { id },
+        data: updateData
+    });
+
+    // 2. If promoted to School, ensure a school exists for them
+    if (normalizedPlan === 'School') {
+        let existingSchool = await prisma.school.findFirst({
+            where: { ownerId: id }
+        });
+
+        if (!existingSchool) {
+            const schoolName = `${updatedUser.name}'s School`;
+            const slug = schoolName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '') + '-' + Date.now();
+
+            existingSchool = await prisma.school.create({
+                data: {
+                    name: schoolName,
+                    slug,
+                    ownerId: id,
+                    teacherLimit: 15
+                }
+            });
+        }
+
+        // Link user to their school
+        updatedUser = await prisma.user.update({
+            where: { id },
+            data: {
+                schoolId: existingSchool.id,
+                isSchoolAdmin: true
+            }
+        });
+    }
+
+    // 3. Log the action
+    const { createAdminLog } = require('./adminController'); // Self-reference or imported at top
+    await createAdminLog(req.user.id, null, 'UPDATE_USER_PLAN', {
+        targetUserId: id,
+        targetUserName: updatedUser.name,
+        newPlan: normalizedPlan
+    });
+
+    res.json(formatResponse(true, `User plan updated to ${normalizedPlan}`, updatedUser));
 });
 
 const errorLogController = require('./errorLogController');
@@ -661,6 +727,7 @@ module.exports = {
     deleteUserPermanently,
     resetUserLimit,
     updateUserStatus,
+    updateUserPlan,
     getAnalytics,
     getSchools,
     getAdminLogs,

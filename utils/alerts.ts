@@ -66,5 +66,19 @@ export const showAlert = {
             reverseButtons: true
         });
         return result.isConfirmed;
+    },
+
+    prompt: async (title: string, inputOptions: Record<string, string>, defaultValue: string) => {
+        const result = await MySwal.fire({
+            ...commonConfig,
+            title,
+            input: 'select',
+            inputOptions,
+            inputValue: defaultValue,
+            showCancelButton: true,
+            confirmButtonText: 'Update',
+            cancelButtonText: 'Cancel'
+        });
+        return result.value;
     }
 };

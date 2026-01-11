@@ -199,9 +199,31 @@ const AdminUsers: React.FC = () => {
             try {
                 await db.admin.resetUserLimit(userId);
                 showAlert.success("Limit Reset", "User limit reset successfully");
-                loadUsers(); // Refresh the table to show the new usage numbers
+                loadUsers();
             } catch (error) {
                 showAlert.error("Error", "Failed to reset limit");
+            }
+        }
+    };
+
+    const handlePlanChange = async (userId: string, currentPlan: string) => {
+        const plan = await showAlert.prompt(
+            'Select Subscription Plan',
+            {
+                'Free': 'Free',
+                'Pro': 'Pro',
+                'School': 'School'
+            },
+            currentPlan
+        );
+
+        if (plan && plan !== currentPlan) {
+            try {
+                await db.admin.updateUserPlan(userId, plan as any);
+                showAlert.success("Plan Updated", `User plan changed to ${plan}`);
+                loadUsers();
+            } catch (error: any) {
+                showAlert.error("Error", error.message || "Failed to update plan");
             }
         }
     };
@@ -522,6 +544,11 @@ const AdminUsers: React.FC = () => {
                                                 {!currentUser?.isSchoolAdmin && (
                                                     <button onClick={() => handleResetLimit(user.id)} className="text-slate-400 hover:text-blue-600" title="Reset Lesson Limit">
                                                         <RotateCcw className="w-4 h-4" />
+                                                    </button>
+                                                )}
+                                                {isSuperAdmin && (
+                                                    <button onClick={() => handlePlanChange(user.id, user.subscriptionPlan || 'Free')} className="text-slate-400 hover:text-brand-600" title="Change Plan">
+                                                        <Edit className="w-4 h-4" />
                                                     </button>
                                                 )}
                                                 <button onClick={() => handleDelete(user.id)} className="text-slate-400 hover:text-red-600" title="Delete">

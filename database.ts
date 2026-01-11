@@ -832,6 +832,18 @@ export const db = {
         body: JSON.stringify({ isResolved })
       });
       return handleResponse(response);
+    },
+
+    async updateUserPlan(id: string, plan: 'Free' | 'Pro' | 'School') {
+      const response = await fetch(`${API_URL}/admin/users/${id}/plan`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAdminAuthHeader()
+        },
+        body: JSON.stringify({ plan })
+      });
+      return handleResponse(response);
     }
   },
 

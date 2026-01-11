@@ -12,6 +12,7 @@ const {
     testSmtp,
     resetUserLimit,
     updateUserStatus,
+    updateUserPlan,
     getAnalytics,
     getSchools,
     getAdminLogs,
@@ -74,6 +75,7 @@ router.post('/schools/provision', provisionSchool);
 // Permanently delete a user and all related data
 router.delete('/users/:id', deleteUserPermanently);
 router.put('/users/:id/status', updateUserStatus);
+router.put('/users/:id/plan', superAdmin, updateUserPlan);
 
 // SMTP Testing
 router.post('/test-smtp', testSmtp);
