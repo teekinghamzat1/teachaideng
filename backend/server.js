@@ -58,8 +58,8 @@ app.use(helmet());
 app.use(morgan('dev'));
 
 // Routes (Placeholders for now)
-app.get('/', (req, res) => {
-    res.send('API is running...');
+app.get('/sitemap.xml', (req, res) => {
+    res.redirect('/api/sitemap.xml');
 });
 
 // Health check to verify API routing without DB
@@ -106,6 +106,7 @@ app.use('/api/testimonials', require('./src/routes/testimonialRoutes'));
 app.use('/api/branding', require('./src/routes/branding'));
 app.use('/api/usage', require('./src/routes/usage'));
 app.use('/api/blog', require('./src/routes/blogRoutes'));
+app.use('/api/sitemap.xml', require('./src/routes/sitemapRoutes'));
 
 // Error Handler
 app.use(errorHandler);

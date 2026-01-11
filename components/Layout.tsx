@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Menu, X, BookOpen, Sparkles, UserIcon, LogOut, FileText, Clipboard, Users, Calendar, SettingsIcon, WifiOff, Shield, Bell, Sun, Moon } from './Icons';
 import { db } from '../database';
+import SEO from './SEO';
 import { User } from '../types';
 import { useBranding } from '../contexts/BrandingContext';
 
@@ -100,6 +101,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-900 dark:text-slate-100 transition-colors duration-200">
+      <SEO />
       {/* Maintenance Mode Overlay */}
       {maintenanceMode && (!user || user.role !== 'Admin') && (
         <div className="fixed inset-0 z-[60] bg-slate-50 dark:bg-slate-900 flex flex-col items-center justify-center p-4 text-center">

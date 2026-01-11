@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { db } from '../database';
 import { LayoutDashboard, Users, FileText, SettingsIcon, LogOut, Menu, X, Shield, BookOpen, Bell, Search, Activity, Sun, Moon, AlertTriangle } from './Icons';
+import SEO from './SEO';
 import { User } from '../types';
 
 const AdminLayout: React.FC = () => {
@@ -78,6 +79,7 @@ const AdminLayout: React.FC = () => {
 
     return (
         <div className="min-h-screen bg-slate-100 dark:bg-slate-900 flex">
+            <SEO />
             {/* Sidebar */}
             <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 text-white transform transition-transform duration-200 ease-in-out ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:relative md:translate-x-0`}>
                 <div className="flex items-center justify-between h-16 px-4 bg-slate-800 dark:bg-slate-800">
