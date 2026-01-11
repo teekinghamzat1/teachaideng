@@ -100,6 +100,12 @@ const Result: React.FC = () => {
                 } else {
                     showAlert.success("Saved Successfully", "Note has been saved to your history.");
                 }
+
+                // Update navigation state so refresh works
+                navigate(location.pathname, {
+                    state: { lessonNote: response.data },
+                    replace: true
+                });
             }
         } catch (error) {
             console.error("Failed to save note:", error);
@@ -139,20 +145,110 @@ const Result: React.FC = () => {
     };
     const handleShareNative = async () => {
         setShowShareMenu(false);
+
+        if (!lessonNote.id) {
+            const confirmed = await showAlert.confirm("Save Required", "Notes must be saved to your account before they can be shared as a link. Save now?");
+            if (confirmed) {
+                // We need to wait for save to complete and update lessonNote
+                try {
+                    setIsSaving(true);
+                    const response = await db.notes.save(lessonNote);
+                    if (response.success && response.data) {
+                        setLessonNote(response.data);
+                        setIsSaved(true);
+
+                        // Update navigation state
+                        navigate(location.pathname, {
+                            state: { lessonNote: response.data },
+                            replace: true
+                        });
+
+                        // Continue sharing with the new ID
+                        const shareUrl = `${window.location.origin}/share/${response.data.id}`;
+                        if (navigator.share) {
+                            await navigator.share({
+                                title: `Lesson Note: ${stripMarkdown(response.data.topic)}`,
+                                text: `Check out this lesson note for ${response.data.subject}.`,
+                                url: shareUrl
+                            });
+                        } else {
+                            await navigator.clipboard.writeText(shareUrl);
+                            showAlert.success("Link Copied", "Sharing link has been copied to your clipboard.");
+                        }
+                    }
+                } catch (error) {
+                    console.error("Failed to save before sharing:", error);
+                    showAlert.error("Save Failed", "Could not save note to generate share link.");
+                } finally {
+                    setIsSaving(false);
+                }
+            }
+            return;
+        }
+
+        const shareUrl = `${window.location.origin}/share/${lessonNote.id}`;
+
         if (navigator.share) {
             try {
                 await navigator.share({
                     title: `Lesson Note: ${stripMarkdown(lessonNote.topic)}`,
-                    text: `Check out this lesson note for ${lessonNote.subject}.\n\n${stripMarkdown(lessonNote.lessonContent).substring(0, 100)}...`,
-                    url: window.location.href
+                    text: `Check out this lesson note for ${lessonNote.subject}.`,
+                    url: shareUrl
                 });
             } catch (err) {
                 console.log('Error sharing:', err);
             }
         } else {
             // Fallback
-            handleCopyContent();
-            showAlert.success("Copied", "Link copied to clipboard");
+            try {
+                await navigator.clipboard.writeText(shareUrl);
+                showAlert.success("Link Copied", "Sharing link has been copied to your clipboard.");
+            } catch (err) {
+                console.error("Failed to copy share link:", err);
+            }
+        }
+    };
+
+    const handleCopyShareLink = async () => {
+        setShowShareMenu(false);
+
+        if (!lessonNote.id) {
+            const confirmed = await showAlert.confirm("Save Required", "Notes must be saved to your account before they can be shared. Save now?");
+            if (confirmed) {
+                try {
+                    setIsSaving(true);
+                    const response = await db.notes.save(lessonNote);
+                    if (response.success && response.data) {
+                        setLessonNote(response.data);
+                        setIsSaved(true);
+
+                        // Update navigation state
+                        navigate(location.pathname, {
+                            state: { lessonNote: response.data },
+                            replace: true
+                        });
+
+                        const shareUrl = `${window.location.origin}/share/${response.data.id}`;
+                        await navigator.clipboard.writeText(shareUrl);
+                        showAlert.success("Link Copied", "Sharing link has been copied to your clipboard.");
+                    }
+                } catch (error) {
+                    console.error("Failed to save before copying link:", error);
+                    showAlert.error("Save Failed", "Could not save note to generate share link.");
+                } finally {
+                    setIsSaving(false);
+                }
+            }
+            return;
+        }
+
+        const shareUrl = `${window.location.origin}/share/${lessonNote.id}`;
+        try {
+            await navigator.clipboard.writeText(shareUrl);
+            showAlert.success("Link Copied", "Sharing link has been copied to your clipboard.");
+        } catch (err) {
+            console.error("Failed to copy share link:", err);
+            showAlert.error("Copy Failed", "Failed to copy link to clipboard.");
         }
     };
 
@@ -290,7 +386,14 @@ ${stripMarkdown(lessonNote.assignment)}
                                         className="group flex items-center w-full px-4 py-3 text-sm text-slate-700 dark:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-brand-600 transition-colors"
                                     >
                                         <Share className="w-4 h-4 mr-3 text-slate-400 group-hover:text-brand-500" />
-                                        Share Link
+                                        Share via...
+                                    </button>
+                                    <button
+                                        onClick={handleCopyShareLink}
+                                        className="group flex items-center w-full px-4 py-3 text-sm text-slate-700 dark:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-brand-600 transition-colors"
+                                    >
+                                        <Copy className="w-4 h-4 mr-3 text-slate-400 group-hover:text-brand-500" />
+                                        Copy Sharing Link
                                     </button>
                                     <button
                                         onClick={handleEmailMe}
@@ -369,7 +472,6 @@ ${stripMarkdown(lessonNote.assignment)}
 
                     <section>
                         <h3 className="font-bold text-lg text-slate-900 dark:text-slate-100 uppercase mb-2 border-l-4 border-black dark:border-slate-100 pl-3 bg-slate-50 dark:bg-slate-800 py-1">Behavioural Objectives</h3>
-                        <p className="mb-2 text-slate-700 dark:text-slate-300">By the end of the lesson, pupils should be able to:</p>
                         <ul className="list-disc list-inside space-y-1 ml-2 text-slate-800 dark:text-slate-300">
                             {(lessonNote.objectives || []).map((obj, i) => (
                                 <li key={i}>{stripMarkdown(obj)}</li>
@@ -439,7 +541,6 @@ ${stripMarkdown(lessonNote.assignment)}
                                     <tr>
                                         <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-sm font-bold text-slate-900 dark:text-slate-100 sm:pl-6 w-20">Step</th>
                                         <th scope="col" className="px-3 py-3.5 text-left text-sm font-bold text-slate-900 dark:text-slate-100">Teacher's Activity</th>
-                                        <th scope="col" className="px-3 py-3.5 text-left text-sm font-bold text-slate-900 dark:text-slate-100">Pupil's Activity</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-200 dark:divide-slate-700 bg-white dark:bg-slate-900">
@@ -447,7 +548,6 @@ ${stripMarkdown(lessonNote.assignment)}
                                         <tr key={idx}>
                                             <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-slate-900 dark:text-slate-100 sm:pl-6 align-top">{step.step}</td>
                                             <td className="whitespace-normal px-3 py-4 text-sm text-slate-700 dark:text-slate-300 align-top">{stripMarkdown(step.teacherActivity)}</td>
-                                            <td className="whitespace-normal px-3 py-4 text-sm text-slate-700 dark:text-slate-300 align-top">{stripMarkdown(step.pupilActivity)}</td>
                                         </tr>
                                     ))}
                                 </tbody>

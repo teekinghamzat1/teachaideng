@@ -141,10 +141,24 @@ const emailNote = asyncHandler(async (req, res) => {
     }
 });
 
+const getPublicNoteById = asyncHandler(async (req, res) => {
+    const note = await prisma.lessonNote.findUnique({
+        where: { id: req.params.id }
+    });
+
+    if (note) {
+        res.json(formatResponse(true, 'Lesson note retrieved', parseNote(note)));
+    } else {
+        res.status(404);
+        throw new Error('Note not found');
+    }
+});
+
 module.exports = {
     createNote,
     getNotes,
     getNoteById,
+    getPublicNoteById,
     deleteNote,
     emailNote,
 };

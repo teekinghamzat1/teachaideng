@@ -185,7 +185,24 @@ When Lesson Type is "Vocabulary / New Words" or "Comprehension":
 - Ensure the passage and vocabulary are from the SAME content
 
 The JSON object must have ONLY the following fields:
-- subject, topic, subtopic, classLevel, duration, date, objectives, references, instructionalMaterials, previousKnowledge, introduction, lessonContent, presentation (array of {step, teacherActivity, pupilActivity}), evaluation, conclusion, assignment.`;
+- subject, topic, subtopic, classLevel, duration, date, objectives, references, instructionalMaterials, previousKnowledge, introduction, lessonContent, presentation (array of {step, teacherActivity, pupilActivity}), evaluation, conclusion, assignment.
+PROCEDURE ENFORCEMENT (TOKEN-EFFICIENT):
+- "presentation" MUST contain EXACTLY 6 steps, labeled Step I to Step VI.
+- Steps must appear in this exact order.
+- Never merge or omit steps, even if no written classwork exists.
+- Step content adapts to lesson type and class level:
+    * Step I: introduce/explain concept
+    * Step II: examples/illustrations
+    * Step III: learner participation (oral/discussion/observation)
+    * Step IV: reinforcement (board/demo/correction)
+    * Step V: application/practice (written/oral/guided)
+    * Step VI: summary within presentation
+- Do NOT repeat evaluation questions inside the procedure.
+- Introduction, Evaluation, and Assignment remain standalone and are NOT steps.
+Steps must appear in exact order from Step I to Step VI; do not shuffle.
+If no written exercise, Step V adapts to oral/guided practice.
+DO NOT INCLUDE Pupil's Activity
+`;
 
   const contents = [{
     role: 'user',

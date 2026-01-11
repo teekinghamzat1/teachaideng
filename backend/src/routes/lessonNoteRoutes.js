@@ -4,6 +4,7 @@ const {
     createNote,
     getNotes,
     getNoteById,
+    getPublicNoteById,
     deleteNote,
     emailNote,
 } = require('../controllers/lessonNoteController');
@@ -45,6 +46,8 @@ router.route('/')
 router.route('/:id')
     .get(protect, getNoteById)
     .delete(protect, deleteNote);
+
+router.route('/public/:id').get(getPublicNoteById);
 
 router.post('/:id/email', protect, emailNote);
 

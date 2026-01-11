@@ -24,6 +24,7 @@ import { ContactUs } from './pages/ContactUs';
 import { PrivacyPolicy } from './pages/PrivacyPolicy';
 import BlogHome from './pages/Blog/BlogHome';
 import BlogPost from './pages/Blog/BlogPost';
+import PublicNote from './pages/PublicNote';
 import NotFound from './pages/NotFound';
 
 // Admin Pages
@@ -116,6 +117,7 @@ const App: React.FC = () => {
           <Route path="/admin/login" element={<Layout><AdminLogin /></Layout>} />
           <Route path="/signup" element={<Layout><Signup /></Layout>} />
           <Route path="/forgot-password" element={<Layout><ForgotPassword /></Layout>} />
+          <Route path="/share/:id" element={<Layout><PublicNote /></Layout>} />
 
           <Route path="/help" element={<Layout><HelpCenter /></Layout>} />
           <Route path="/contact" element={<Layout><ContactUs /></Layout>} />

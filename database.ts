@@ -411,6 +411,11 @@ export const db = {
       return handleResponse(response); // Returns array
     },
 
+    async getPublicNote(id: string): Promise<LessonNote> {
+      const response = await fetch(`${API_URL}/notes/public/${id}`);
+      return handleResponse(response);
+    },
+
     async delete(id: string): Promise<void> {
       const response = await fetch(`${API_URL}/notes/${id}`, {
         method: 'DELETE',
