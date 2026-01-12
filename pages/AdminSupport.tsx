@@ -423,12 +423,12 @@ const AdminSupport: React.FC = () => {
                                     <h3 className="font-bold text-slate-700 dark:text-slate-300 mb-2">Ticket Management</h3>
                                     <p className="max-w-xs text-sm">Detailed ticket viewing and full audit logs are available in the list view on the left. Click a ticket to perform actions.</p>
                                 </div>
-                                )
-                    }
+                        )}
                             </div>
                 </div>
             </div>
-            );
+        </div>
+    );
 };
 
-            export default AdminSupport;
+export default AdminSupport;
