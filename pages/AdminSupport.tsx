@@ -161,24 +161,24 @@ const AdminSupport: React.FC = () => {
     const filteredSessions = sessions.filter(s => filter === 'all' || s.status === filter);
 
     return (
-        <div className="max-w-7xl mx-auto h-[calc(100vh-10rem)] flex flex-col">
-            <div className="flex justify-between items-center mb-6">
-                <div className="flex items-center gap-4">
-                    <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                        <MessageSquare className="w-6 h-6 text-brand-600" />
+        <div className="max-w-7xl mx-auto h-[calc(100vh-8rem)] flex flex-col md:h-[calc(100vh-10rem)]">
+            <div className={`flex justify-between items-center mb-4 ${activeSession ? 'hidden md:flex' : ''}`}>
+                <div className="flex items-center gap-4 flex-wrap">
+                    <h1 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                        <MessageSquare className="w-5 h-5 md:w-6 md:h-6 text-brand-600" />
                         Support Center
                     </h1>
                     <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg">
                         <button
                             onClick={() => setActiveTab('chats')}
-                            className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${activeTab === 'chats' ? 'bg-white dark:bg-slate-700 text-brand-600 shadow-sm' : 'text-slate-500'
+                            className={`px-3 py-1 md:px-4 md:py-1.5 rounded-md text-xs md:text-sm font-medium transition-all ${activeTab === 'chats' ? 'bg-white dark:bg-slate-700 text-brand-600 shadow-sm' : 'text-slate-500'
                                 }`}
                         >
                             Active Chats
                         </button>
                         <button
                             onClick={() => setActiveTab('tickets')}
-                            className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${activeTab === 'tickets' ? 'bg-white dark:bg-slate-700 text-brand-600 shadow-sm' : 'text-slate-500'
+                            className={`px-3 py-1 md:px-4 md:py-1.5 rounded-md text-xs md:text-sm font-medium transition-all ${activeTab === 'tickets' ? 'bg-white dark:bg-slate-700 text-brand-600 shadow-sm' : 'text-slate-500'
                                 }`}
                         >
                             Tickets
@@ -187,7 +187,7 @@ const AdminSupport: React.FC = () => {
                 </div>
 
                 {activeTab === 'chats' && (
-                    <div className="flex items-center gap-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5">
+                    <div className="hidden sm:flex items-center gap-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5">
                         <Filter className="w-4 h-4 text-slate-400" />
                         <select
                             value={filter}
@@ -202,7 +202,7 @@ const AdminSupport: React.FC = () => {
                 )}
             </div>
 
-            <div className="flex-1 flex gap-6 overflow-hidden">
+            <div className="flex flex-1 gap-6 overflow-hidden relative">
                 {/* Side List */}
                 <div className="w-full lg:w-80 bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col overflow-hidden">
                     <div className="p-4 border-b border-slate-100 dark:border-slate-700">
@@ -285,138 +285,134 @@ const AdminSupport: React.FC = () => {
                 </div>
 
                 {/* Main View */}
-                <div className="flex-1 bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col overflow-hidden">
+                <div className={`flex-1 bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col overflow-hidden absolute inset-0 md:relative z-10 ${activeSession ? 'flex' : 'hidden md:flex'}`}>
                     {activeTab === 'chats' ? (
                         activeSession ? (
                             <>
                                 {/* Chat Header */}
                                 <div className="p-4 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50">
                                     <div className="flex items-center gap-3">
+                                        <button
+                                            onClick={() => setActiveSession(null)}
+                                            className="md:hidden p-2 -ml-2 text-slate-500 hover:text-slate-700"
+                                        >
+                                            <ChevronRight className="w-5 h-5 rotate-180" />
+                                        </button>
                                         <div className="w-10 h-10 bg-brand-100 text-brand-700 rounded-full flex items-center justify-center font-bold">
                                             {activeSession.user?.name?.charAt(0) || 'U'}
                                         </div>
                                         <div>
                                             <h2 className="font-bold text-slate-900 dark:text-slate-100">{activeSession.user?.name}</h2>
-                                            <p className="text-xs text-slate-500">{activeSession.user?.email}</p>
-                                        </div>
-                                    </div>
-                                    <div className="flex gap-2">
-                                        <button
-                                            onClick={() => handleCloseSession(activeSession.id)}
-                                            className="px-3 py-1.5 text-xs font-bold text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors border border-red-100 dark:border-red-900/30"
-                                        >
-                                            Close Session
-                                        </button>
-                                    </div>
-                                </div>
-
-                                {/* Messages */}
-                                <div
-                                    ref={scrollRef}
-                                    className="flex-1 overflow-y-auto p-6 space-y-4 bg-slate-50/50 dark:bg-slate-900/20"
-                                >
-                                    {messages.map(m => (
-                                        <div
-                                            key={m.id}
-                                            className={`flex ${m.senderRole === 'admin' ? 'justify-end' : 'justify-start'}`}
-                                        >
-                                            <div className={`max-w-[70%] p-3 rounded-2xl text-sm ${m.senderRole === 'admin'
-                                                ? 'bg-green-600 text-white shadow-sm rounded-tr-none'
-                                                : m.senderRole === 'system'
-                                                    ? 'bg-slate-200 dark:bg-slate-700 text-slate-500 italic text-xs mx-auto text-center'
-                                                    : 'bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 shadow-sm border border-slate-100 dark:border-slate-600 rounded-tl-none'
-                                                }`}>
-                                                {m.attachment && (
-                                                    <div className="mb-2">
-                                                        <img
-                                                            src={m.attachment}
-                                                            alt="Attachment"
-                                                            className="max-w-full rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
-                                                            onClick={() => window.open(m.attachment, '_blank')}
-                                                            style={{ maxHeight: '200px' }}
-                                                        />
-                                                    </div>
-                                                )}
-                                                <div className="whitespace-pre-wrap">{m.content}</div>
-                                                <div className="text-[9px] mt-1 opacity-50 flex justify-between gap-4">
-                                                    <span>{new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                                                    {m.senderRole === 'user' && m.isRead && <span>Read</span>}
-                                                </div>
+                                            <div className="flex items-center gap-2 text-xs text-slate-500">
+                                                <span>{activeSession.user?.email}</span>
+                                                <span className={`${activeSession.status === 'active' ? 'text-green-600' : 'text-slate-400'}`}>{activeSession.status}</span>
                                             </div>
                                         </div>
-                                    ))}
-                                </div>
+                                        <div className="flex gap-2">
+                                            <button
+                                                onClick={() => handleCloseSession(activeSession.id)}
+                                                className="px-3 py-1.5 text-xs font-bold text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors border border-red-100 dark:border-red-900/30"
+                                            >
+                                                Close Session
+                                            </button>
+                                        </div>
+                                    </div>
 
-                                {/* Footer Input */}
-                                <form onSubmit={handleSend} className="p-4 border-t border-slate-100 dark:border-slate-700 flex flex-col gap-2">
-                                    {selectedImage && (
-                                        <div className="relative inline-block">
-                                            <img
-                                                src={selectedImage}
-                                                alt="Preview"
-                                                className="max-h-32 rounded-lg border-2 border-brand-500"
+                                    {/* Messages */}
+                                    <div
+                                        ref={scrollRef}
+                                        className="flex-1 overflow-y-auto p-6 space-y-4 bg-slate-50/50 dark:bg-slate-900/20"
+                                    >
+                                        {messages.map(m => (
+                                            <div
+                                                key={m.id}
+                                                className={`flex ${m.senderRole === 'admin' ? 'justify-end' : 'justify-start'}`}
+                                            >
+                                                <div className={`max-w-[70%] p-3 rounded-2xl text-sm ${m.senderRole === 'admin'
+                                                    ? 'bg-green-600 text-white shadow-sm rounded-tr-none'
+                                                    : m.senderRole === 'system'
+                                                        ? 'bg-slate-200 dark:bg-slate-700 text-slate-500 italic text-xs mx-auto text-center'
+                                                        : 'bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 shadow-sm border border-slate-100 dark:border-slate-600 rounded-tl-none'
+                                                    }`}>
+                                                    {m.attachment && (
+                                                        <div className="mb-2">
+                                                            <img
+                                                                src={m.attachment}
+                                                                alt="Attachment"
+                                                                className="max-w-full rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
+                                                                onClick={() => window.open(m.attachment, '_blank')}
+                                                                style={{ maxHeight: '200px' }}
+                                                            />
+                                                        </div>
+                                                    )}
+                                                    <div className="whitespace-pre-wrap">{m.content}</div>
+                                                    <div className="text-[9px] mt-1 opacity-50 flex justify-between gap-4">
+                                                        <span>{new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                                        {m.senderRole === 'user' && m.isRead && <span>Read</span>}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    {/* Footer Input */}
+                                    <form onSubmit={handleSend} className="p-4 border-t border-slate-100 dark:border-slate-700 flex flex-col gap-2">
+                                        {selectedImage && (
+                                            <div className="relative inline-block">
+                                                <img
+                                                    src={selectedImage}
+                                                    alt="Preview"
+                                                    className="max-h-32 rounded-lg border-2 border-brand-500"
+                                                />
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setSelectedImage(null)}
+                                                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
+                                                >
+                                                    <XCircle className="w-4 h-4" />
+                                                </button>
+                                            </div>
+                                        )}
+                                        <div className="flex gap-2">
+                                            <input
+                                                ref={fileInputRef}
+                                                type="file"
+                                                accept="image/*"
+                                                onChange={handleImageSelect}
+                                                className="hidden"
                                             />
                                             <button
                                                 type="button"
-                                                onClick={() => setSelectedImage(null)}
-                                                className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
+                                                onClick={() => fileInputRef.current?.click()}
+                                                disabled={uploadingImage}
+                                                className="p-3 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-50 transition-colors"
+                                                title="Attach image"
                                             >
-                                                <XCircle className="w-4 h-4" />
+                                                {uploadingImage ? (
+                                                    <Loader2 className="w-5 h-5 animate-spin" />
+                                                ) : (
+                                                    <ImageIcon className="w-5 h-5" />
+                                                )}
+                                            </button>
+                                            <input
+                                                type="text"
+                                                value={input}
+                                                onChange={(e) => setInput(e.target.value)}
+                                                placeholder="Type your response..."
+                                                className="flex-1 bg-slate-100 dark:bg-slate-900 border-none rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-brand-500"
+                                            />
+                                            <button
+                                                type="submit"
+                                                disabled={!input.trim() && !selectedImage}
+                                                className="p-3 bg-brand-600 text-white rounded-xl hover:bg-brand-700 disabled:opacity-50 transition-all hover:scale-105"
+                                            >
+                                                <Send className="w-5 h-5" />
                                             </button>
                                         </div>
-                                    )}
-                                    <div className="flex gap-2">
-                                        <input
-                                            ref={fileInputRef}
-                                            type="file"
-                                            accept="image/*"
-                                            onChange={handleImageSelect}
-                                            className="hidden"
-                                        />
-                                        <button
-                                            type="button"
-                                            onClick={() => fileInputRef.current?.click()}
-                                            disabled={uploadingImage}
-                                            className="p-3 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-50 transition-colors"
-                                            title="Attach image"
-                                        >
-                                            {uploadingImage ? (
-                                                <Loader2 className="w-5 h-5 animate-spin" />
-                                            ) : (
-                                                <ImageIcon className="w-5 h-5" />
-                                            )}
-                                        </button>
-                                        <input
-                                            type="text"
-                                            value={input}
-                                            onChange={(e) => setInput(e.target.value)}
-                                            placeholder="Type your response..."
-                                            className="flex-1 bg-slate-100 dark:bg-slate-900 border-none rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-brand-500"
-                                        />
-                                        <button
-                                            type="submit"
-                                            disabled={!input.trim() && !selectedImage}
-                                            className="p-3 bg-brand-600 text-white rounded-xl hover:bg-brand-700 disabled:opacity-50 transition-all hover:scale-105"
-                                        >
-                                            <Send className="w-5 h-5" />
-                                        </button>
-                                    </div>
-                                </form>
-                            </>
-                        ) : (
-                            <div className="flex-1 flex flex-col items-center justify-center text-slate-400">
-                                <MessageSquare className="w-16 h-16 mb-4 opacity-10" />
-                                <p className="text-sm italic">Select a conversation to start chatting</p>
+                                    </form>
+                                </div>
+                        )}
                             </div>
-                        )
-                    ) : (
-                        /* Tickets Detail View would go here - for now show a placeholder or basic list */
-                        <div className="flex-1 flex flex-col items-center justify-center text-slate-400 p-12 text-center">
-                            <Ticket className="w-16 h-16 mb-4 opacity-10" />
-                            <h3 className="font-bold text-slate-700 dark:text-slate-300 mb-2">Ticket Management</h3>
-                            <p className="max-w-xs text-sm">Detailed ticket viewing and full audit logs are available in the list view on the left. Click a ticket to perform actions.</p>
-                        </div>
-                    )}
                 </div>
             </div>
         </div>
