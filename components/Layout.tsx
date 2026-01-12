@@ -5,6 +5,7 @@ import { db } from '../database';
 import SEO from './SEO';
 import { User } from '../types';
 import { useBranding } from '../contexts/BrandingContext';
+import SupportChat from './SupportChat';
 
 const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -468,6 +469,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           </div>
         </div>
       </footer>
+      {user && <SupportChat />}
     </div>
   );
 };

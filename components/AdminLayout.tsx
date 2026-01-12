@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { db } from '../database';
-import { LayoutDashboard, Users, FileText, SettingsIcon, LogOut, Menu, X, Shield, BookOpen, Bell, Search, Activity, Sun, Moon, AlertTriangle } from './Icons';
+import { LayoutDashboard, Users, FileText, SettingsIcon, LogOut, Menu, X, Shield, BookOpen, Bell, Search, Activity, Sun, Moon, AlertTriangle, MessageSquare } from './Icons';
 import SEO from './SEO';
 import { User } from '../types';
 
@@ -62,6 +62,7 @@ const AdminLayout: React.FC = () => {
         { name: 'Overview', path: '/admin', icon: LayoutDashboard },
         { name: 'Users', path: '/admin/users', icon: Users },
         { name: 'Content', path: '/admin/content', icon: FileText },
+        { name: 'Support', path: '/admin/support', icon: MessageSquare },
         { name: 'Error Logs', path: '/admin/errors', icon: AlertTriangle },
         { name: 'My Account', path: '/admin/profile', icon: SettingsIcon },
     ];

@@ -107,6 +107,7 @@ app.use('/api/branding', require('./src/routes/branding'));
 app.use('/api/usage', require('./src/routes/usage'));
 app.use('/api/blog', require('./src/routes/blogRoutes'));
 app.use('/api/sitemap.xml', require('./src/routes/sitemapRoutes'));
+app.use('/api/support', require('./src/routes/supportRoutes'));
 
 // Error Handler
 app.use(errorHandler);

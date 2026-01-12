@@ -2,10 +2,10 @@ const rateLimit = require('express-rate-limit');
 const formatResponse = require('../utils/formatResponse');
 
 // General API Rate Limiter
-// Default: 300 requests per 15 minutes
+// Increased to 2000 to accommodate support chat polling and multi-tab usage
 const apiLimiter = rateLimit({
     windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,
-    max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 300,
+    max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 2000,
     standardHeaders: true,
     legacyHeaders: false,
     message: formatResponse(false, 'Too many requests from this IP, please try again later'),

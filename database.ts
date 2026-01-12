@@ -997,4 +997,98 @@ export const db = {
       return handleResponse(response);
     }
   },
+
+  support: {
+    // User-facing methods (use regular user auth only)
+    async startSession(): Promise<any> {
+      const response = await fetch(`${API_URL}/support/sessions`, {
+        method: 'POST',
+        headers: getAuthHeader()
+      });
+      return handleResponse(response);
+    },
+    async getMessages(sessionId: string): Promise<any[]> {
+      const response = await fetch(`${API_URL}/support/sessions/${sessionId}/messages`, {
+        headers: getAuthHeader()
+      });
+      return handleResponse(response);
+    },
+    async sendMessage(sessionId: string, content: string, attachment?: string): Promise<any> {
+      const response = await fetch(`${API_URL}/support/sessions/${sessionId}/messages`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeader()
+        },
+        body: JSON.stringify({ content, attachment })
+      });
+      return handleResponse(response);
+    },
+    async getUserSessions(): Promise<any[]> {
+      const response = await fetch(`${API_URL}/support/my-sessions`, {
+        headers: getAuthHeader()
+      });
+      return handleResponse(response);
+    },
+    async convertToTicket(sessionId: string, data: { subject: string; description: string }): Promise<any> {
+      const response = await fetch(`${API_URL}/support/sessions/${sessionId}/ticket`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeader()
+        },
+        body: JSON.stringify(data)
+      });
+      return handleResponse(response);
+    },
+    admin: {
+      async getAllSessions(): Promise<any[]> {
+        const response = await fetch(`${API_URL}/support/admin/sessions`, {
+          headers: getAdminAuthHeader()
+        });
+        return handleResponse(response);
+      },
+      async getMessages(sessionId: string): Promise<any[]> {
+        const response = await fetch(`${API_URL}/support/sessions/${sessionId}/messages`, {
+          headers: getAdminAuthHeader()
+        });
+        return handleResponse(response);
+      },
+      async sendMessage(sessionId: string, content: string, attachment?: string): Promise<any> {
+        const response = await fetch(`${API_URL}/support/sessions/${sessionId}/messages`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...getAdminAuthHeader()
+          },
+          body: JSON.stringify({ content, attachment })
+        });
+        return handleResponse(response);
+      },
+      async closeSession(sessionId: string): Promise<void> {
+        const response = await fetch(`${API_URL}/support/sessions/${sessionId}/close`, {
+          method: 'PUT',
+          headers: getAdminAuthHeader()
+        });
+        await handleResponse(response);
+      },
+      async getTickets(): Promise<any[]> {
+        const response = await fetch(`${API_URL}/support/admin/tickets`, {
+          headers: getAdminAuthHeader()
+        });
+        return handleResponse(response);
+      },
+      async updateTicket(ticketId: string, data: any): Promise<void> {
+        const response = await fetch(`${API_URL}/support/tickets/${ticketId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            ...getAdminAuthHeader()
+          },
+          body: JSON.stringify(data)
+        });
+        await handleResponse(response);
+      }
+    }
+  }
 };

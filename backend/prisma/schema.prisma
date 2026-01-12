@@ -71,6 +71,8 @@ model User {
   notificationReads NotificationRead[]
   adminLogs         AdminLog[]
   errorLogs         ErrorLog[]
+  chatSessions     ChatSession[]     @relation("UserChats")
+  supportTickets   SupportTicket[]   @relation("UserTickets")
 }
 
 model Product {
@@ -485,4 +487,45 @@ model ErrorLog {
   createdAt    DateTime @default(now())
 
   user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+}
+
+model ChatSession {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation("UserChats", fields: [userId], references: [id], onDelete: Cascade)
+  status      String   @default("active") // 'active', 'closed', 'ticketed'
+  lastMessage String?
+  unreadCount Int      @default(0) // Unread messages for admin
+  userUnreadCount Int  @default(0) // Unread messages for user
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  messages ChatMessage[]
+  ticket   SupportTicket?
+}
+
+model ChatMessage {
+  id         String   @id @default(uuid())
+  sessionId  String
+  session    ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  senderId   String?  // Null if system
+  senderRole String   // 'user', 'admin', 'system'
+  content    String
+  attachment String?  // Optional image/file URL
+  isRead     Boolean  @default(false)
+  createdAt  DateTime @default(now())
+}
+
+model SupportTicket {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation("UserTickets", fields: [userId], references: [id], onDelete: Cascade)
+  sessionId   String?  @unique
+  session     ChatSession? @relation(fields: [sessionId], references: [id])
+  subject     String
+  description String
+  status      String   @default("open") // 'open', 'in_progress', 'resolved', 'closed'
+  priority    String   @default("normal") // 'low', 'normal', 'high', 'urgent'
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
