@@ -856,6 +856,17 @@ export const db = {
         console.error('Failed to load testimonials', err);
         return [];
       }
+    },
+
+    async submit(data: any): Promise<any> {
+      const response = await fetch(`${API_URL}/testimonials`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+      });
+      return handleResponse(response);
     }
   },
 

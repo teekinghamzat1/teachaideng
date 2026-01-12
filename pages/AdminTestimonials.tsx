@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { db, getAnyAuthHeader } from '../database';
-import { Trash, Edit, Plus, CheckCircle, X } from '../components/Icons';
+import { Trash, Edit, Plus, CheckCircle, X, Users } from '../components/Icons';
 import { showAlert } from '../utils/alerts';
 
 type FormState = {
@@ -181,29 +181,88 @@ const AdminTestimonials: React.FC = () => {
       )}
 
       {loading ? <div>Loading...</div> : (
-        <div className="space-y-3">
-          {items.map(t => (
-            <div key={t.id} className="flex items-start justify-between border border-slate-200 dark:border-slate-700 p-3 rounded bg-white dark:bg-slate-800">
-              <div className="flex items-start gap-3">
-                {t.avatarUrl ? (
-                  <img src={t.avatarUrl} alt={t.name} className="w-12 h-12 rounded-full object-cover" />
-                ) : (
-                  <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-200 font-bold">{t.name?.charAt(0)}</div>
-                )}
-                <div>
-                  <p className="font-semibold text-slate-900 dark:text-slate-100">{t.name} {t.role ? <span className="text-sm text-slate-500 dark:text-slate-400">· {t.role}</span> : null}</p>
-                  <p className="text-sm text-slate-600 dark:text-slate-400">{t.organization}</p>
-                  <p className="mt-2 text-slate-700 dark:text-slate-200">"{t.content}"</p>
-                  <p className="text-xs text-slate-400 dark:text-slate-400 mt-2">Active: {t.isActive ? 'Yes' : 'No'}</p>
-                </div>
-              </div>
-              <div className="flex flex-col items-end gap-2">
-                <button onClick={() => startEdit(t)} className="text-slate-600"><Edit className="w-5 h-5" /></button>
-                <button onClick={() => toggleActive(t.id)} className="text-slate-600">{t.isActive ? <X className="w-5 h-5" /> : <CheckCircle className="w-5 h-5" />}</button>
-                <button onClick={() => remove(t.id)} className="text-red-600"><Trash className="w-5 h-5" /></button>
+        <div className="space-y-8">
+          {/* Pending / Inactive Section */}
+          {items.filter(i => !i.isActive).length > 0 && (
+            <div>
+              <h3 className="text-md font-semibold text-amber-600 dark:text-amber-500 mb-3 flex items-center gap-2">
+                <CheckCircle className="w-5 h-5" /> Pending / Inactive Testimonials
+              </h3>
+              <div className="space-y-3">
+                {items.filter(i => !i.isActive).map(t => (
+                  <div key={t.id} className="flex items-start justify-between border border-amber-200 dark:border-amber-900/50 p-4 rounded-xl bg-amber-50 dark:bg-amber-900/10">
+                    <div className="flex items-start gap-4">
+                      {t.avatarUrl ? (
+                        <img src={t.avatarUrl} alt={t.name} className="w-12 h-12 rounded-full object-cover" />
+                      ) : (
+                        <div className="w-12 h-12 rounded-full bg-white dark:bg-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-200 font-bold border border-slate-200 dark:border-slate-600">{t.name?.charAt(0)}</div>
+                      )}
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <p className="font-semibold text-slate-900 dark:text-slate-100">{t.name}</p>
+                          <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-xs font-medium">Pending Review</span>
+                        </div>
+                        <p className="text-sm text-slate-600 dark:text-slate-400">{t.role} {t.organization && ` at ${t.organization}`}</p>
+                        <p className="mt-2 text-slate-700 dark:text-slate-300 italic">"{t.content}"</p>
+                        <p className="text-xs text-slate-400 dark:text-slate-500 mt-2">Submitted: {new Date(t.createdAt).toLocaleDateString()}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => toggleActive(t.id)}
+                        className="inline-flex items-center px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs rounded transition-colors"
+                        title="Approve & Publish"
+                      >
+                        <CheckCircle className="w-3 h-3 mr-1.5" /> Approve
+                      </button>
+                      <button onClick={() => startEdit(t)} className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-slate-600 dark:text-slate-400"><Edit className="w-4 h-4" /></button>
+                      <button onClick={() => remove(t.id)} className="p-2 hover:bg-red-100 dark:hover:bg-red-900/30 rounded text-red-600"><Trash className="w-4 h-4" /></button>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
-          ))}
+          )}
+
+          {/* Active Section */}
+          <div>
+            <h3 className="text-md font-semibold text-slate-900 dark:text-slate-100 mb-3 flex items-center gap-2">
+              <Users className="w-5 h-5 text-brand-600" /> Published Testimonials
+            </h3>
+            {items.filter(i => i.isActive).length === 0 ? (
+              <p className="text-slate-500 italic">No published testimonials.</p>
+            ) : (
+              <div className="space-y-3">
+                {items.filter(i => i.isActive).map(t => (
+                  <div key={t.id} className="flex items-start justify-between border border-slate-200 dark:border-slate-700 p-4 rounded-xl bg-white dark:bg-slate-800">
+                    <div className="flex items-start gap-4">
+                      {t.avatarUrl ? (
+                        <img src={t.avatarUrl} alt={t.name} className="w-12 h-12 rounded-full object-cover" />
+                      ) : (
+                        <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-200 font-bold">{t.name?.charAt(0)}</div>
+                      )}
+                      <div>
+                        <p className="font-semibold text-slate-900 dark:text-slate-100">{t.name}</p>
+                        <p className="text-sm text-slate-600 dark:text-slate-400">{t.role} {t.organization && ` at ${t.organization}`}</p>
+                        <p className="mt-2 text-slate-700 dark:text-slate-300 italic">"{t.content}"</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => toggleActive(t.id)}
+                        className="inline-flex items-center px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 text-xs rounded transition-colors"
+                        title="Unpublish (Hide)"
+                      >
+                        <X className="w-3 h-3 mr-1.5" /> Unpublish
+                      </button>
+                      <button onClick={() => startEdit(t)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded text-slate-600 dark:text-slate-400"><Edit className="w-4 h-4" /></button>
+                      <button onClick={() => remove(t.id)} className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded text-red-600"><Trash className="w-4 h-4" /></button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

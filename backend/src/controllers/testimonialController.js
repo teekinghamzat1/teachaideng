@@ -40,6 +40,25 @@ const createTestimonial = asyncHandler(async (req, res) => {
     res.status(201).json(formatResponse(true, 'Testimonial created', testimonial));
 });
 
+// User: Submit testimonial (Pending approval)
+const submitTestimonial = asyncHandler(async (req, res) => {
+    const { name, role, organization, content, avatarUrl, rating } = req.body;
+
+    const testimonial = await prisma.testimonial.create({
+        data: {
+            name,
+            role,
+            organization: organization || null,
+            content,
+            avatarUrl: avatarUrl || null,
+            rating: rating || null,
+            isActive: false, // Always false for user submissions
+        }
+    });
+
+    res.status(201).json(formatResponse(true, 'Testimonial submitted for review', testimonial));
+});
+
 // Admin: Update testimonial
 const updateTestimonial = asyncHandler(async (req, res) => {
     const { id } = req.params;
@@ -101,6 +120,7 @@ module.exports = {
     getActiveTestimonials,
     getAllTestimonials,
     createTestimonial,
+    submitTestimonial,
     updateTestimonial,
     deleteTestimonial,
     toggleTestimonialActive

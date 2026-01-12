@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Zap, CheckCircle, FileText, Sparkles, BookOpen, Users, Calendar, Clipboard, Volume, Loader2 } from '../components/Icons';
+import { ArrowRight, Zap, CheckCircle, FileText, Sparkles, BookOpen, Users, Calendar, Clipboard, Volume, Loader2, X } from '../components/Icons';
 import { db } from '../database';
 
 interface Testimonial {
@@ -217,28 +217,134 @@ const TestimonialsBlock: React.FC = () => {
     return () => { mounted = false; };
   }, []);
 
+  const [submitting, setSubmitting] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [formData, setFormData] = useState({ name: '', role: '', organization: '', content: '' });
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.name || !formData.content || !formData.role) return;
+
+    setSubmitting(true);
+    try {
+      await db.testimonials.submit(formData);
+      alert('Thank you! Your testimonial has been submitted for review.');
+      setShowModal(false);
+      setFormData({ name: '', role: '', organization: '', content: '' });
+    } catch (e) {
+      alert('Failed to submit. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   if (items === null) {
     return <div className="flex justify-center"><Loader2 className="w-8 h-8 animate-spin text-white" /></div>;
   }
 
-  if (!items || items.length === 0) return <div className="text-white text-sm">No testimonials yet — check back soon.</div>;
-
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-      {items.map((t) => (
-        <div key={t.id} className="bg-brand-800 rounded-xl p-6 text-left border border-brand-700 flex gap-4 items-start">
-          {t.avatarUrl ? (
-            <img src={t.avatarUrl} alt={t.name} className="w-16 h-16 rounded-full object-cover" />
-          ) : (
-            <div className="w-16 h-16 rounded-full bg-brand-700 flex items-center justify-center text-white font-bold">{t.name?.charAt(0)}</div>
-          )}
-          <div>
-            <p className="text-brand-100 italic mb-4">"{t.content}"</p>
-            <p className="text-white font-bold">{t.name}{t.role ? `, ${t.role}` : ''}</p>
-            {t.organization && <p className="text-brand-200 text-sm">{t.organization}</p>}
+    <div className="flex flex-col items-center">
+      {!items || items.length === 0 ? (
+        <div className="text-white text-sm mb-8">No testimonials yet — check back soon.</div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 w-full mb-12">
+          {items.map((t) => (
+            <div key={t.id} className="bg-brand-800 rounded-xl p-6 text-left border border-brand-700 flex gap-4 items-start">
+              {t.avatarUrl ? (
+                <img src={t.avatarUrl} alt={t.name} className="w-16 h-16 rounded-full object-cover" />
+              ) : (
+                <div className="w-16 h-16 rounded-full bg-brand-700 flex items-center justify-center text-white font-bold">{t.name?.charAt(0)}</div>
+              )}
+              <div>
+                <p className="text-brand-100 italic mb-4">"{t.content}"</p>
+                <p className="text-white font-bold">{t.name}{t.role ? `, ${t.role}` : ''}</p>
+                {t.organization && <p className="text-brand-200 text-sm">{t.organization}</p>}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <button
+        onClick={() => setShowModal(true)}
+        className="px-8 py-3 bg-white text-brand-700 font-bold rounded-full shadow hover:bg-brand-50 transition-colors"
+      >
+        Share Your Story
+      </button>
+
+      {showModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-lg p-6 relative shadow-2xl">
+            <button
+              onClick={() => setShowModal(false)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+            >
+              <X className="w-6 h-6" />
+            </button>
+
+            <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Share Your Experience</h3>
+            <p className="text-slate-500 dark:text-slate-400 mb-6">Tell us how Teachaide has helped you.</p>
+
+            <form onSubmit={handleSubmit} className="space-y-4 text-left">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={formData.name}
+                  onChange={e => setFormData({ ...formData, name: e.target.value })}
+                  className="w-full rounded-lg border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white p-2.5"
+                  placeholder="e.g. Adeola Johnson"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Role *</label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.role}
+                    onChange={e => setFormData({ ...formData, role: e.target.value })}
+                    className="w-full rounded-lg border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white p-2.5"
+                    placeholder="e.g. Principal"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">School (Optional)</label>
+                  <input
+                    type="text"
+                    value={formData.organization}
+                    onChange={e => setFormData({ ...formData, organization: e.target.value })}
+                    className="w-full rounded-lg border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white p-2.5"
+                    placeholder="e.g. Lagos High"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Your Story *</label>
+                <textarea
+                  required
+                  rows={4}
+                  value={formData.content}
+                  onChange={e => setFormData({ ...formData, content: e.target.value })}
+                  className="w-full rounded-lg border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white p-2.5"
+                  placeholder="How has Teachaide impacted your work?"
+                ></textarea>
+              </div>
+
+              <button
+                type="submit"
+                disabled={submitting}
+                className="w-full py-3 bg-brand-600 text-white rounded-xl font-bold hover:bg-brand-700 transition-colors disabled:opacity-50"
+              >
+                {submitting ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : 'Submit Testimonial'}
+              </button>
+            </form>
           </div>
         </div>
-      ))}
+      )}
     </div>
   );
 };
