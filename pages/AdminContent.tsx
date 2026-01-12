@@ -30,9 +30,9 @@ const AdminContent: React.FC = () => {
     };
 
     return (
-        <div className="max-w-7xl mx-auto h-[calc(100vh-8rem)] flex gap-6">
+        <div className="max-w-7xl mx-auto h-[calc(100vh-8rem)] flex gap-6 relative">
             {/* List View */}
-            <div className="w-full lg:w-1/3 bg-white dark:bg-slate-800 dark:text-slate-100 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col overflow-hidden">
+            <div className={`w-full lg:w-1/3 bg-white dark:bg-slate-800 dark:text-slate-100 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex-col overflow-hidden ${selectedNote ? 'hidden lg:flex' : 'flex'}`}>
                 <div className="p-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800">
                     <h2 className="font-bold text-slate-900 dark:text-slate-100 mb-2">Generated Content</h2>
                     <div className="relative">
@@ -75,13 +75,23 @@ const AdminContent: React.FC = () => {
             </div>
 
             {/* Detail View */}
-            <div className="hidden lg:flex flex-1 bg-white dark:bg-slate-800 dark:text-slate-100 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex-col overflow-hidden">
+            <div className={`flex-1 bg-white dark:bg-slate-800 dark:text-slate-100 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex-col overflow-hidden absolute inset-0 lg:relative z-10 ${selectedNote ? 'flex' : 'hidden lg:flex'}`}>
                 {selectedNote ? (
                     <>
                         <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-800">
-                            <div>
-                                <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">{selectedNote.topic}</h2>
-                                <p className="text-sm text-slate-500 dark:text-slate-400">ID: {selectedNote.id}</p>
+                            <div className="flex items-center gap-3">
+                                <button
+                                    onClick={() => setSelectedNote(null)}
+                                    className="lg:hidden p-2 -ml-2 text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                                >
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                                    </svg>
+                                </button>
+                                <div>
+                                    <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">{selectedNote.topic}</h2>
+                                    <p className="text-sm text-slate-500 dark:text-slate-400">ID: {selectedNote.id}</p>
+                                </div>
                             </div>
                             <div className="flex gap-2">
                                 <button
@@ -98,14 +108,14 @@ const AdminContent: React.FC = () => {
                                 </button>
                             </div>
                         </div>
-                        <div className="flex-1 overflow-y-auto p-8 space-y-6">
+                        <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-6">
                             <div>
                                 <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Content Preview</h3>
-                                <div className="prose max-w-none text-slate-800 dark:text-slate-200 bg-slate-50 dark:bg-slate-700 p-6 rounded-lg border border-slate-100 dark:border-slate-700">
+                                <div className="prose max-w-none text-slate-800 dark:text-slate-200 bg-slate-50 dark:bg-slate-700 p-4 md:p-6 rounded-lg border border-slate-100 dark:border-slate-700">
                                     <div dangerouslySetInnerHTML={{ __html: parseMarkdown(selectedNote.lessonContent) }} />
                                 </div>
                             </div>
-                            <div className="grid grid-cols-2 gap-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div>
                                     <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Objectives</h3>
                                     <ul className="list-disc pl-4 text-sm text-slate-700 dark:text-slate-200 space-y-1">
