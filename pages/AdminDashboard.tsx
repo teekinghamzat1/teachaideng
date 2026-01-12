@@ -132,6 +132,8 @@ const AdminOverview: React.FC = () => {
                             ) : logs.map((log: any, logIdx) => {
                                 const isDestructive = log.actionType.includes('DELETE') || log.actionType.includes('SUSPEND');
                                 const isImportant = log.actionType.includes('CREATE') || log.actionType.includes('UPDATE');
+                                const isGeneration = log.actionType.includes('GENERATE');
+                                const details = log.details ? JSON.parse(log.details) : {};
 
                                 return (
                                     <li key={log.id}>
@@ -142,22 +144,34 @@ const AdminOverview: React.FC = () => {
                                             <div className="relative flex space-x-3">
                                                 <div>
                                                     <span className={`h-8 w-8 rounded-full flex items-center justify-center ring-4 ring-white dark:ring-slate-800 ${isDestructive ? 'bg-red-100 text-red-600' :
-                                                            isImportant ? 'bg-brand-100 text-brand-600' :
+                                                        isImportant ? 'bg-brand-100 text-brand-600' :
+                                                            isGeneration ? 'bg-purple-100 text-purple-600' :
                                                                 'bg-slate-100 text-slate-600'
                                                         }`}>
                                                         {isDestructive ? <AlertTriangle className="w-4 h-4" /> :
                                                             isImportant ? <CheckCircle className="w-4 h-4" /> :
-                                                                <Activity className="w-4 h-4" />}
+                                                                isGeneration ? <FileText className="w-4 h-4" /> :
+                                                                    <Activity className="w-4 h-4" />}
                                                     </span>
                                                 </div>
                                                 <div className="min-w-0 flex-1 pt-1.5 flex justify-between space-x-4">
                                                     <div>
                                                         <p className="text-sm text-slate-900 dark:text-slate-100">
-                                                            <span className="font-bold">{log.actionType.replace(/_/g, ' ')}</span>
+                                                            {isGeneration ? (
+                                                                <>
+                                                                    <span className="font-bold text-brand-600 mr-1">{log.user?.name || 'A user'}</span>
+                                                                    <span>generated a new {log.actionType === 'GENERATE_LESSON' ? 'note' : 'assessment'} on </span>
+                                                                    <span className="font-bold italic text-slate-700 dark:text-slate-300">"{details.topic || 'Unknown topic'}"</span>
+                                                                </>
+                                                            ) : (
+                                                                <span className="font-bold">{log.actionType.replace(/_/g, ' ')}</span>
+                                                            )}
                                                         </p>
-                                                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                                                            by <span className="font-medium text-slate-700 dark:text-slate-200">{log.user?.name || 'Unknown'}</span>
-                                                        </p>
+                                                        {!isGeneration && (
+                                                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                                                                by <span className="font-medium text-slate-700 dark:text-slate-200">{log.user?.name || 'Unknown'}</span>
+                                                            </p>
+                                                        )}
                                                         {log.school?.name && (
                                                             <p className="text-[10px] text-slate-400 uppercase tracking-tighter mt-1">{log.school.name}</p>
                                                         )}

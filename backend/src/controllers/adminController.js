@@ -260,41 +260,97 @@ const createAdmin = asyncHandler(async (req, res) => {
 // @route   GET /api/admin/content/notes
 // @access  Private/Admin
 const getAllNotes = asyncHandler(async (req, res) => {
-    let where = {};
+    let noteWhere = {};
+    let sharedWhere = { type: 'lesson' };
+
     if (req.user.isSchoolAdmin && req.user.schoolId) {
-        where = {
+        noteWhere = {
             user: {
                 schoolId: req.user.schoolId
             }
         };
+        sharedWhere.createdBy = {
+            schoolId: req.user.schoolId
+        };
     }
 
-    const notes = await prisma.lessonNote.findMany({
-        where,
-        include: {
-            user: {
-                select: { name: true, email: true, schoolId: true }
-            }
-        },
-        orderBy: { createdAt: 'desc' },
-        take: 50
-    });
+    const [notes, sharedContent] = await Promise.all([
+        prisma.lessonNote.findMany({
+            where: noteWhere,
+            include: {
+                user: {
+                    select: { name: true, email: true, schoolId: true }
+                }
+            },
+            orderBy: { createdAt: 'desc' },
+            take: 100
+        }),
+        prisma.sharedContent.findMany({
+            where: sharedWhere,
+            include: {
+                createdBy: {
+                    select: { name: true, email: true, schoolId: true }
+                }
+            },
+            orderBy: { createdAt: 'desc' },
+            take: 100
+        })
+    ]);
 
     // Helper to safely parse JSON
     const safelyParse = (str) => {
-        try { return JSON.parse(str); } catch (e) { return []; }
+        try {
+            if (typeof str === 'object') return str;
+            return JSON.parse(str);
+        } catch (e) { return []; }
     };
 
     const formattedNotes = notes.map(note => ({
         ...note,
-        references: typeof note.references === 'string' ? safelyParse(note.references) : note.references,
-        objectives: typeof note.objectives === 'string' ? safelyParse(note.objectives) : note.objectives,
-        instructionalMaterials: typeof note.instructionalMaterials === 'string' ? safelyParse(note.instructionalMaterials) : note.instructionalMaterials,
-        presentation: typeof note.presentation === 'string' ? safelyParse(note.presentation) : note.presentation,
-        evaluation: typeof note.evaluation === 'string' ? safelyParse(note.evaluation) : note.evaluation,
+        references: safelyParse(note.references),
+        objectives: safelyParse(note.objectives),
+        instructionalMaterials: safelyParse(note.instructionalMaterials),
+        presentation: safelyParse(note.presentation),
+        evaluation: safelyParse(note.evaluation),
+        source: 'UserSaved'
     }));
 
-    res.json(formatResponse(true, 'Notes retrieved', formattedNotes));
+    const formattedShared = sharedContent.map(item => {
+        let contentObj = {};
+        try {
+            contentObj = JSON.parse(item.content);
+        } catch (e) { }
+
+        return {
+            id: item.id,
+            userId: item.createdById,
+            user: item.createdBy,
+            topic: item.topic,
+            subtopic: item.subtopic,
+            classLevel: item.classLevel,
+            subject: item.subject,
+            lessonContent: contentObj.lessonContent || item.content,
+            objectives: safelyParse(contentObj.objectives || []),
+            references: safelyParse(contentObj.references || []),
+            instructionalMaterials: safelyParse(contentObj.instructionalMaterials || []),
+            presentation: safelyParse(contentObj.presentation || []),
+            evaluation: safelyParse(contentObj.evaluation || []),
+            duration: contentObj.duration || '',
+            assignment: contentObj.assignment || '',
+            conclusion: contentObj.conclusion || '',
+            status: 'Generated',
+            source: 'AIGenerated',
+            createdAt: item.createdAt,
+            updatedAt: item.updatedAt
+        };
+    });
+
+    // Merge and sort
+    const allContent = [...formattedNotes, ...formattedShared]
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+        .slice(0, 200);
+
+    res.json(formatResponse(true, 'Content retrieved', allContent));
 });
 
 // @desc    Update content status

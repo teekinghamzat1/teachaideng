@@ -5,6 +5,7 @@ const formatResponse = require('../utils/formatResponse');
 const { hasTokens, chargeTokens } = require('../utils/tokens');
 const genai = require('../services/genaiService');
 const { checkWeeklyLessonLimit, createUsageLog } = require('../utils/usage');
+const { createAdminLog } = require('../utils/auditLogger');
 const usageService = require('../services/usageService');
 
 // Helper to get cost estimates from settings
@@ -159,6 +160,19 @@ const generateLesson = asyncHandler(async (req, res) => {
       </ul>
       `
     ).catch(err => console.error('Failed to notify admin of lesson generation:', err));
+
+    // Log to Admin Activity Feed
+    try {
+      await createAdminLog(userId, req.user.schoolId, 'GENERATE_LESSON', {
+        topic,
+        subject,
+        classLevel,
+        userName: req.user.name,
+        cached: !!(skipCache === false && genResult.usage?.cached)
+      });
+    } catch (logErr) {
+      console.warn('Failed to log lesson generation to admin logs', logErr);
+    }
   } catch (err) {
     console.error('Failed post-generation tasks (logging/caching)', err);
   }
@@ -307,6 +321,18 @@ const generateAssessment = asyncHandler(async (req, res) => {
       </ul>
       `
     ).catch(err => console.error('Failed to notify admin of assessment generation:', err));
+
+    // Log to Admin Activity Feed
+    try {
+      await createAdminLog(userId, req.user.schoolId, 'GENERATE_ASSESSMENT', {
+        topic,
+        subject,
+        classLevel,
+        userName: req.user.name
+      });
+    } catch (logErr) {
+      console.warn('Failed to log assessment generation to admin logs', logErr);
+    }
   } catch (logErr) {
     console.error('Failed post-assessment generation tasks', logErr);
   }
