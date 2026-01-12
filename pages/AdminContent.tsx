@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { db } from '../database';
 import { LessonNote } from '../types';
 import { Search, FileText, CheckCircle, AlertTriangle, Eye, Loader2 } from '../components/Icons';
+import { parseMarkdown } from '../utils/textUtils';
 
 const AdminContent: React.FC = () => {
     const [notes, setNotes] = useState<LessonNote[]>([]);
@@ -54,9 +55,9 @@ const AdminContent: React.FC = () => {
                                         <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 truncate pr-2">{note.topic}</h3>
                                         <div className="flex flex-col items-end gap-1">
                                             <span className={`text-[10px] px-1.5 py-0.5 rounded-full uppercase font-bold tracking-wider ${note.status === 'Flagged' ? 'bg-red-100 text-red-700' :
-                                                    note.status === 'Approved' ? 'bg-green-100 text-green-700' :
-                                                        note.status === 'Generated' ? 'bg-purple-100 text-purple-700' :
-                                                            'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300'
+                                                note.status === 'Approved' ? 'bg-green-100 text-green-700' :
+                                                    note.status === 'Generated' ? 'bg-purple-100 text-purple-700' :
+                                                        'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300'
                                                 }`}>{note.status || 'Pending'}</span>
                                             {note.source && (
                                                 <span className={`text-[8px] px-1 rounded font-bold uppercase ${note.source === 'AIGenerated' ? 'text-purple-500 border border-purple-200' : 'text-blue-500 border border-blue-200'
@@ -100,8 +101,8 @@ const AdminContent: React.FC = () => {
                         <div className="flex-1 overflow-y-auto p-8 space-y-6">
                             <div>
                                 <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Content Preview</h3>
-                                <div className="prose max-w-none text-slate-800 dark:text-slate-200 whitespace-pre-wrap bg-slate-50 dark:bg-slate-700 p-6 rounded-lg border border-slate-100 dark:border-slate-700">
-                                    {selectedNote.lessonContent}
+                                <div className="prose max-w-none text-slate-800 dark:text-slate-200 bg-slate-50 dark:bg-slate-700 p-6 rounded-lg border border-slate-100 dark:border-slate-700">
+                                    <div dangerouslySetInnerHTML={{ __html: parseMarkdown(selectedNote.lessonContent) }} />
                                 </div>
                             </div>
                             <div className="grid grid-cols-2 gap-6">

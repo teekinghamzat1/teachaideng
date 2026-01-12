@@ -7,7 +7,7 @@ import { db } from '../database';
 import { generateRemark } from '../services/geminiService';
 import { showAlert } from '../utils/alerts';
 import { useBranding } from '../contexts/BrandingContext';
-import { stripFormatting as stripMarkdown } from '../utils/textUtils';
+import { stripFormatting as stripMarkdown, parseMarkdown } from '../utils/textUtils';
 
 const Result: React.FC = () => {
     const location = useLocation();
@@ -577,7 +577,7 @@ ${stripMarkdown(lessonNote.assignment)}
                             </button>
                         </div>
                         <div className="text-slate-800 dark:text-slate-100 leading-loose p-4 bg-slate-50/50 dark:bg-slate-800 rounded-lg border border-slate-100 dark:border-slate-700 break-words lesson-content-html">
-                            <div dangerouslySetInnerHTML={{ __html: lessonNote.lessonContent.replace(/\n/g, '<br/>') }} />
+                            <div dangerouslySetInnerHTML={{ __html: parseMarkdown(lessonNote.lessonContent) }} />
                         </div>
                     </section>
 
