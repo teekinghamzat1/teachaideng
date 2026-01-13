@@ -154,6 +154,7 @@ const generateLesson = asyncHandler(async (req, res) => {
       <ul>
           <li><strong>User:</strong> ${req.user.name} (${req.user.email})</li>
           <li><strong>Topic:</strong> ${topic}</li>
+          <li><strong>Subtopic:</strong> ${subtopic || 'N/A'}</li>
           <li><strong>Subject:</strong> ${subject}</li>
           <li><strong>Class:</strong> ${classLevel}</li>
           <li><strong>Tokens Used:</strong> ${usageTokens}</li>
@@ -196,7 +197,7 @@ const generateLesson = asyncHandler(async (req, res) => {
 // @route POST /api/generate/assessment
 const generateAssessment = asyncHandler(async (req, res) => {
   const userId = req.user.id;
-  const { topic, subject, classLevel, questionCount = 5, skipCache } = req.body;
+  const { topic, subject, classLevel, subtopic, questionCount = 5, skipCache } = req.body;
 
   const estimates = await getEstimates();
   const estimate = estimates.assessment;
@@ -315,6 +316,7 @@ const generateAssessment = asyncHandler(async (req, res) => {
       <ul>
           <li><strong>User:</strong> ${req.user.name} (${req.user.email})</li>
           <li><strong>Topic:</strong> ${topic}</li>
+          <li><strong>Subtopic:</strong> ${subtopic || 'N/A'}</li>
           <li><strong>Subject:</strong> ${subject}</li>
           <li><strong>Class:</strong> ${classLevel}</li>
           <li><strong>Question Count:</strong> ${questionCount}</li>

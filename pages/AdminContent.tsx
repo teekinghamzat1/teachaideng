@@ -127,6 +127,7 @@ const AdminContent: React.FC = () => {
                                     <div className="text-sm text-slate-600 dark:text-slate-200 space-y-2">
                                         <p><span className="font-medium">Subject:</span> {selectedNote.subject}</p>
                                         <p><span className="font-medium">Class:</span> {selectedNote.classLevel}</p>
+                                        <p><span className="font-medium">Subtopic:</span> {selectedNote.subtopic || 'None'}</p>
                                         <p><span className="font-medium">User ID:</span> {selectedNote.userId}</p>
                                     </div>
                                 </div>

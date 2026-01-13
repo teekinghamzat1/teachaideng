@@ -42,6 +42,8 @@ export const parseMarkdown = (text: string | null | undefined): string => {
 
     // Handle newlines
     // We replace newlines with <br/> but we try to avoid double spacing around block elements
+    // Handle literal escaped newlines which might come from JSON stringification
+    html = html.replace(/\\n/g, '<br />');
     html = html.replace(/\n/gim, '<br />');
 
     // Clean up unnecessary breaks after block elements

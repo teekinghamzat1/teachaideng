@@ -21,7 +21,15 @@ const getDashboardStats = asyncHandler(async (req, res) => {
     }
 
     const totalUsers = await prisma.user.count({ where: userWhere });
-    const totalNotes = await prisma.lessonNote.count({ where: noteWhere });
+    // User requested "Generated Notes" count (100+) vs Saved Notes (30). 
+    // UsageLog tracks all generations.
+    const totalNotes = await prisma.usageLog.count({
+        where: {
+            ...((req.user.isSchoolAdmin && req.user.schoolId) ? { user: { schoolId: req.user.schoolId } } : {}),
+            action: { in: ['LESSON_GENERATION', 'ASSESSMENT_GENERATION'] }
+        }
+    });
+    const totalSavedNotes = await prisma.lessonNote.count({ where: noteWhere });
     const totalStudents = await prisma.student.count({ where: studentWhere });
     const premiumUsers = await prisma.user.count({
         where: {
@@ -32,7 +40,8 @@ const getDashboardStats = asyncHandler(async (req, res) => {
 
     const stats = {
         totalUsers,
-        totalNotes,
+        totalNotes, // Now reflects total generations
+        totalSavedNotes, // Added for distinction if needed by frontend later
         totalStudents,
         premiumUsers,
         // Keeping original ones just in case
