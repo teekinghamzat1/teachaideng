@@ -113,8 +113,7 @@ const generateLesson = asyncHandler(async (req, res) => {
   // Backend-only token tracking
   let usageTokens = estimate;
   if (genResult && genResult.usage) {
-    if (genResult.usage.totalTokens) usageTokens = Number(genResult.usage.totalTokens);
-    else if (genResult.usage.tokenCount) usageTokens = Number(genResult.usage.tokenCount);
+    usageTokens = genResult.usage.totalTokenCount || genResult.usage.totalTokens || genResult.usage.tokenCount || estimate;
   }
 
   // 3. Log usage for successful AI generation
@@ -280,8 +279,7 @@ const generateAssessment = asyncHandler(async (req, res) => {
   // Backend-only token tracking
   let usageTokens = estimate;
   if (genResult && genResult.usage) {
-    if (genResult.usage.totalTokens) usageTokens = Number(genResult.usage.totalTokens);
-    else if (genResult.usage.tokenCount) usageTokens = Number(genResult.usage.tokenCount);
+    usageTokens = genResult.usage.totalTokenCount || genResult.usage.totalTokens || genResult.usage.tokenCount || estimate;
   }
 
   // 3. Log usage & Cache
@@ -320,6 +318,7 @@ const generateAssessment = asyncHandler(async (req, res) => {
           <li><strong>Subject:</strong> ${subject}</li>
           <li><strong>Class:</strong> ${classLevel}</li>
           <li><strong>Question Count:</strong> ${questionCount}</li>
+          <li><strong>Tokens Used:</strong> ${usageTokens}</li>
       </ul>
       `
     ).catch(err => console.error('Failed to notify admin of assessment generation:', err));

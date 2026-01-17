@@ -19,8 +19,8 @@ const AssessmentGenerator: React.FC = () => {
     });
     const [saved, setSaved] = useState(false);
     const [isOnline, setIsOnline] = useState(navigator.onLine);
-    const [subjects, setSubjects] = useState<string[]>([]);
-    const [classLevels, setClassLevels] = useState<string[]>([]);
+    const [subjects, setSubjects] = useState<string[]>(Object.values(Subject));
+    const [classLevels, setClassLevels] = useState<string[]>(Object.values(ClassLevel));
 
     useEffect(() => {
         if (!db.auth.getCurrentUser()) navigate('/login');
@@ -144,7 +144,7 @@ const AssessmentGenerator: React.FC = () => {
                                     value={formData.subject}
                                     onChange={e => setFormData({ ...formData, subject: e.target.value as Subject })}
                                 >
-                                    {Object.values(Subject).map(s => <option key={s} value={s}>{s}</option>)}
+                                    {subjects.map(s => <option key={s} value={s}>{s}</option>)}
                                 </select>
                             </div>
                             <div>
@@ -154,7 +154,7 @@ const AssessmentGenerator: React.FC = () => {
                                     value={formData.classLevel}
                                     onChange={e => setFormData({ ...formData, classLevel: e.target.value as ClassLevel })}
                                 >
-                                    {Object.values(ClassLevel).map(c => <option key={c} value={c}>{c}</option>)}
+                                    {classLevels.map(c => <option key={c} value={c}>{c}</option>)}
                                 </select>
                             </div>
                         </div>
