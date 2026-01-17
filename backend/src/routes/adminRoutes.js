@@ -56,8 +56,9 @@ router.get('/analytics', getAnalytics);
 router.get('/logs', getAdminLogs);
 router.get('/error-logs', getErrorLogs);
 router.put('/error-logs/:id/resolve', resolveError);
+const { validateCreateUser } = require('../middlewares/userValidation');
 router.get('/users', getUsers);
-router.post('/users', createUser);
+router.post('/users', validateCreateUser, createUser);
 router.get('/orders', getOrders);
 router.post('/create-admin', validate(createAdminSchema), superAdmin, createAdmin);
 
