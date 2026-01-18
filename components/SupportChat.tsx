@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { db } from '../database';
 import { MessageSquare, X, Send, Loader2, Ticket, Clock, AlertCircle, Image as ImageIcon, XCircle } from './Icons';
+import { requestNotificationPermission, showBrowserNotification } from '../utils/notificationUtils';
 
 const SupportChat: React.FC = () => {
     const [isOpen, setIsOpen] = useState(false);
@@ -13,12 +14,14 @@ const SupportChat: React.FC = () => {
     const [idleTime, setIdleTime] = useState(0);
     const [uploadingImage, setUploadingImage] = useState(false);
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
+    const [unreadCount, setUnreadCount] = useState(0);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const scrollRef = useRef<HTMLDivElement>(null);
     const pollInterval = useRef<any>(null);
     const idleInterval = useRef<any>(null);
     const sessionRef = useRef<any>(null);
+    const isOpenRef = useRef(isOpen);
 
     const scrollToBottom = () => {
         if (scrollRef.current) {
@@ -27,20 +30,39 @@ const SupportChat: React.FC = () => {
     };
 
     useEffect(() => {
-        if (isOpen && !session) {
-            startSession();
-        }
-        if (isOpen) {
-            startPolling();
-            startIdleTimer();
-        } else {
-            stopPolling();
-            stopIdleTimer();
-        }
+        // Load existing session if any on mount
+        const loadExistingSession = async () => {
+            try {
+                const sessions = await db.support.getUserSessions();
+                const active = sessions.find((s: any) => s.status === 'active');
+                if (active) {
+                    setSession(active);
+                    setUnreadCount(active.userUnreadCount || 0);
+                    // Start polling immediately if we found an active session
+                    startPolling();
+                }
+            } catch (e) { }
+        };
+        loadExistingSession();
+
         return () => {
             stopPolling();
             stopIdleTimer();
         };
+    }, []);
+
+    useEffect(() => {
+        isOpenRef.current = isOpen;
+        if (isOpen) {
+            if (!session) {
+                startSession();
+            }
+            startIdleTimer();
+            setUnreadCount(0);
+            requestNotificationPermission();
+        } else {
+            stopIdleTimer();
+        }
     }, [isOpen]);
 
     useEffect(() => {
@@ -56,6 +78,7 @@ const SupportChat: React.FC = () => {
             const data = await db.support.startSession();
             setSession(data);
             setMessages(data.messages || []);
+            startPolling();
         } catch (err) {
             console.error('Failed to start support session', err);
         }
@@ -67,13 +90,46 @@ const SupportChat: React.FC = () => {
             const currentSession = sessionRef.current;
             if (currentSession) {
                 try {
-                    const data = await db.support.getMessages(currentSession.id);
+                    // Fetch messages. Mark as read only if window is open.
+                    const data = await db.support.getMessages(currentSession.id, isOpenRef.current);
+
+                    // Update unread count from sessions list periodically if closed
+                    if (!isOpenRef.current) {
+                        try {
+                            const sessions = await db.support.getUserSessions();
+                            const current = sessions.find((s: any) => s.id === currentSession.id);
+                            if (current) {
+                                setUnreadCount(current.userUnreadCount);
+                            }
+                        } catch (e) { }
+                    } else {
+                        setUnreadCount(0);
+                    }
+
                     // Check if there are new messages from admin
                     const lastAdminMsg = [...data].reverse().find(m => m.senderRole === 'admin');
                     if (lastAdminMsg) {
                         setIdleTime(0); // Reset idle if admin replied
                     }
-                    setMessages(data);
+
+                    // Handle messages state and browser notifications
+                    setMessages(prev => {
+                        if (prev.length > 0 && data.length > prev.length) {
+                            const newMessages = data.slice(prev.length);
+                            const adminMsgs = newMessages.filter(m => m.senderRole === 'admin');
+
+                            if (adminMsgs.length > 0) {
+                                // Only notify if window is closed
+                                if (!isOpenRef.current) {
+                                    showBrowserNotification('New Message from Support', {
+                                        body: adminMsgs[adminMsgs.length - 1].content,
+                                        tag: 'support-chat'
+                                    });
+                                }
+                            }
+                        }
+                        return data;
+                    });
                 } catch (e) { }
             }
         }, 3000);
@@ -183,6 +239,11 @@ const SupportChat: React.FC = () => {
                     className="fixed bottom-6 right-6 w-14 h-14 bg-brand-600 text-white rounded-full shadow-2xl flex items-center justify-center hover:bg-brand-700 transition-all hover:scale-110 z-50 group"
                 >
                     <MessageSquare className="w-6 h-6" />
+                    {unreadCount > 0 && (
+                        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center border-2 border-white animate-bounce">
+                            {unreadCount}
+                        </span>
+                    )}
                     <span className="absolute right-full mr-3 bg-slate-900 text-white text-xs py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
                         Chat with Support
                     </span>

@@ -19,7 +19,7 @@ const registerSchema = z.object({
         role: z.string().optional(),
         gender: z.string().optional(),
         schoolName: z.string().optional(),
-        accountType: z.enum(['individual','school']).optional()
+        accountType: z.enum(['individual', 'school']).optional()
     }),
 });
 
@@ -32,7 +32,7 @@ const loginSchema = z.object({
 
 router.post('/register', validate(registerSchema), registerUser);
 router.post('/login', validate(loginSchema), loginUser);
-router.post('/logout', logoutUser);
+router.post('/logout', protect, logoutUser);
 router.get('/me', protect, getMe);
 
 module.exports = router;

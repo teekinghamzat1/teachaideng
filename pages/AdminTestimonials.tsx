@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { db, getAnyAuthHeader } from '../database';
-import { Trash, Edit, Plus, CheckCircle, X, Users } from '../components/Icons';
+import { Trash, Edit, Plus, CheckCircle, X, Users, Star } from '../components/Icons';
 import { showAlert } from '../utils/alerts';
 
 type FormState = {
@@ -9,6 +9,7 @@ type FormState = {
   organization: string;
   content: string;
   avatarUrl?: string;
+  rating: number;
 };
 
 const AdminTestimonials: React.FC = () => {
@@ -16,7 +17,7 @@ const AdminTestimonials: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<any | null>(null);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState<FormState>({ name: '', role: '', organization: '', content: '', avatarUrl: '' });
+  const [form, setForm] = useState<FormState>({ name: '', role: '', organization: '', content: '', avatarUrl: '', rating: 5 });
   const [errors, setErrors] = useState<Partial<FormState>>({});
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -40,9 +41,9 @@ const AdminTestimonials: React.FC = () => {
     setErrors(prev => ({ ...prev, [e.target.name]: undefined }));
   };
 
-  const startCreate = () => { setEditing(null); setForm({ name: '', role: '', organization: '', content: '', avatarUrl: '' }); setErrors({}); setShowForm(true); };
+  const startCreate = () => { setEditing(null); setForm({ name: '', role: '', organization: '', content: '', avatarUrl: '', rating: 5 }); setErrors({}); setShowForm(true); };
 
-  const startEdit = (t: any) => { setEditing(t); setForm({ name: t.name, role: t.role, organization: t.organization || '', content: t.content, avatarUrl: t.avatarUrl || '' }); setShowForm(true); };
+  const startEdit = (t: any) => { setEditing(t); setForm({ name: t.name, role: t.role, organization: t.organization || '', content: t.content, avatarUrl: t.avatarUrl || '', rating: t.rating || 5 }); setShowForm(true); };
 
   const validate = (f: FormState) => {
     const errs: Partial<FormState> = {};
@@ -126,6 +127,22 @@ const AdminTestimonials: React.FC = () => {
               </div>
 
               <div>
+                <label className="text-sm font-medium text-slate-900 dark:text-slate-100 block mb-1">Rating</label>
+                <div className="flex gap-1.5 p-2 bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-700 w-fit">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      type="button"
+                      onClick={() => setForm({ ...form, rating: star })}
+                      className="transition-transform active:scale-90"
+                    >
+                      <Star className={`w-6 h-6 ${star <= form.rating ? 'text-amber-500 fill-amber-500' : 'text-slate-300 dark:text-slate-600'}`} />
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
                 <label className="text-sm font-medium text-slate-900 dark:text-slate-100">Quote</label>
                 <textarea name="content" value={form.content} onChange={handleChange} placeholder="Quote" className={`mt-1 p-2 border rounded w-full h-28 bg-white dark:bg-slate-700 dark:text-slate-100 ${errors.content ? 'border-red-400' : ''}`} />
                 {errors.content && <p className="text-xs text-red-500 mt-1">{errors.content}</p>}
@@ -203,6 +220,13 @@ const AdminTestimonials: React.FC = () => {
                           <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-xs font-medium">Pending Review</span>
                         </div>
                         <p className="text-sm text-slate-600 dark:text-slate-400">{t.role} {t.organization && ` at ${t.organization}`}</p>
+                        {t.rating > 0 && (
+                          <div className="flex items-center mt-1">
+                            {[...Array(5)].map((_, i) => (
+                              <Star key={i} className={`w-3.5 h-3.5 ${i < t.rating ? 'text-amber-500 fill-amber-500' : 'text-slate-300 dark:text-slate-600'}`} />
+                            ))}
+                          </div>
+                        )}
                         <p className="mt-2 text-slate-700 dark:text-slate-300 italic">"{t.content}"</p>
                         <p className="text-xs text-slate-400 dark:text-slate-500 mt-2">Submitted: {new Date(t.createdAt).toLocaleDateString()}</p>
                       </div>
@@ -244,6 +268,13 @@ const AdminTestimonials: React.FC = () => {
                       <div>
                         <p className="font-semibold text-slate-900 dark:text-slate-100">{t.name}</p>
                         <p className="text-sm text-slate-600 dark:text-slate-400">{t.role} {t.organization && ` at ${t.organization}`}</p>
+                        {t.rating > 0 && (
+                          <div className="flex items-center mt-1">
+                            {[...Array(5)].map((_, i) => (
+                              <Star key={i} className={`w-3.5 h-3.5 ${i < t.rating ? 'text-amber-500 fill-amber-500' : 'text-slate-300 dark:text-slate-600'}`} />
+                            ))}
+                          </div>
+                        )}
                         <p className="mt-2 text-slate-700 dark:text-slate-300 italic">"{t.content}"</p>
                       </div>
                     </div>

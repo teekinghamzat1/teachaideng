@@ -120,6 +120,19 @@ const loginUser = asyncHandler(async (req, res) => {
                 user.teacherStatus = 'Active'; // Update in-memory object
             }
 
+            // Close any existing active support sessions to ensure a fresh start
+            try {
+                await prisma.chatSession.updateMany({
+                    where: {
+                        userId: user.id,
+                        status: 'active'
+                    },
+                    data: { status: 'closed' }
+                });
+            } catch (e) {
+                console.warn('Failed to close old support sessions on login', e);
+            }
+
             res.json(
                 formatResponse(true, 'Login successful', {
                     _id: user.id,
@@ -149,6 +162,20 @@ const loginUser = asyncHandler(async (req, res) => {
 // @route   POST /api/auth/logout
 // @access  Private
 const logoutUser = asyncHandler(async (req, res) => {
+    // Close active support sessions on logout
+    if (req.user && req.user.id) {
+        try {
+            await prisma.chatSession.updateMany({
+                where: {
+                    userId: req.user.id,
+                    status: 'active'
+                },
+                data: { status: 'closed' }
+            });
+        } catch (e) {
+            console.error('Failed to close support sessions on logout', e);
+        }
+    }
     res.json(formatResponse(true, 'Logged out successfully'));
 });
 

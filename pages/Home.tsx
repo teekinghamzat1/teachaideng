@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Zap, CheckCircle, FileText, Sparkles, BookOpen, Users, Calendar, Clipboard, Volume, Loader2, X } from '../components/Icons';
+import { ArrowRight, Zap, CheckCircle, FileText, Sparkles, BookOpen, Users, Calendar, Clipboard, Volume, Loader2, X, Star } from '../components/Icons';
 import { db } from '../database';
 
 interface Testimonial {
@@ -10,6 +10,7 @@ interface Testimonial {
   organization?: string;
   content: string;
   avatarUrl?: string;
+  rating?: number;
 }
 
 interface BlogPostStub {
@@ -219,7 +220,7 @@ const TestimonialsBlock: React.FC = () => {
 
   const [submitting, setSubmitting] = useState(false);
   const [showModal, setShowModal] = useState(false);
-  const [formData, setFormData] = useState({ name: '', role: '', organization: '', content: '' });
+  const [formData, setFormData] = useState({ name: '', role: '', organization: '', content: '', rating: 5 });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -230,7 +231,7 @@ const TestimonialsBlock: React.FC = () => {
       await db.testimonials.submit(formData);
       alert('Thank you! Your testimonial has been submitted for review.');
       setShowModal(false);
-      setFormData({ name: '', role: '', organization: '', content: '' });
+      setFormData({ name: '', role: '', organization: '', content: '', rating: 5 });
     } catch (e) {
       alert('Failed to submit. Please try again.');
     } finally {
@@ -255,7 +256,14 @@ const TestimonialsBlock: React.FC = () => {
               ) : (
                 <div className="w-16 h-16 rounded-full bg-brand-700 flex items-center justify-center text-white font-bold">{t.name?.charAt(0)}</div>
               )}
-              <div>
+              <div className="flex-1">
+                {t.rating && t.rating > 0 && (
+                  <div className="flex items-center gap-0.5 mb-3">
+                    {[...Array(5)].map((_, i) => (
+                      <Star key={i} className={`w-4 h-4 ${i < t.rating! ? 'text-amber-400 fill-amber-400' : 'text-slate-500'}`} />
+                    ))}
+                  </div>
+                )}
                 <p className="text-brand-100 italic mb-4">"{t.content}"</p>
                 <p className="text-white font-bold">{t.name}{t.role ? `, ${t.role}` : ''}</p>
                 {t.organization && <p className="text-brand-200 text-sm">{t.organization}</p>}
@@ -286,6 +294,23 @@ const TestimonialsBlock: React.FC = () => {
             <p className="text-slate-500 dark:text-slate-400 mb-6">Tell us how Teachaide has helped you.</p>
 
             <form onSubmit={handleSubmit} className="space-y-4 text-left">
+              <div className="flex flex-col items-center justify-center p-4 bg-slate-50 dark:bg-slate-700/50 rounded-xl mb-4">
+                <p className="text-sm font-medium text-slate-600 dark:text-slate-300 mb-2">How would you rate us?</p>
+                <div className="flex gap-2">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      type="button"
+                      onClick={() => setFormData({ ...formData, rating: star })}
+                      className="transition-transform active:scale-90"
+                    >
+                      <Star
+                        className={`w-8 h-8 ${star <= formData.rating ? 'text-amber-400 fill-amber-400' : 'text-slate-300 dark:text-slate-600'}`}
+                      />
+                    </button>
+                  ))}
+                </div>
+              </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Name *</label>
                 <input

@@ -8,6 +8,7 @@ import { generateRemark } from '../services/geminiService';
 import { showAlert } from '../utils/alerts';
 import { useBranding } from '../contexts/BrandingContext';
 import { stripFormatting as stripMarkdown, parseMarkdown } from '../utils/textUtils';
+import FeedbackModal from '../components/FeedbackModal';
 
 const Result: React.FC = () => {
     const location = useLocation();
@@ -32,6 +33,22 @@ const Result: React.FC = () => {
     const [newStudent, setNewStudent] = useState({ name: '', observation: '' });
     const [generatedRemark, setGeneratedRemark] = useState('');
     const [isGeneratingRemark, setIsGeneratingRemark] = useState(false);
+
+    // Feedback Modal State
+    const [showFeedback, setShowFeedback] = useState(false);
+
+    useEffect(() => {
+        // Prompt for feedback after 10 seconds of viewing the result
+        const timer = setTimeout(() => {
+            const hasPrompted = sessionStorage.getItem('feedback_prompted');
+            if (!hasPrompted) {
+                setShowFeedback(true);
+                sessionStorage.setItem('feedback_prompted', 'true');
+            }
+        }, 10000); // 10 seconds
+
+        return () => clearTimeout(timer);
+    }, []);
 
     useEffect(() => {
         // Cleanup speech when component unmounts
@@ -783,6 +800,11 @@ ${stripMarkdown(lessonNote.assignment)}
                     </div>
                 </div>
             </div >
+
+            <FeedbackModal
+                isOpen={showFeedback}
+                onClose={() => setShowFeedback(false)}
+            />
         </div >
     );
 };

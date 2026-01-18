@@ -132,7 +132,10 @@ export const db = {
 
     async logout(): Promise<void> {
       try {
-        await fetch(`${API_URL}/auth/logout`, { method: 'POST' });
+        await fetch(`${API_URL}/auth/logout`, {
+          method: 'POST',
+          headers: getAuthHeader()
+        });
       } catch (e) {
         console.error(e);
       }
@@ -276,7 +279,10 @@ export const db = {
 
   async logout(): Promise<void> {
     try {
-      await fetch(`${API_URL}/auth/logout`, { method: 'POST' });
+      await fetch(`${API_URL}/auth/logout`, {
+        method: 'POST',
+        headers: getAuthHeader()
+      });
     } catch (e) {
       console.error(e);
     }
@@ -1018,8 +1024,8 @@ export const db = {
       });
       return handleResponse(response);
     },
-    async getMessages(sessionId: string): Promise<any[]> {
-      const response = await fetch(`${API_URL}/support/sessions/${sessionId}/messages`, {
+    async getMessages(sessionId: string, markAsRead: boolean = false): Promise<any[]> {
+      const response = await fetch(`${API_URL}/support/sessions/${sessionId}/messages?markAsRead=${markAsRead}`, {
         headers: getAuthHeader()
       });
       return handleResponse(response);

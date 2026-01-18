@@ -37,15 +37,7 @@ const startSession = asyncHandler(async (req, res) => {
                 messages: true
             }
         });
-
-        // Notify Admins
-        sendAdminNotification(
-            'New Support Chat Started',
-            `<p>User <strong>${req.user.name}</strong> (${req.user.email}) has started a new support chat.</p>
-             <p>Please check the admin dashboard to respond.</p>`
-        ).catch(err => console.error('Failed to send support notification:', err));
     }
-
     res.json(formatResponse(true, 'Session started', session));
 });
 
@@ -76,25 +68,28 @@ const getMessages = asyncHandler(async (req, res) => {
     });
     console.log('==========================');
 
-    // Mark as read
-    if (['admin', 'superadmin', 'Admin'].includes(req.user.role)) {
-        await prisma.chatSession.update({
-            where: { id: sessionId },
-            data: { unreadCount: 0 }
-        });
-        await prisma.chatMessage.updateMany({
-            where: { sessionId, senderRole: 'user', isRead: false },
-            data: { isRead: true }
-        });
-    } else {
-        await prisma.chatSession.update({
-            where: { id: sessionId },
-            data: { userUnreadCount: 0 }
-        });
-        await prisma.chatMessage.updateMany({
-            where: { sessionId, senderRole: 'admin', isRead: false },
-            data: { isRead: true }
-        });
+    // Mark as read only if requested
+    const markAsRead = req.query.markAsRead === 'true';
+    if (markAsRead) {
+        if (['admin', 'superadmin', 'Admin'].includes(req.user.role)) {
+            await prisma.chatSession.update({
+                where: { id: sessionId },
+                data: { unreadCount: 0 }
+            });
+            await prisma.chatMessage.updateMany({
+                where: { sessionId, senderRole: 'user', isRead: false },
+                data: { isRead: true }
+            });
+        } else {
+            await prisma.chatSession.update({
+                where: { id: sessionId },
+                data: { userUnreadCount: 0 }
+            });
+            await prisma.chatMessage.updateMany({
+                where: { sessionId, senderRole: 'admin', isRead: false },
+                data: { isRead: true }
+            });
+        }
     }
 
     res.json(formatResponse(true, 'Messages retrieved', messages));
@@ -155,6 +150,22 @@ const sendMessage = asyncHandler(async (req, res) => {
         where: { id: sessionId },
         data: updateData
     });
+
+    // Notify admins on FIRST user message
+    if (senderRole === 'user') {
+        const userMsgCount = await prisma.chatMessage.count({
+            where: { sessionId, senderRole: 'user' }
+        });
+
+        if (userMsgCount === 1) {
+            sendAdminNotification(
+                'New Support Chat Message',
+                `<p>User <strong>${req.user.name}</strong> (${req.user.email}) has sent a message.</p>
+                 <p><strong>Message:</strong> ${content}</p>
+                 <p>Please check the admin dashboard to respond.</p>`
+            ).catch(err => console.error('Failed to send support notification:', err));
+        }
+    }
 
     // If it's a user message and session was quiet, maybe notify again or set a timeout
     // For now, simplicity: just update the session.

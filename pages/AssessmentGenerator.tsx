@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { db } from '../database';
 import { generateAssessment } from '../services/geminiService';
 import { Assessment, Subject, ClassLevel } from '../types';
-import { Loader2, Clipboard, Save, CheckCircle, Share, WifiOff } from '../components/Icons';
+import { Loader2, Clipboard, Save, CheckCircle, Share, WifiOff, Star, Send } from '../components/Icons';
 import { useNavigate } from 'react-router-dom';
+import FeedbackModal from '../components/FeedbackModal';
 import { showAlert } from '../utils/alerts';
 import { stripFormatting } from '../utils/textUtils';
 
@@ -19,6 +20,7 @@ const AssessmentGenerator: React.FC = () => {
     });
     const [saved, setSaved] = useState(false);
     const [isOnline, setIsOnline] = useState(navigator.onLine);
+    const [showFeedback, setShowFeedback] = useState(false);
     const [subjects, setSubjects] = useState<string[]>(Object.values(Subject));
     const [classLevels, setClassLevels] = useState<string[]>(Object.values(ClassLevel));
 
@@ -52,6 +54,16 @@ const AssessmentGenerator: React.FC = () => {
             window.removeEventListener('offline', handleStatus);
         };
     }, [navigate]);
+
+    useEffect(() => {
+        if (result && !sessionStorage.getItem('feedback_prompted')) {
+            const timer = setTimeout(() => {
+                setShowFeedback(true);
+                sessionStorage.setItem('feedback_prompted', 'true');
+            }, 10000); // 10 seconds
+            return () => clearTimeout(timer);
+        }
+    }, [result]);
 
     const handleGenerate = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -246,6 +258,7 @@ const AssessmentGenerator: React.FC = () => {
                     </div>
                 </div>
             )}
+            <FeedbackModal isOpen={showFeedback} onClose={() => setShowFeedback(false)} />
         </div>
     );
 };
