@@ -6,6 +6,7 @@ import Home from './pages/Home';
 import Generator from './pages/Generator';
 import Result from './pages/Result';
 import Dashboard from './pages/Dashboard';
+import TeacherDashboard from './pages/TeacherDashboard';
 import Pricing from './pages/Pricing';
 import PaymentSuccess from './pages/PaymentSuccess';
 import Login from './pages/Login';
@@ -18,6 +19,7 @@ import ClassManager from './pages/ClassManager';
 import Timetable from './pages/Timetable';
 import Settings from './pages/Settings';
 import SchoolManagement from './pages/SchoolManagement';
+import SmartClass from './pages/SmartClass';
 import { sessionManager } from './utils/sessionManager';
 import { HelpCenter } from './pages/HelpCenter';
 import { ContactUs } from './pages/ContactUs';
@@ -38,6 +40,7 @@ import AdminProfile from './pages/AdminProfile';
 import AdminBlog from './pages/AdminBlog';
 import AdminErrors from './pages/AdminErrors';
 import AdminSupport from './pages/AdminSupport';
+import AdminSchemes from './pages/AdminSchemes';
 
 import ProtectedRoute from './components/ProtectedRoute';
 import { BrandingProvider } from './contexts/BrandingContext';
@@ -75,6 +78,11 @@ const App: React.FC = () => {
               <Layout><Dashboard /></Layout>
             </ProtectedRoute>
           } />
+          <Route path="/teacher-dashboard" element={
+            <ProtectedRoute>
+              <Layout><TeacherDashboard /></Layout>
+            </ProtectedRoute>
+          } />
           <Route path="/history" element={
             <ProtectedRoute>
               <Layout><History /></Layout>
@@ -110,13 +118,18 @@ const App: React.FC = () => {
               <Layout><PaymentSuccess /></Layout>
             </ProtectedRoute>
           } />
+          <Route path="/smart-class" element={
+            <ProtectedRoute>
+              <Layout><SmartClass /></Layout>
+            </ProtectedRoute>
+          } />
 
           {/* Public Routes */}
           <Route path="/blog" element={<Layout><BlogHome /></Layout>} />
           <Route path="/blog/:slug" element={<Layout><BlogPost /></Layout>} />
           <Route path="/pricing" element={<Layout><Pricing /></Layout>} />
           <Route path="/login" element={<Layout><Login /></Layout>} />
-          <Route path="/admin/login" element={<Layout><AdminLogin /></Layout>} />
+          <Route path="/admin/login" element={<AdminLogin />} />
           <Route path="/signup" element={<Layout><Signup /></Layout>} />
           <Route path="/forgot-password" element={<Layout><ForgotPassword /></Layout>} />
           <Route path="/share/:id" element={<Layout><PublicNote /></Layout>} />
@@ -132,6 +145,7 @@ const App: React.FC = () => {
             <Route path="content" element={<AdminContent />} />
             <Route path="testimonials" element={<AdminTestimonials />} />
             <Route path="curriculum" element={<AdminCurriculum />} />
+            <Route path="schemes" element={<AdminSchemes />} />
             <Route path="settings" element={<AdminSettings />} />
             <Route path="profile" element={<AdminProfile />} />
             <Route path="blog" element={<AdminBlog />} />

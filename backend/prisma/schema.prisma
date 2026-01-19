@@ -73,6 +73,7 @@ model User {
   errorLogs         ErrorLog[]
   chatSessions     ChatSession[]     @relation("UserChats")
   supportTickets   SupportTicket[]   @relation("UserTickets")
+  smartClasses     SmartClass[]
 }
 
 model Product {
@@ -528,4 +529,77 @@ model SupportTicket {
   priority    String   @default("normal") // 'low', 'normal', 'high', 'urgent'
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+model SmartClass {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  classLevel String
+  subject    String
+  term       String   // "1st", "2nd", "3rd"
+  startWeek  Int      @default(1)
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  days SmartClassDay[]
+}
+
+model SmartClassDay {
+  id           String     @id @default(uuid())
+  smartClassId String
+  smartClass   SmartClass @relation(fields: [smartClassId], references: [id], onDelete: Cascade)
+  weekNumber   Int
+  dayOfWeek    String     // 'Monday', 'Tuesday', etc.
+  lessonType   String     // 'Vocabulary', 'Comprehension', etc.
+  topic        String?    // The active topic (could be overriden)
+  subtopic     String?    // The active subtopic
+  originalTopic String?   // The topic from the reference scheme (for trend tracking)
+  refTopicId   String?    // Link to the reference topic if applicable
+  skills       String?    // Suggested skills (comma separated)
+  learningGoal String?    // Suggested learning goal
+  resources    String?    // Suggested resources
+  isCompleted  Boolean    @default(false)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+}
+
+// Composite Reference Scheme Model
+model ReferenceScheme {
+  id         String   @id @default(uuid())
+  subject    String
+  classLevel String
+  term       String   // "1st", "2nd", "3rd"
+  source     String?  // e.g., "Lagos State", "Federal Ministry"
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  weeks ReferenceWeek[]
+}
+
+model ReferenceWeek {
+  id          String   @id @default(uuid())
+  schemeId    String
+  scheme      ReferenceScheme @relation(fields: [schemeId], references: [id], onDelete: Cascade)
+  weekNumber  Int
+  themeTitle  String?  // e.g., "Building Reading & Writing Skills"
+  topics      ReferenceTopic[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model ReferenceTopic {
+  id           String   @id @default(uuid())
+  weekId       String
+  week         ReferenceWeek @relation(fields: [weekId], references: [id], onDelete: Cascade)
+  topic        String
+  subtopics    String?  // comma separated
+  skills       String?  // comma separated
+  lessonType   String?  // suggested lesson type
+  learningGoal String?  // soft learning outcome
+  resourceSuggestions String? // vocabulary clusters, exercise samples
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }

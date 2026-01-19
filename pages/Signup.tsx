@@ -11,7 +11,8 @@ const Signup: React.FC = () => {
   useEffect(() => {
     const user = db.auth.getCurrentUser();
     if (user) {
-      if (user.role === 'Admin' || user.role === 'superadmin') {
+      const role = (user.role || '').toLowerCase();
+      if (role === 'admin' || role === 'superadmin') {
         navigate('/admin');
       } else {
         navigate('/dashboard');

@@ -27,7 +27,7 @@ const getEstimates = async () => {
 // Checks tokens, estimates price, invokes GenAI and charges tokens based on usage
 const generateLesson = asyncHandler(async (req, res) => {
   const userId = req.user.id;
-  const { topic, subject, classLevel, duration, subtopic, lessonType, skipCache } = req.body;
+  const { topic, subject, classLevel, duration, subtopic, lessonType, skipCache, smartHint } = req.body;
 
   const estimates = await getEstimates();
   const estimate = estimates.lesson;
@@ -53,7 +53,7 @@ const generateLesson = asyncHandler(async (req, res) => {
     });
 
     if (cachedEntry) {
-      console.log(`[CACHE_HIT] Reusing lesson for topic: ${topic}`);
+      console.info(`[CACHE_HIT] Reusing lesson for topic: ${topic}`);
 
       // Still log usage so it counts against user's daily/weekly limit
       try {
@@ -79,7 +79,7 @@ const generateLesson = asyncHandler(async (req, res) => {
   let genResult;
   try {
     genResult = await genai.generateLessonNoteViaGenAI({
-      topic, subject, classLevel, duration, subtopic, lessonType,
+      topic, subject, classLevel, duration, subtopic, lessonType, smartHint,
       userPlan: req.user.subscriptionPlan,
       maxTokens: estimates.maxTokens
     });

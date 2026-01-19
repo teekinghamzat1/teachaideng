@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { db } from '../database';
-import { LayoutDashboard, Users, FileText, SettingsIcon, LogOut, Menu, X, Shield, BookOpen, Bell, Search, Activity, Sun, Moon, AlertTriangle, MessageSquare } from './Icons';
+import { LayoutDashboard, Users, FileText, SettingsIcon, LogOut, Menu, X, Shield, BookOpen, Bell, Search, Activity, Sun, Moon, AlertTriangle, MessageSquare, Map } from './Icons';
 import SEO from './SEO';
 import { User } from '../types';
 
@@ -30,7 +30,8 @@ const AdminLayout: React.FC = () => {
         return null;
     }
 
-    if (!['admin', 'superadmin', 'Admin'].includes(currentUser.role)) {
+    const normalizedRole = (currentUser.role || '').toLowerCase();
+    if (!['admin', 'superadmin'].includes(normalizedRole)) {
         window.location.href = '/admin/login';
         return null;
     }
@@ -38,9 +39,11 @@ const AdminLayout: React.FC = () => {
     useEffect(() => {
         setUser(currentUser);
 
-        // Route Guard for School Admins
-        if (currentUser.isSchoolAdmin) {
-            const forbiddenPaths = ['/admin/testimonials', '/admin/curriculum', '/admin/settings'];
+        // Route Guard for School Admins (but not SuperAdmins)
+        // SuperAdmins can access everything even if they're also school admins
+        const isSuperAdmin = normalizedRole === 'superadmin';
+        if (currentUser.isSchoolAdmin && !isSuperAdmin) {
+            const forbiddenPaths = ['/admin/testimonials', '/admin/curriculum', '/admin/settings', '/admin/schemes'];
             if (forbiddenPaths.includes(location.pathname)) {
                 navigate('/admin');
             }
@@ -67,16 +70,20 @@ const AdminLayout: React.FC = () => {
         { name: 'My Account', path: '/admin/profile', icon: SettingsIcon },
     ];
 
-    if (!currentUser.isSchoolAdmin) {
+    // SuperAdmins get all menu items, even if they're also school admins
+    // Regular school admins (without superadmin role) get limited menu
+    const isSuperAdmin = normalizedRole === 'superadmin';
+    if (!currentUser.isSchoolAdmin || isSuperAdmin) {
         navItems.push(
             { name: 'Testimonials', path: '/admin/testimonials', icon: Activity },
             { name: 'Curriculum', path: '/admin/curriculum', icon: BookOpen },
+            { name: 'Schemes of Work', path: '/admin/schemes', icon: Map },
             { name: 'Blog', path: '/admin/blog', icon: FileText },
             { name: 'Settings', path: '/admin/settings', icon: SettingsIcon }
         );
     }
 
-    const roleTitle = currentUser.isSchoolAdmin ? 'School Admin' : (currentUser.role === 'superadmin' ? 'Super Admin' : 'Admin');
+    const roleTitle = isSuperAdmin ? 'Super Admin' : (currentUser.isSchoolAdmin ? 'School Admin' : 'Admin');
 
     return (
         <div className="min-h-screen bg-slate-100 dark:bg-slate-900 flex">

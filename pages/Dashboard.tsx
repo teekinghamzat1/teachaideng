@@ -10,56 +10,73 @@ const Dashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const [user, setUser] = useState<any | null>(null); // State to hold user info
-  const [usage, setUsage] = useState<{ used: number; limit: number; remaining: number } | null>(null);
+  const [usage, setUsage] = useState<{ used: number; limit: number; remaining: number; duration?: string } | null>(null);
   const [stats, setStats] = useState<any | null>(null); // State to hold admin stats
 
   useEffect(() => {
-    const currentUser = db.auth.getCurrentUser();
-    setUser(currentUser); // Set user state
+    const checkUserAndLoad = async () => {
+      const currentUser = db.auth.getCurrentUser();
+      setUser(currentUser);
 
-    // Check if user is logged in
-    if (!currentUser) {
-      navigate('/login');
-      return;
-    }
-
-    const loadNotes = async () => {
-      try {
-        const notes = await db.notes.getUserNotes();
-        setSavedNotes(notes);
-      } catch (error) {
-        console.error("Failed to load notes", error);
-      } finally {
-        setLoading(false);
+      // Check if user is logged in
+      if (!currentUser) {
+        navigate('/login');
+        return;
       }
-    };
 
-    const loadStats = async () => {
-      try {
-        // Only fetch stats if user is a System Admin
-        if (currentUser?.role === 'Admin' || currentUser?.role === 'SuperAdmin') {
-          const statsData = await db.admin.getStats();
-          setStats(statsData);
+      // Redirect school teachers to their personalized dashboard
+      const isSchoolPlan = currentUser.subscriptionPlan?.toLowerCase() === 'school';
+      if (isSchoolPlan && currentUser.schoolId) {
+        navigate('/teacher-dashboard');
+        return;
+      }
+
+      // Load regular dashboard data
+      const loadNotes = async () => {
+        try {
+          const notes = await db.notes.getUserNotes();
+          setSavedNotes(notes);
+        } catch (error) {
+          console.error("Failed to load notes", error);
+        } finally {
+          setLoading(false);
         }
-      } catch (e) {
-        console.error('Failed to load stats', e);
-      }
-    };
+      };
 
-    const checkUsage = async () => {
-      try {
-        if (currentUser) {
+      const loadStats = async () => {
+        try {
+          // Only fetch stats if user is a System Admin
+          const normalizedRole = (currentUser?.role || '').toLowerCase();
+          if (['admin', 'superadmin'].includes(normalizedRole)) {
+            const statsData = await db.admin.getStats();
+            setStats(statsData);
+          }
+        } catch (e) {
+          console.error('Failed to load stats', e);
+        }
+      };
+
+      const checkUsage = async () => {
+        try {
           const usageData = await db.auth.getUsage(currentUser.schoolId);
           setUsage(usageData);
+        } catch (e) {
+          console.error('Failed to load usage stats', e);
         }
-      } catch (e) {
-        console.error('Failed to load usage stats', e);
-      }
+      };
+
+      loadNotes();
+      loadStats();
+      checkUsage();
     };
 
-    loadNotes();
-    loadStats();
-    checkUsage();
+    checkUserAndLoad();
+
+    // Listen for auth changes (e.g. from refreshUser in Layout)
+    window.addEventListener('auth-change', checkUserAndLoad);
+    return () => {
+      window.removeEventListener('auth-change', checkUserAndLoad);
+    };
   }, [navigate]); // Depend on navigate, as it's used for redirection
 
   const handleDelete = async (id: string, e: React.MouseEvent) => {
@@ -181,7 +198,7 @@ const Dashboard: React.FC = () => {
               {usage && (
                 <div className="mt-4 w-full bg-white/10 backdrop-blur-sm px-4 py-3 rounded-lg border border-white/20">
                   <div className="flex justify-between items-center text-white mb-2">
-                    <span className="text-sm font-medium">Monthly Usage</span>
+                    <span className="text-sm font-medium capitalize">{usage.duration || 'Monthly'} Usage</span>
                     <span className="text-sm font-bold">
                       {usage.used} / {usage.limit}
                     </span>
@@ -193,7 +210,7 @@ const Dashboard: React.FC = () => {
                     ></div>
                   </div>
                   <p className="text-xs text-white/80 mt-2 text-center">
-                    {usage.remaining} generations remaining this month
+                    {usage.remaining} generations remaining this {usage.duration || 'month'}
                   </p>
                 </div>
               )}

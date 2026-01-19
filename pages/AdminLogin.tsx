@@ -13,6 +13,17 @@ const AdminLogin: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const [showPassword, setShowPassword] = useState(false);
 
+    // Redirect if already logged in as admin
+    React.useEffect(() => {
+        const user = db.adminAuth.getCurrentUser();
+        if (user) {
+            const role = (user.role || '').toLowerCase();
+            if (['admin', 'superadmin'].includes(role)) {
+                navigate('/admin');
+            }
+        }
+    }, [navigate]);
+
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setFormData({
             ...formData,

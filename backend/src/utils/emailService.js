@@ -48,7 +48,7 @@ const sendPaymentReceipt = async (userEmail, userName, plan, amount, reference) 
     try {
         const transporter = await getTransporter();
         if (!transporter) {
-            console.log('Skipping email send - SMTP not configured');
+            console.info('Skipping email send - SMTP not configured');
             return false;
         }
 
@@ -151,7 +151,7 @@ const sendPaymentReceipt = async (userEmail, userName, plan, amount, reference) 
         };
 
         await transporter.sendMail(mailOptions);
-        console.log(`Receipt email sent to ${userEmail}`);
+        console.info(`Receipt email sent to ${userEmail}`);
         return true;
     } catch (error) {
         console.error('Error sending payment receipt:', error);
@@ -166,7 +166,7 @@ const sendTeacherInvitation = async (teacherEmail, teacherName, schoolName, temp
     try {
         const transporter = await getTransporter();
         if (!transporter) {
-            console.log('Skipping invitation email - SMTP not configured');
+            console.info('Skipping invitation email - SMTP not configured');
             return false;
         }
 
@@ -249,7 +249,7 @@ const sendTeacherInvitation = async (teacherEmail, teacherName, schoolName, temp
         };
 
         await transporter.sendMail(mailOptions);
-        console.log(`Teacher invitation email sent to ${teacherEmail}`);
+        console.info(`Teacher invitation email sent to ${teacherEmail}`);
         return true;
     } catch (error) {
         console.error('Error sending teacher invitation email:', error);
@@ -335,7 +335,7 @@ const sendTestEmail = async (recipientEmail) => {
         };
 
         await transporter.sendMail(mailOptions);
-        console.log(`Test email sent to ${recipientEmail}`);
+        console.info(`Test email sent to ${recipientEmail}`);
         return true;
     } catch (error) {
         console.error('Error sending test email:', error);
@@ -350,7 +350,7 @@ const sendTeacherRemovalNotification = async (teacherEmail, teacherName, schoolN
     try {
         const transporter = await getTransporter();
         if (!transporter) {
-            console.log('Skipping removal notification email - SMTP not configured');
+            console.info('Skipping removal notification email - SMTP not configured');
             return false;
         }
 
@@ -419,7 +419,7 @@ const sendTeacherRemovalNotification = async (teacherEmail, teacherName, schoolN
         };
 
         await transporter.sendMail(mailOptions);
-        console.log(`Teacher removal notification sent to ${teacherEmail}`);
+        console.info(`Teacher removal notification sent to ${teacherEmail}`);
         return true;
     } catch (error) {
         console.error('Error sending teacher removal notification:', error);
@@ -592,7 +592,7 @@ const sendLessonNoteEmail = async (userEmail, lessonNote) => {
         };
 
         const info = await transporter.sendMail(mailOptions);
-        console.log('Lesson note email sent successfully:', info.messageId);
+        console.info('Lesson note email sent successfully:', info.messageId);
         return true;
     } catch (error) {
         console.error('CRITICAL ERROR in sendLessonNoteEmail:', {
@@ -641,7 +641,7 @@ const sendAdminNotification = async (subject, htmlContent) => {
         };
 
         await transporter.sendMail(mailOptions);
-        console.log(`Admin notification sent: ${subject}`);
+        console.info(`Admin notification sent: ${subject}`);
         return true;
     } catch (error) {
         console.error('Error sending admin notification:', error);

@@ -148,9 +148,10 @@ const addTeacher = asyncHandler(async (req, res) => {
             tempPassword,
             schoolOwner?.name || 'School Administrator'
         );
-        console.log(`Teacher invitation email sent to ${email} `);
+        console.info(`Teacher invitation email sent to ${email}`);
     } catch (emailError) {
-        console.error('Failed to send invitation email:', emailError);
+        console.error('Failed to send invitation email:', emailError.message);
+        console.error('Full error:', emailError);
         // Don't fail the entire operation if email fails
         // Teacher is still created, admin can manually share credentials
     }
@@ -166,8 +167,7 @@ const addTeacher = asyncHandler(async (req, res) => {
             name: teacher.name,
             email: teacher.email,
             teacherStatus: teacher.teacherStatus
-        },
-        tempPassword // REMOVE IN PRODUCTION - send via email instead
+        }
     }));
 });
 

@@ -50,6 +50,8 @@ const registerUser = asyncHandler(async (req, res) => {
                 role: user.role,
                 subscriptionPlan: user.subscriptionPlan,
                 isSchoolAdmin: user.isSchoolAdmin,
+                schoolId: user.schoolId,
+                teacherStatus: user.teacherStatus,
                 accountType: user.accountType || 'individual',
                 avatar: user.avatar,
                 token: generateToken(user.id),
@@ -142,6 +144,8 @@ const loginUser = asyncHandler(async (req, res) => {
                     role: user.role,
                     subscriptionPlan: user.subscriptionPlan,
                     isSchoolAdmin: user.isSchoolAdmin,
+                    schoolId: user.schoolId,
+                    teacherStatus: user.teacherStatus,
                     avatar: user.avatar,
                     token: generateToken(user.id),
                 })

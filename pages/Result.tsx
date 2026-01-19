@@ -261,7 +261,7 @@ const Result: React.FC = () => {
                     url: shareUrl
                 });
             } catch (err) {
-                console.log('Error sharing:', err);
+                console.error('Error sharing:', err);
             }
         } else {
             // Fallback

@@ -21,7 +21,8 @@ export const generateLessonNote = async (
   subtopic: string = "",
   lessonType: string = "Normal Lesson",
   userPlan: 'Free' | 'Pro' | 'School' = 'Free',
-  limitReached: boolean = false
+  limitReached: boolean = false,
+  smartHint: string = ""
 ): Promise<LessonNote> => {
   try {
     const token = db.auth.getToken();
@@ -41,7 +42,8 @@ export const generateLessonNote = async (
         classLevel,
         duration,
         subtopic,
-        lessonType
+        lessonType,
+        smartHint
       }),
     });
 
@@ -64,8 +66,7 @@ export const generateLessonNote = async (
       try {
         parsedNote = JSON.parse(cleanJson(resultData.text));
       } catch (e) {
-        console.error("JSON parse error:", e);
-        console.log("Raw text:", resultData.text);
+        console.error("JSON parse error from GenAI");
         throw new Error("Failed to parse AI response. Please try again.");
       }
     } else {

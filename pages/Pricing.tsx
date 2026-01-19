@@ -31,7 +31,10 @@ const Pricing: React.FC = () => {
 
     // TO USER: Replace with your actual Paystack Public Key in .env
     // Priority: 1. DB Settings, 2. Env Variable, 3. Fallback Test Key
-    const publicKey = settings?.paystackPublicKey || import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || "pk_test_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";
+    const publicKey = settings?.paystackPublicKey || import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || "";
+    if (!publicKey) {
+        console.error("Paystack Public Key is missing. Payment features will be unavailable.");
+    }
 
     const handleSuccess = async (reference: any, plan: 'Pro' | 'School') => {
         setLoading(true);

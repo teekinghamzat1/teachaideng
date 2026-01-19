@@ -54,26 +54,30 @@ app.use(cors({
     },
     credentials: true,
 }));
-app.use(helmet());
-app.use(morgan('dev'));
+app.use(helmet({
+    contentSecurityPolicy: {
+        directives: {
+            ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+            "script-src": ["'self'", "'unsafe-inline'", "https://js.paystack.co", "https://*.paystack.co", "https://*.paystack.com"],
+            "frame-src": ["'self'", "https://js.paystack.co", "https://checkout.paystack.com", "https://*.paystack.com"],
+            "connect-src": ["'self'", "https://api.paystack.co", "https://*.paystack.co", "https://*.paystack.com", "https://checkout-api.paystack.com"],
+            "img-src": ["'self'", "data:", "https:", "http:"],
+        },
+    },
+}));
+app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 
 // Routes (Placeholders for now)
 app.get('/sitemap.xml', (req, res) => {
     res.redirect('/api/sitemap.xml');
 });
 
-// Health check to verify API routing without DB
+// Health check
 app.get('/api/health', (req, res) => {
     res.json({
         status: 'UP',
-        version: '1.2.0-comprehensive-lesson-fix',
-        deployedAt: new Date().toISOString(), // This will update every time the server restarts
-        buildTimestamp: new Date().toISOString(), // Static marker of THIS code version
-        env: {
-            nodeEnv: process.env.NODE_ENV,
-            hasDbUrl: !!process.env.DATABASE_URL,
-            isVercel: !!process.env.VERCEL
-        }
+        version: '1.2.0',
+        timestamp: new Date().toISOString()
     });
 });
 
@@ -108,6 +112,8 @@ app.use('/api/usage', require('./src/routes/usage'));
 app.use('/api/blog', require('./src/routes/blogRoutes'));
 app.use('/api/sitemap.xml', require('./src/routes/sitemapRoutes'));
 app.use('/api/support', require('./src/routes/supportRoutes'));
+app.use('/api/smart-class', require('./src/routes/smartClassRoutes'));
+app.use('/api/reference-schemes', require('./src/routes/referenceSchemeRoutes'));
 
 // Error Handler
 app.use(errorHandler);

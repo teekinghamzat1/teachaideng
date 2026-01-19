@@ -21,27 +21,26 @@ const verifyPayment = asyncHandler(async (req, res) => {
         let isValid = false;
         let amountPaid = 0;
 
-        if (secretKey) {
-            try {
-                const response = await axios.get(`https://api.paystack.co/transaction/verify/${reference}`, {
-                    headers: { Authorization: `Bearer ${secretKey}` }
-                });
+        if (!secretKey) {
+            console.error("CRITICAL: Paystack Secret Key is missing in environment variables.");
+            res.status(500);
+            throw new Error('Payment configuration error. Please contact support.');
+        }
 
-                if (response.data.status && response.data.data.status === 'success') {
-                    isValid = true;
-                    amountPaid = response.data.data.amount / 100; // Paystack returns kobo
-                } else {
-                    console.warn("Payment verification returned success: false or unexpected status");
-                }
-            } catch (axiosErr) {
-                console.error("Axios Call Failed:", axiosErr.message);
-                throw axiosErr;
+        try {
+            const response = await axios.get(`https://api.paystack.co/transaction/verify/${reference}`, {
+                headers: { Authorization: `Bearer ${secretKey}` }
+            });
+
+            if (response.data.status && response.data.data.status === 'success') {
+                isValid = true;
+                amountPaid = response.data.data.amount / 100; // Paystack returns kobo
+            } else {
+                console.warn("Payment verification failed with status:", response.data.data?.status);
             }
-        } else {
-            // DEV FALLBACK
-            console.warn("Paystack Secret Key missing. Accepting payment blindly for demo.");
-            isValid = true;
-            amountPaid = plan === 'School' ? 20000 : 2500;
+        } catch (axiosErr) {
+            console.error("Paystack Verification API Error:", axiosErr.response?.data?.message || axiosErr.message);
+            throw new Error('Payment verification service unavailable');
         }
 
         if (isValid) {

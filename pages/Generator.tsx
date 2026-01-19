@@ -32,22 +32,41 @@ const Generator: React.FC = () => {
     window.addEventListener('online', handleStatus);
     window.addEventListener('offline', handleStatus);
 
+    // Handle Smart Class parameters
+    const queryParams = new URLSearchParams(location.search);
+    const scSubject = queryParams.get('subject');
+    const scClass = queryParams.get('classLevel');
+    const scType = queryParams.get('lessonType');
+    const scTopic = queryParams.get('topic');
+    const scSubtopic = queryParams.get('subtopic');
+
+    // Fetch curriculum and usage
     // Fetch curriculum and usage
     const loadCurriculum = async () => {
       try {
         const data = await db.admin.getCurriculum();
         if (data.subjects && data.subjects.length > 0) {
           setSubjects(data.subjects);
-          setFormData(prev => ({ ...prev, subject: data.subjects[0] }));
+          // Only default if not already set by URL
+          if (!scSubject) {
+            setFormData(prev => ({ ...prev, subject: data.subjects[0] }));
+          }
         } else {
-          setFormData(prev => ({ ...prev, subject: Object.values(Subject)[0] }));
+          if (!scSubject) {
+            setFormData(prev => ({ ...prev, subject: Object.values(Subject)[0] }));
+          }
         }
 
         if (data.classLevels && data.classLevels.length > 0) {
           setClassLevels(data.classLevels);
-          setFormData(prev => ({ ...prev, classLevel: data.classLevels[0] }));
+          // Only default if not already set by URL
+          if (!scClass) {
+            setFormData(prev => ({ ...prev, classLevel: data.classLevels[0] }));
+          }
         } else {
-          setFormData(prev => ({ ...prev, classLevel: Object.values(ClassLevel)[0] }));
+          if (!scClass) {
+            setFormData(prev => ({ ...prev, classLevel: Object.values(ClassLevel)[0] }));
+          }
         }
 
       } catch (e) {
@@ -55,7 +74,7 @@ const Generator: React.FC = () => {
         // Fallback to defaults if fetch fails
         setSubjects(Object.values(Subject));
         setClassLevels(Object.values(ClassLevel));
-        setFormData(prev => ({ ...prev, topic: '' }));
+        // Keep existing form data if possible
       }
     };
 
@@ -76,6 +95,21 @@ const Generator: React.FC = () => {
 
     loadCurriculum();
     checkUsage();
+
+    loadCurriculum();
+    checkUsage();
+
+
+    if (scSubject || scClass || scType || scTopic) {
+      setFormData(prev => ({
+        ...prev,
+        subject: scSubject || prev.subject,
+        classLevel: scClass || prev.classLevel,
+        lessonType: scType || prev.lessonType,
+        topic: scTopic || prev.topic,
+        subtopic: scSubtopic || prev.subtopic
+      }));
+    }
 
     return () => {
       window.removeEventListener('online', handleStatus);
@@ -100,7 +134,8 @@ const Generator: React.FC = () => {
         formData.subtopic,
         formData.lessonType,
         userPlan,
-        limitReached
+        limitReached,
+        new URLSearchParams(location.search).get('smartHint') || ""
       );
       // Navigate to result page with the data
       navigate('/result', { state: { lessonNote: result } });
@@ -191,7 +226,8 @@ const Generator: React.FC = () => {
         formData.subtopic,
         formData.lessonType,
         userPlan,
-        limitReached
+        limitReached,
+        new URLSearchParams(location.search).get('smartHint') || ""
       );
       // Save generated result to shared cache (best-effort)
       try {
@@ -199,6 +235,19 @@ const Generator: React.FC = () => {
       } catch (saveErr) {
         console.warn('Failed to save to shared cache', saveErr);
       }
+
+      // Handle Smart Class completion
+      const queryParams = new URLSearchParams(location.search);
+      const scDayId = queryParams.get('dayId');
+      if (scDayId) {
+        try {
+          await db.smartClass.markComplete(scDayId);
+          showAlert.success('Success', 'Lesson saved to Smart Class');
+        } catch (e) {
+          console.error('Failed to mark smart class day complete', e);
+        }
+      }
+
       // Navigate to result page with the data
       navigate('/result', { state: { lessonNote: result } });
     } catch (err: any) {
@@ -301,6 +350,7 @@ const Generator: React.FC = () => {
               >
                 <option value="Normal Lesson">Normal Lesson</option>
                 <option value="Comprehension">Comprehension</option>
+                <option value="Vocabulary Development">Vocabulary Development</option>
               </select>
 
 

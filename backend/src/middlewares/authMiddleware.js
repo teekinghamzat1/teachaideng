@@ -64,7 +64,16 @@ const protect = asyncHandler(async (req, res, next) => {
 });
 
 const admin = (req, res, next) => {
-  if (req.user && (req.user.role.toLowerCase() === 'admin' || req.user.role.toLowerCase() === 'superadmin') && !req.user.isSchoolAdmin) {
+  const userRole = (req.user?.role || '').toLowerCase();
+
+  if (req.user && (userRole === 'admin' || userRole === 'superadmin')) {
+    // SuperAdmins have access to everything, even if they're also school admins
+    // Regular school admins (without superadmin role) should be restricted
+    if (req.user.isSchoolAdmin && userRole !== 'superadmin') {
+      console.warn(`[ADMIN_BLOCKED] School Admin ${req.user?.email || 'Unknown'} (Role: ${req.user?.role}) blocked from ${req.originalUrl}`)
+      res.status(401);
+      throw new Error('Not authorized as a global admin');
+    }
     next();
   } else {
     console.warn(`[ADMIN_BLOCKED] User ${req.user?.email || 'Unknown'} (Role: ${req.user?.role}) blocked from ${req.originalUrl}`);

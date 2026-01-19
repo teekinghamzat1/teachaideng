@@ -150,7 +150,9 @@ const getAnalytics = asyncHandler(async (req, res) => {
 // @access  Private/Admin
 const getUsers = asyncHandler(async (req, res) => {
     let where = {};
-    if (req.user.isSchoolAdmin && req.user.schoolId) {
+    // Only filter by school for regular school admins, not superadmins
+    const userRole = (req.user?.role || '').toLowerCase();
+    if (req.user.isSchoolAdmin && req.user.schoolId && userRole !== 'superadmin') {
         where.schoolId = req.user.schoolId;
     }
 
@@ -762,7 +764,6 @@ const updateUserPlan = asyncHandler(async (req, res) => {
     }
 
     // 3. Log the action
-    const { createAdminLog } = require('./adminController'); // Self-reference or imported at top
     await createAdminLog(req.user.id, null, 'UPDATE_USER_PLAN', {
         targetUserId: id,
         targetUserName: updatedUser.name,

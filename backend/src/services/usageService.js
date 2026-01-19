@@ -131,6 +131,62 @@ async function recordLessonGeneration(userId, inputTokens = 0, outputTokens = 0)
  * @param {string} userId 
  * @returns {Promise<{lessonsUsed: number, lessonsRemaining: number, monthlyLimit: number, resetDate: Date}>}
  */
+/**
+ * Check if user's usage needs to be reset based on their plan duration (month/term)
+ * @param {string} userId 
+ */
+async function checkAndResetUsage(userId) {
+    const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { lastUsageReset: true, subscriptionPlan: true }
+    });
+
+    if (!user) return;
+
+    const planLimits = await getPlanLimits(user.subscriptionPlan);
+    const duration = (planLimits.duration || 'month').toLowerCase();
+
+    const now = new Date();
+    const lastReset = new Date(user.lastUsageReset);
+    let needsReset = false;
+
+    if (duration === 'term') {
+        // Term boundaries: Jan 1, May 1, Sept 1
+        const getTermStart = (date) => {
+            const year = date.getFullYear();
+            const month = date.getMonth(); // 0-indexed
+            if (month < 4) return new Date(year, 0, 1); // Jan-Apr (Term 2)
+            if (month < 8) return new Date(year, 4, 1); // May-Aug (Term 3)
+            return new Date(year, 8, 1); // Sept-Dec (Term 1)
+        };
+
+        const currentTermStart = getTermStart(now);
+        const lastResetTermStart = getTermStart(lastReset);
+
+        needsReset = currentTermStart.getTime() !== lastResetTermStart.getTime();
+    } else {
+        // Monthly reset (default)
+        needsReset =
+            now.getMonth() !== lastReset.getMonth() ||
+            now.getFullYear() !== lastReset.getFullYear();
+    }
+
+    if (needsReset) {
+        await prisma.user.update({
+            where: { id: userId },
+            data: {
+                lessonsUsedThisMonth: 0,
+                tokensUsedThisMonth: 0,
+                lastUsageReset: now
+            }
+        });
+    }
+}
+
+/**
+ * Get user's current usage stats
+ * @param {string} userId 
+ */
 async function getUserUsage(userId) {
     // Check and reset if needed
     await checkAndResetUsage(userId);
@@ -145,65 +201,44 @@ async function getUserUsage(userId) {
         }
     });
 
-    if (!user) {
-        throw new Error('User not found');
-    }
+    if (!user) throw new Error('User not found');
 
     const planLimits = await getPlanLimits(user.subscriptionPlan);
-    // Logic: If user has a specific custom override (very high number), use it. 
-    // Otherwise use plan limit.
-    // To support "Update numbers from admin dashboard", we prioritize the plan limit 
-    // if the user's stored limit seems like a default (e.g. <= 15 for Free).
-    // Safest approach: Use Max(userStored, planLimit).
     const effectiveLimit = Math.max(user.monthlyLessonLimit, planLimits.lessonLimit);
+    const duration = (planLimits.duration || 'month').toLowerCase();
 
     const lessonsRemaining = Math.max(0, effectiveLimit - user.lessonsUsedThisMonth);
 
-    // Calculate next reset date (first day of next month)
+    // Calculate next reset date
     const resetDate = new Date(user.lastUsageReset);
-    resetDate.setMonth(resetDate.getMonth() + 1);
-    resetDate.setDate(1);
+
+    if (duration === 'term') {
+        // Next Term reset: Move to the start of the next 4-month block
+        const month = resetDate.getMonth();
+        if (month < 4) { // Currently in Jan-Apr -> Next reset May 1
+            resetDate.setMonth(4);
+        } else if (month < 8) { // Currently in May-Aug -> Next reset Sept 1
+            resetDate.setMonth(8);
+        } else { // Currently in Sept-Dec -> Next reset Jan 1 of next year
+            resetDate.setFullYear(resetDate.getFullYear() + 1);
+            resetDate.setMonth(0);
+        }
+        resetDate.setDate(1);
+    } else {
+        // Next Monthly reset: 1st day of next month
+        resetDate.setMonth(resetDate.getMonth() + 1);
+        resetDate.setDate(1);
+    }
+
     resetDate.setHours(0, 0, 0, 0);
 
     return {
         lessonsUsed: user.lessonsUsedThisMonth,
         lessonsRemaining,
         monthlyLimit: effectiveLimit,
-        resetDate
+        resetDate,
+        duration // Added to help frontend distinguish between 'Monthly Limit' and 'Termly Limit'
     };
-}
-
-/**
- * Check if user needs monthly reset and perform it
- * @param {string} userId 
- */
-async function checkAndResetUsage(userId) {
-    const user = await prisma.user.findUnique({
-        where: { id: userId },
-        select: { lastUsageReset: true }
-    });
-
-    if (!user) return;
-
-    const now = new Date();
-    const lastReset = new Date(user.lastUsageReset);
-
-    // Check if we're in a new month
-    const needsReset =
-        now.getMonth() !== lastReset.getMonth() ||
-        now.getFullYear() !== lastReset.getFullYear();
-
-    if (needsReset) {
-        await prisma.user.update({
-            where: { id: userId },
-            data: {
-                lessonsUsedThisMonth: 0,
-                tokensUsedThisMonth: 0,
-                lastUsageReset: now
-            }
-        });
-        // Monthly usage reset performed
-    }
 }
 
 /**
@@ -260,9 +295,9 @@ async function getPlanLimits(plan) {
     if (!settings) {
         // Fallback defaults
         const defaults = {
-            'Free': { lessonLimit: 10, tokenLimit: 100000 },
-            'Pro': { lessonLimit: 100, tokenLimit: 1000000 },
-            'School': { lessonLimit: 999999, tokenLimit: 10000000 }
+            'Free': { lessonLimit: 10, tokenLimit: 100000, duration: 'month' },
+            'Pro': { lessonLimit: 100, tokenLimit: 1000000, duration: 'month' },
+            'School': { lessonLimit: 999999, tokenLimit: 10000000, duration: 'term' }
         };
         return defaults[plan] || defaults['Free'];
     }
@@ -273,15 +308,18 @@ async function getPlanLimits(plan) {
     const planMap = {
         'Free': {
             lessonLimit: settings.freePlanLessonLimit,
-            tokenLimit: settings.freePlanTokenLimit
+            tokenLimit: settings.freePlanTokenLimit,
+            duration: settings.freePlanDuration || 'month'
         },
         'Pro': {
             lessonLimit: settings.proPlanLessonLimit,
-            tokenLimit: settings.proPlanTokenLimit
+            tokenLimit: settings.proPlanTokenLimit,
+            duration: settings.proPlanDuration || 'month'
         },
         'School': {
             lessonLimit: settings.schoolPlanLessonLimit,
-            tokenLimit: settings.schoolPlanTokenLimit
+            tokenLimit: settings.schoolPlanTokenLimit,
+            duration: settings.schoolPlanDuration || 'term'
         }
     };
 

@@ -34,7 +34,7 @@ export const sessionManager = {
 
     // Logout due to inactivity
     logout() {
-        console.log('Session expired due to inactivity');
+        console.info('Session expired due to inactivity');
         localStorage.removeItem('teachaide_session');
         localStorage.removeItem('lastActivity');
         window.dispatchEvent(new Event('auth-change'));

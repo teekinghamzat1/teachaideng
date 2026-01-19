@@ -36,9 +36,11 @@ const handleResponse = async (response: Response) => {
     const url = response.url;
     const isLoginPage = window.location.pathname === '/login' || window.location.pathname === '/admin/login';
 
-    // If it's an admin endpoint, clear admin session
-    if (url.includes('/api/admin')) {
-      console.error(`401 Unauthorized from Admin API: ${url}`);
+    // Unified 401 logic
+    const isAdminPath = window.location.pathname.startsWith('/admin');
+
+    if (url.includes('/api/admin') || isAdminPath) {
+      console.error(`401 Unauthorized from Admin API or Admin Path: ${url}`);
       localStorage.removeItem('teachaide_admin_session');
       if (!isLoginPage) {
         window.location.href = '/admin/login';
@@ -84,7 +86,7 @@ const handleResponse = async (response: Response) => {
   }
 
   const data = await response.json();
-  return data.data; // Assuming backend returns { success: true, message: '', data: ... }
+  return data.data;
 };
 
 export const db = {
@@ -118,11 +120,9 @@ export const db = {
       return user;
     },
 
-    async loginAsAdminDemo(): Promise<User> {
-      return this.login('admin@example.com', 'password123');
-    },
 
-    async getUsage(schoolId?: string): Promise<{ used: number; limit: number; remaining: number }> {
+
+    async getUsage(schoolId?: string): Promise<{ used: number; limit: number; remaining: number; duration: string; resetDate: string }> {
       const url = schoolId ? `${API_URL}/users/usage?schoolId=${schoolId}` : `${API_URL}/users/usage`;
       const response = await fetch(url, {
         headers: getAuthHeader(),
@@ -144,7 +144,7 @@ export const db = {
     },
 
     async requestPasswordReset(email: string): Promise<void> {
-      console.log(`Password reset requested for ${email}`);
+      // Logic for password reset...
     },
 
     getCurrentUser(): User | null {
@@ -292,7 +292,7 @@ export const db = {
 
   async requestPasswordReset(email: string): Promise<void> {
     // Backend doesn't have this yet.
-    console.log(`Password reset requested for ${email}`);
+    console.info(`Password reset requested for a user`);
   },
 
   getCurrentUser(): User | null {
@@ -742,6 +742,51 @@ export const db = {
       await handleResponse(response);
     },
 
+    referenceSchemes: {
+      async getAll(params?: { subject?: string; classLevel?: string; term?: string }): Promise<any[]> {
+        const query = new URLSearchParams(params as any).toString();
+        const response = await fetch(`${API_URL}/reference-schemes?${query}`, {
+          headers: getAdminAuthHeader()
+        });
+        return handleResponse(response);
+      },
+      async getOne(id: string): Promise<any> {
+        const response = await fetch(`${API_URL}/reference-schemes/${id}`, {
+          headers: getAdminAuthHeader()
+        });
+        return handleResponse(response);
+      },
+      async create(data: any): Promise<any> {
+        const response = await fetch(`${API_URL}/reference-schemes`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...getAdminAuthHeader()
+          },
+          body: JSON.stringify(data)
+        });
+        return handleResponse(response);
+      },
+      async updateWeek(schemeId: string, weekNumber: number, data: any): Promise<any> {
+        const response = await fetch(`${API_URL}/reference-schemes/${schemeId}/weeks/${weekNumber}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            ...getAdminAuthHeader()
+          },
+          body: JSON.stringify(data)
+        });
+        return handleResponse(response);
+      },
+      async delete(id: string): Promise<void> {
+        const response = await fetch(`${API_URL}/reference-schemes/${id}`, {
+          method: 'DELETE',
+          headers: getAdminAuthHeader()
+        });
+        await handleResponse(response);
+      }
+    },
+
     async getAllTestimonials(): Promise<any[]> {
       const response = await fetch(`${API_URL}/admin/testimonials`, {
         headers: getAnyAuthHeader()
@@ -879,6 +924,12 @@ export const db = {
   school: {
     async getDetails() {
       const response = await fetch(`${API_URL}/school-admin/details`, {
+        headers: getAuthHeader()
+      });
+      return handleResponse(response);
+    },
+    async getActivityLogs() {
+      const response = await fetch(`${API_URL}/school-admin/activity`, {
         headers: getAuthHeader()
       });
       return handleResponse(response);
@@ -1106,6 +1157,57 @@ export const db = {
         });
         await handleResponse(response);
       }
+    }
+  },
+  smartClass: {
+    async create(data: { classLevel: string; subject: string; term: string; startWeek: number }): Promise<any> {
+      const response = await fetch(`${API_URL}/smart-class`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeader()
+        },
+        body: JSON.stringify(data)
+      });
+      return handleResponse(response);
+    },
+    async getAll(): Promise<any[]> {
+      const response = await fetch(`${API_URL}/smart-class`, {
+        headers: getAuthHeader()
+      });
+      return handleResponse(response);
+    },
+    async markComplete(dayId: string): Promise<any> {
+      const response = await fetch(`${API_URL}/smart-class/days/${dayId}/complete`, {
+        method: 'PUT',
+        headers: getAuthHeader()
+      });
+      return handleResponse(response);
+    },
+    async unmarkComplete(dayId: string): Promise<any> {
+      const response = await fetch(`${API_URL}/smart-class/days/${dayId}/uncomplete`, {
+        method: 'PUT',
+        headers: getAuthHeader()
+      });
+      return handleResponse(response);
+    },
+    async updateDayTopic(dayId: string, topic: string, subtopic?: string): Promise<any> {
+      const response = await fetch(`${API_URL}/smart-class/days/${dayId}/topic`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeader()
+        },
+        body: JSON.stringify({ topic, subtopic })
+      });
+      return handleResponse(response);
+    },
+    async delete(id: string): Promise<void> {
+      const response = await fetch(`${API_URL}/smart-class/${id}`, {
+        method: 'DELETE',
+        headers: getAuthHeader()
+      });
+      await handleResponse(response);
     }
   }
 };

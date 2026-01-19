@@ -76,8 +76,8 @@ const addTeacher = asyncHandler(async (req, res) => {
 
     // School not found check
     if (!school) {
-        res.status(404);
-        throw new Error('School not found.');
+      res.status(404);
+      throw new Error('School not found.');
     }
 
     // Check teacher limit
@@ -101,6 +101,29 @@ const addTeacher = asyncHandler(async (req, res) => {
 
     return newTeacher;
   });
+
+  // Send invitation email with temporary password
+  const { sendTeacherInvitation } = require('../utils/emailService');
+  try {
+    const school = await prisma.school.findUnique({
+      where: { id: schoolId },
+      select: { name: true }
+    });
+
+    await sendTeacherInvitation(
+      teacher.email,
+      teacher.name,
+      school?.name || 'Your School',
+      tempPassword,
+      req.user.name
+    );
+    console.info(`Teacher invitation email sent to ${email}`);
+  } catch (emailError) {
+    console.error('Failed to send invitation email:', emailError.message);
+    console.error('Full error:', emailError);
+    // Don't fail the entire operation if email fails
+    // Teacher is still created, admin can manually share credentials
+  }
 
   // If transaction is successful, log and respond
   await createAdminLog(req.user.id, schoolId, 'ADD_TEACHER', { email, name });
@@ -269,7 +292,26 @@ const updateSchoolProfile = asyncHandler(async (req, res) => {
     phone
   });
 
-  res.json(formatResponse(true, 'School profile updated', updatedSchool));
+  res.json(formatResponse(true, 'Profile updated', updatedSchool));
+});
+
+// @desc    Get school activity logs
+// @route   GET /api/school-admin/activity
+const getActivityLogs = asyncHandler(async (req, res) => {
+  const schoolId = req.user.schoolId;
+
+  const activity = await prisma.usageLog.findMany({
+    where: { schoolId },
+    include: {
+      user: {
+        select: { name: true, email: true }
+      }
+    },
+    orderBy: { createdAt: 'desc' },
+    take: 20
+  });
+
+  res.json(formatResponse(true, 'Activity logs retrieved', activity));
 });
 
 module.exports = {
@@ -280,5 +322,6 @@ module.exports = {
   toggleTeacherAdmin,
   updateSchoolSettings,
   updateTeacherLimit,
-  updateSchoolProfile
+  updateSchoolProfile,
+  getActivityLogs
 };

@@ -7,9 +7,11 @@ import { showAlert } from '../utils/alerts';
 const AdminSettings: React.FC = () => {
     // Immediate check for authorization
     const currentUser = db.adminAuth.getCurrentUser();
-    const isSuperAdmin = currentUser?.role?.toLowerCase() === 'superadmin';
+    const normalizedRole = (currentUser?.role || '').toLowerCase();
+    const isSuperAdmin = normalizedRole === 'superadmin';
 
-    if (!currentUser || !['Admin', 'SuperAdmin', 'admin', 'superadmin'].includes(currentUser.role) || currentUser.isSchoolAdmin) {
+    // Only block if user is a school admin WITHOUT superadmin privileges
+    if (!currentUser || (!['admin', 'superadmin'].includes(normalizedRole)) || (currentUser.isSchoolAdmin && !isSuperAdmin)) {
         return <div className="p-8 text-center text-slate-500">Access Denied: Global Admin privileges required.</div>;
     }
 

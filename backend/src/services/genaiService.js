@@ -204,6 +204,9 @@ PROCEDURE ENFORCEMENT (TOKEN-EFFICIENT):
 Steps must appear in exact order from Step I to Step VI; do not shuffle.
 If no written exercise, Step V adapts to oral/guided practice.
 CRITICAL: DO NOT INCLUDE Pupil's Activity in the JSON or as a concept. Focus only on Teacher's Activity to save tokens.
+
+${options.smartHint ? `SMART CONTEXT HINT (PRIORITY):
+${options.smartHint}` : ''}
 `;
 
   const contents = [{

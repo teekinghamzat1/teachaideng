@@ -60,13 +60,7 @@ const getMessages = asyncHandler(async (req, res) => {
         orderBy: { createdAt: 'asc' }
     });
 
-    console.log('=== GET MESSAGES DEBUG ===');
-    console.log('Session ID:', sessionId);
-    console.log('Messages count:', messages.length);
-    messages.forEach((m, idx) => {
-        console.log(`Message ${idx + 1}: senderRole="${m.senderRole}", content="${m.content.substring(0, 30)}..."`);
-    });
-    console.log('==========================');
+
 
     // Mark as read only if requested
     const markAsRead = req.query.markAsRead === 'true';
@@ -114,15 +108,7 @@ const sendMessage = asyncHandler(async (req, res) => {
 
     const senderRole = ['admin', 'superadmin'].includes(req.user.role?.toLowerCase()) ? 'admin' : 'user';
 
-    console.log('=== SUPPORT MESSAGE DEBUG ===');
-    console.log('User ID:', req.user.id);
-    console.log('User Role (raw):', req.user.role);
-    console.log('User Role (lowercase):', req.user.role?.toLowerCase());
-    console.log('Assigned senderRole:', senderRole);
-    console.log('Session User ID:', session.userId);
-    console.log('Has Attachment:', !!attachment);
-    console.log('Is Admin?', ['admin', 'superadmin'].includes(req.user.role?.toLowerCase()));
-    console.log('============================');
+
 
     const message = await prisma.chatMessage.create({
         data: {

@@ -12,7 +12,8 @@ const AdminOverview: React.FC = () => {
     const currentUser = db.adminAuth.getCurrentUser();
 
     // Redirect non-admins immediately
-    if (!currentUser || (!['Admin', 'SuperAdmin', 'admin', 'superadmin'].includes(currentUser.role) && !currentUser.isSchoolAdmin)) {
+    const normalizedRole = (currentUser?.role || '').toLowerCase();
+    if (!currentUser || !['admin', 'superadmin'].includes(normalizedRole)) {
         // Return null or empty fragment so nothing renders while redirect logic (in App or here) kicks in
         // Ideally this component shouldn't even mount, but if it does:
         return <div className="p-8 text-center text-slate-500 dark:text-slate-400">Checking authorization...</div>;
@@ -20,7 +21,8 @@ const AdminOverview: React.FC = () => {
 
     useEffect(() => {
         const user = db.adminAuth.getCurrentUser();
-        if (!user || (!['Admin', 'SuperAdmin', 'admin', 'superadmin'].includes(user.role) && !user.isSchoolAdmin)) {
+        const userRole = (user?.role || '').toLowerCase();
+        if (!user || !['admin', 'superadmin'].includes(userRole)) {
             window.location.href = '/admin/login'; // Redirect to admin login
             return;
         }

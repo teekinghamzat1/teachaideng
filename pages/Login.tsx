@@ -11,14 +11,17 @@ const Login: React.FC = () => {
   useEffect(() => {
     const user = db.auth.getCurrentUser();
     if (user) {
-      if (user.role === 'Admin' || user.role === 'superadmin') {
+      const role = user.role?.toLowerCase();
+      if (role === 'admin' || role === 'superadmin') {
         navigate('/admin');
+      } else if (user.subscriptionPlan?.toLowerCase() === 'school' && user.schoolId) {
+        // All school teachers go to teacher dashboard
+        navigate('/teacher-dashboard');
       } else {
         navigate('/dashboard');
       }
     }
   }, [navigate]);
-
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -26,11 +29,6 @@ const Login: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
-
-  // Eliminate flash by not rendering if user is already logged in
-  if (db.auth.getCurrentUser()) {
-    return <Loader fullscreen message="Redirecting to dashboard..." />;
-  }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -53,26 +51,18 @@ const Login: React.FC = () => {
 
     try {
       const user = await db.auth.login(formData.email, formData.password);
-      if (user.role === 'admin' || user.role === 'superadmin') {
+      const role = user.role?.toLowerCase();
+      const isSchoolPlan = user.subscriptionPlan?.toLowerCase() === 'school';
+      if (role === 'admin' || role === 'superadmin') {
         navigate('/admin');
+      } else if (isSchoolPlan && user.schoolId) {
+        // All school teachers go to teacher dashboard
+        navigate('/teacher-dashboard');
       } else {
         navigate('/dashboard');
       }
     } catch (err: any) {
       setError(err.message || 'Failed to login. Please check your credentials.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleAdminDemo = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      await db.auth.loginAsAdminDemo();
-      navigate('/admin');
-    } catch (err) {
-      setError("Failed to initialize admin demo.");
     } finally {
       setLoading(false);
     }
