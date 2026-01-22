@@ -36,6 +36,7 @@ const { admin } = require('../middlewares/adminMiddleware');
 const { superAdmin } = require('../middlewares/superAdminMiddleware');
 const validate = require('../middlewares/validate');
 const { z } = require('zod');
+const { validateCreateUser } = require('../middlewares/userValidation');
 
 const createAdminSchema = z.object({
     body: z.object({
@@ -57,7 +58,7 @@ router.get('/logs', getAdminLogs);
 router.get('/error-logs', getErrorLogs);
 router.put('/error-logs/:id/resolve', resolveError);
 router.get('/users', getUsers);
-router.post('/users', createUser);
+router.post('/users', validateCreateUser, createUser);
 router.get('/orders', getOrders);
 router.post('/create-admin', validate(createAdminSchema), superAdmin, createAdmin);
 

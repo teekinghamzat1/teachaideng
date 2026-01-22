@@ -393,20 +393,10 @@ const updateNoteStatus = asyncHandler(async (req, res) => {
 // @route   POST /api/admin/users
 // @access  Private/Admin
 const createUser = asyncHandler(async (req, res) => {
-    const { name, email, password, role, isSchoolAdmin, schoolId, subscriptionPlan } = req.body;
+    // Note: Zod middleware has already stripped sensitive fields like 'role'
+    const { name, email, password } = req.body;
 
-    // Restrict Admin/SuperAdmin creation
-    if (role && (role.toLowerCase() === 'admin' || role.toLowerCase() === 'superadmin')) {
-        res.status(403);
-        throw new Error('Forbidden: Admins cannot create other admins or superadmins.');
-    }
-
-    // Only SuperAdmin can create School Admins
-    if (isSchoolAdmin && req.user.role !== 'superadmin') {
-        res.status(403);
-        throw new Error('Forbidden: Only SuperAdmins can create School Admins.');
-    }
-
+    // Check for user existence
     const userExists = await prisma.user.findUnique({
         where: { email },
     });
@@ -416,25 +406,35 @@ const createUser = asyncHandler(async (req, res) => {
         throw new Error('User already exists');
     }
 
+    // Hash password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
+    // Prepare user data; apply defense-in-depth security
+    const userData = {
+        name,
+        email,
+        password: hashedPassword,
+        role: 'user', // Default role
+        isSchoolAdmin: false, // Default permission
+        subscriptionPlan: 'Free', // Default plan
+        teacherStatus: 'Invited',
+    };
+
+    // If creator is a school admin, enforce school scope
+    if (req.user.isSchoolAdmin && req.user.schoolId) {
+        userData.schoolId = req.user.schoolId;
+        userData.subscriptionPlan = 'School'; // Teachers of a school are on the school plan
+    }
+
     const user = await prisma.user.create({
-        data: {
-            name,
-            email,
-            password: hashedPassword,
-            role: role || 'user',
-            isSchoolAdmin: !!isSchoolAdmin,
-            schoolId: schoolId || null,
-            subscriptionPlan: subscriptionPlan || 'Free',
-        },
+        data: userData,
     });
 
     await createAdminLog(req.user.id, req.user.schoolId, 'CREATE_USER', {
         createdUserId: user.id,
-        role,
-        email
+        email: user.email,
+        schoolId: user.schoolId
     });
 
     if (user) {
@@ -445,7 +445,8 @@ const createUser = asyncHandler(async (req, res) => {
                 email: user.email,
                 role: user.role,
                 isSchoolAdmin: user.isSchoolAdmin,
-                schoolId: user.schoolId
+                schoolId: user.schoolId,
+                teacherStatus: user.teacherStatus
             })
         );
     } else {
