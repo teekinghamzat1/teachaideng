@@ -20,6 +20,8 @@ echo "Installing npm dependencies..."
 npm install
 
 if [ -f package.json ] && npm run | grep -q "build"; then
+  echo "Fixing script permissions..."
+  chmod -R +x node_modules/.bin || true
   echo "Building project..."
   npm run build
 else
