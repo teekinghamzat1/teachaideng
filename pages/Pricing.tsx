@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { PaystackButton } from 'react-paystack';
-import { CheckCircle, Loader2 } from '../components/Icons';
+import { CheckCircle, Loader2, Sparkles, Shield, ChevronRight, X } from '../components/Icons';
 import { db } from '../database';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { showAlert } from '../utils/alerts';
 import { SystemSettings } from '../types';
 
@@ -29,32 +29,23 @@ const Pricing: React.FC = () => {
         loadSettings();
     }, []);
 
-    // TO USER: Replace with your actual Paystack Public Key in .env
-    // Priority: 1. DB Settings, 2. Env Variable, 3. Fallback Test Key
     const publicKey = settings?.paystackPublicKey || import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || "";
-    if (!publicKey) {
-        console.error("Paystack Public Key is missing. Payment features will be unavailable.");
-    }
 
     const handleSuccess = async (reference: any, plan: 'Pro' | 'School') => {
         setLoading(true);
         try {
-            // Defensive client-side guard: ensure only school admins can subscribe to School License
             if (plan === 'School' && user?.schoolId && !user?.isSchoolAdmin) {
-                showAlert.error('Admin Access Required', 'Only school administrators can purchase or manage the School License. Please contact your school administrator.');
+                showAlert.error('Admin Access Required', 'Only school administrators can purchase or manage the School License.');
                 return;
             }
             await db.payment.verify(reference.reference, plan);
-            // Refresh user data to get updated subscription plan
             await db.auth.refreshUser();
-            // Navigate to success page with payment details
             const amount = plan === 'Pro'
                 ? (settings?.proPlanPrice || 2500).toLocaleString()
                 : (settings?.schoolPlanPrice || 20000).toLocaleString();
             navigate(`/payment/success?plan=${plan}&amount=${amount}&ref=${reference.reference}`);
         } catch (error) {
             showAlert.error('Payment Error', 'Payment verification failed. Please contact support if you were debited.');
-            console.error(error);
         } finally {
             setLoading(false);
         }
@@ -64,84 +55,55 @@ const Pricing: React.FC = () => {
         showAlert.info("Payment Cancelled", "Your transaction was not completed.");
     }
 
-    const handleSubscribeClick = (plan: 'Pro' | 'School') => {
-        // Check if user already has an active subscription
-        if (user?.subscriptionPlan && user.subscriptionPlan !== 'Free') {
-            setPendingPlan(plan);
-            setShowWarning(true);
-        } else {
-            // Proceed normally - the PaystackButton will handle it
-            return true;
-        }
-        return false;
-    };
-
-    const confirmSubscriptionChange = () => {
-        setShowWarning(false);
-        // Trigger the Paystack payment for the pending plan
-        if (pendingPlan) {
-            // We'll use a ref or state to trigger the payment
-            // For now, we'll just close the modal and let user click again
-            // The button text will change to "Change Plan" which shows the modal
-        }
-    };
-
     const componentProps = (amount: number, plan: 'Pro' | 'School') => ({
         email: user?.email || 'customer@example.com',
-        amount: amount * 100, // Paystack is in kobo
-        metadata: {
-            name: user?.name || 'Customer',
-            phone: '',
-            custom_fields: []
-        },
+        amount: amount * 100,
         publicKey,
         text: "Subscribe Now",
         onSuccess: (ref: any) => handleSuccess(ref, plan),
         onClose: handleClose,
     });
 
-    if (!user) {
-        // Fallback if not logged in - redirect to login
-    }
+    const isCurrentPlan = (planName: string) => {
+        if (!user) return false;
+        if (planName === 'Free' && (!user.subscriptionPlan || user.subscriptionPlan === 'Free')) return true;
+        return user.subscriptionPlan?.toLowerCase() === planName.toLowerCase();
+    };
 
     return (
-        <>
+        <div className="min-h-screen bg-white dark:bg-slate-950 overflow-x-hidden pb-20 relative">
+            {/* Background Decorations */}
+            <div className="absolute top-0 left-0 w-full h-[600px] overflow-hidden pointer-events-none">
+                <div className="absolute top-[-10%] right-[-10%] w-[50%] h-[50%] bg-[#16A34A]/5 blur-[120px] rounded-full animate-pulse"></div>
+                <div className="absolute bottom-0 left-[-10%] w-[50%] h-[50%] bg-blue-500/5 blur-[120px] rounded-full animate-pulse delay-700"></div>
+            </div>
+
             {/* Subscription Warning Modal */}
             {showWarning && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-md w-full p-6 animate-fadeIn">
-                        <div className="flex items-center justify-center w-12 h-12 mx-auto bg-yellow-100 rounded-full mb-4">
-                            <svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                            </svg>
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
+                    <div className="bg-white dark:bg-slate-800 rounded-[2rem] shadow-2xl max-w-md w-full p-8 animate-in fade-in zoom-in-95 duration-300">
+                        <div className="flex items-center justify-center w-16 h-16 mx-auto bg-amber-100 dark:bg-amber-900/30 rounded-full mb-6">
+                            <Shield className="w-8 h-8 text-amber-600" />
                         </div>
-                        <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100 text-center mb-2">
-                            Active Subscription Detected
-                        </h3>
-                        <p className="text-slate-600 dark:text-slate-300 text-center mb-6">
-                            You currently have an active <span className="font-semibold text-brand-600">{user?.subscriptionPlan}</span> plan.
-                            Subscribing to the <span className="font-semibold text-brand-600">{pendingPlan}</span> plan will replace your current subscription.
+                        <h3 className="text-2xl font-black text-slate-900 dark:text-white text-center mb-2 tracking-tight">Active Subscription</h3>
+                        <p className="text-slate-500 dark:text-slate-400 text-center mb-8 font-medium italic">
+                            Replacing your <span className="text-[#16A34A] font-bold">"{user?.subscriptionPlan}"</span> plan with <span className="text-[#16A34A] font-bold">"{pendingPlan}"</span> will immediately update your account benefits.
                         </p>
-                        <div className="flex gap-3">
+                        <div className="grid grid-cols-2 gap-4">
                             <button
-                                onClick={() => {
-                                    setShowWarning(false);
-                                    setPendingPlan(null);
-                                }}
-                                className="flex-1 px-4 py-3 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg font-semibold hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
+                                onClick={() => { setShowWarning(false); setPendingPlan(null); }}
+                                className="px-6 py-4 bg-slate-50 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-2xl font-bold hover:bg-slate-100 transition-all"
                             >
                                 Cancel
                             </button>
                             {pendingPlan && (
                                 <PaystackButton
-                                    className="flex-1 px-4 py-3 bg-brand-600 text-white rounded-lg font-semibold hover:bg-brand-700 transition-colors"
+                                    className="px-6 py-4 bg-[#16A34A] text-white rounded-2xl font-black hover:shadow-lg hover:shadow-[#16A34A]/20 transition-all"
                                     {...componentProps(
-                                        pendingPlan === 'Pro'
-                                            ? (settings?.proPlanPrice || 2500)
-                                            : (settings?.schoolPlanPrice || 20000),
+                                        pendingPlan === 'Pro' ? (settings?.proPlanPrice || 2500) : (settings?.schoolPlanPrice || 20000),
                                         pendingPlan
                                     )}
-                                    text="Continue to Payment"
+                                    text="Confirm Change"
                                 />
                             )}
                         </div>
@@ -149,176 +111,216 @@ const Pricing: React.FC = () => {
                 </div>
             )}
 
-            <div className="bg-slate-50 dark:bg-slate-900 py-16">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="text-center">
-                        <h2 className="text-base font-semibold text-brand-600 tracking-wide uppercase">Pricing</h2>
-                        <p className="mt-1 text-4xl font-extrabold text-slate-900 dark:text-slate-100 sm:text-5xl sm:tracking-tight lg:text-6xl">
-                            Plans for every teacher
-                        </p>
-                        <p className="max-w-xl mt-5 mx-auto text-xl text-slate-500 dark:text-slate-300">
-                            Start for free and upgrade as you need more power.
+            <main className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 lg:pt-24 pb-16">
+                {/* Header Section */}
+                <header className="flex flex-col lg:flex-row items-center justify-between gap-8 lg:gap-12 mb-16 lg:mb-32">
+                    <div className="text-center lg:text-left space-y-6 animate-in fade-in slide-in-from-left-8 duration-1000">
+                        <div className="inline-flex items-center gap-2 py-2 px-4 rounded-full bg-[#16A34A]/10 border border-[#16A34A]/20 mx-auto lg:mx-0">
+                            <span className="text-[#16A34A] text-xs font-black uppercase tracking-widest leading-none">Pricing</span>
+                        </div>
+                        <h1 className="text-5xl lg:text-7xl font-black text-slate-900 dark:text-white tracking-tight leading-none">
+                            Plans for every <span className="text-[#16A34A]">teacher</span>
+                        </h1>
+                        <p className="max-w-xl mx-auto lg:mx-0 text-lg lg:text-xl text-slate-500 dark:text-slate-400 font-medium leading-relaxed italic">
+                            Start for free and upgrade as you need more power for your classroom.
                         </p>
                     </div>
 
-                    <div className="mt-16 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:gap-8">
-                        {/* Free Plan */}
-                        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm divide-y divide-slate-200 dark:divide-slate-700 border border-slate-200 dark:border-slate-700">
-                            <div className="p-6">
-                                <h3 className="text-lg font-medium text-slate-900">{settings?.freePlanName || 'Free Starter'}</h3>
-                                <p className="mt-4 text-sm text-slate-500">Perfect for trying out TeachAide.</p>
-                                <p className="mt-8">
-                                    <span className="text-4xl font-extrabold text-slate-900">₦{settings?.freePlanPrice || 0}</span>
-                                    <span className="text-base font-medium text-slate-500">/{settings?.freePlanDuration === 'term' ? 'term' : settings?.freePlanDuration === 'year' ? 'yr' : 'mo'}</span>
-                                </p>
-                                <button disabled className="mt-8 block w-full bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-md py-2 text-sm font-semibold text-slate-500 dark:text-slate-200 text-center cursor-default">Current Plan</button>
+                    <div className="relative group animate-in fade-in zoom-in duration-1000 hidden lg:block">
+                        <div className="absolute inset-0 bg-[#16A34A]/5 blur-[80px] rounded-full group-hover:scale-110 transition-transform"></div>
+                        <img
+                            src="/hero-illustration.png"
+                            className="relative z-10 h-80 w-auto drop-shadow-[0_25px_25px_rgba(22,163,74,0.1)] rounded-[3rem]"
+                            alt="Teacher Illustration"
+                        />
+                    </div>
+                </header>
+
+                {/* Pricing Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 lg:gap-12 animate-in fade-in slide-in-from-bottom-8 duration-1000">
+                    {/* Free Plan */}
+                    <div className="group bg-white dark:bg-slate-900 rounded-[2.5rem] p-10 border border-slate-100 dark:border-slate-800 shadow-2xl shadow-slate-200/20 dark:shadow-black/20 hover:shadow-inherit transition-all hover:-translate-y-2">
+                        <div className="mb-10">
+                            <h3 className="text-2xl font-black text-slate-900 dark:text-white mb-2 tracking-tight">{settings?.freePlanName || 'Free Starter'}</h3>
+                            <p className="text-slate-400 text-sm font-medium italic">Perfect for trying out TeachAide.</p>
+                        </div>
+                        <div className="mb-10">
+                            <div className="flex items-baseline gap-1">
+                                <span className="text-5xl font-black text-slate-900 dark:text-white">₦0</span>
+                                <span className="text-slate-400 font-bold uppercase tracking-widest text-xs">/mo</span>
                             </div>
-                            <div className="pt-6 pb-8 px-6">
-                                <h4 className="text-sm font-medium text-slate-900 tracking-wide uppercase">What's included</h4>
-                                <ul className="mt-6 space-y-4">
-                                    <li className="flex space-x-3">
-                                        <CheckCircle className="flex-shrink-0 h-5 w-5 text-green-500" />
-                                        <span className="text-sm text-slate-500 dark:text-slate-300">{settings?.freePlanLessonLimit || 10} Lesson Notes per month</span>
-                                    </li>
-                                    <li className="flex space-x-3">
-                                        <CheckCircle className="flex-shrink-0 h-5 w-5 text-green-500" />
-                                        <span className="text-sm text-slate-500">Basic Subjects Only</span>
-                                    </li>
-                                    <li className="flex space-x-3">
-                                        <CheckCircle className="flex-shrink-0 h-5 w-5 text-green-500" />
-                                        <span className="text-sm text-slate-500">No PDF Export</span>
-                                    </li>
-                                </ul>
+                        </div>
+                        <div className="mb-10">
+                            {user ? (
+                                <button disabled className="w-full py-5 bg-slate-50 dark:bg-slate-800 text-slate-400 dark:text-slate-500 rounded-2xl font-black text-lg transition-all border border-slate-100 dark:border-slate-700 cursor-default">
+                                    {isCurrentPlan('Free') ? 'Current Plan' : 'Active'}
+                                </button>
+                            ) : (
+                                <Link
+                                    to="/signup"
+                                    className="block w-full text-center py-5 bg-slate-900 text-white rounded-2xl font-black text-lg shadow-xl shadow-slate-900/10 hover:shadow-slate-900/30 transition-all hover:-translate-y-1"
+                                >
+                                    Get Started for Free
+                                </Link>
+                            )}
+                        </div>
+                        <div className="space-y-6">
+                            <p className="text-[10px] font-black text-[#16A34A] uppercase tracking-[0.3em]">What's Included</p>
+                            <ul className="space-y-4">
+                                <li className="flex items-center gap-3 text-slate-600 dark:text-slate-300 font-bold">
+                                    <CheckCircle className="w-5 h-5 text-[#16A34A]" /> {settings?.freePlanLessonLimit || 16} Lesson Notes per month
+                                </li>
+                                <li className="flex items-center gap-3 text-slate-600 dark:text-slate-300 font-bold">
+                                    <CheckCircle className="w-5 h-5 text-[#16A34A]" /> Basic Subjects Only
+                                </li>
+                                <li className="flex items-center gap-3 text-slate-600 dark:text-slate-300 font-bold opacity-40">
+                                    <X className="w-5 h-5" /> No PDF Export
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    {/* Pro Plan */}
+                    <div className="group relative bg-[#16A34A]/5 dark:bg-slate-900 rounded-[2.5rem] p-10 border-2 border-[#16A34A] shadow-2xl shadow-[#16A34A]/10 transition-all hover:-translate-y-2 overflow-hidden">
+                        <div className="absolute top-0 right-0 px-6 py-2 bg-[#16A34A] text-white text-[10px] font-black uppercase tracking-widest rounded-bl-3xl">Most Popular</div>
+                        <div className="mb-10">
+                            <h3 className="text-2xl font-black text-slate-900 dark:text-white mb-2 tracking-tight">{settings?.proPlanName || 'Professional'}</h3>
+                            <p className="text-slate-500 text-sm font-medium italic">For serious teachers.</p>
+                        </div>
+                        <div className="mb-10">
+                            <div className="flex items-baseline gap-1">
+                                <span className="text-5xl font-black text-slate-900 dark:text-white">₦{(settings?.proPlanPrice || 2500).toLocaleString()}</span>
+                                <span className="text-slate-400 font-bold uppercase tracking-widest text-xs">/mo</span>
+                            </div>
+                        </div>
+                        <div className="mb-10">
+                            {user ? (
+                                user?.schoolId && !user?.isSchoolAdmin ? (
+                                    <button
+                                        className="w-full py-5 bg-slate-500 text-white rounded-2xl font-black text-lg cursor-not-allowed opacity-50"
+                                        onClick={() => showAlert.info('School Managed', 'Your subscription is managed by your school.')}
+                                    >
+                                        Managed by School
+                                    </button>
+                                ) : isCurrentPlan('Pro') ? (
+                                    <button disabled className="w-full py-5 bg-[#16A34A]/10 text-[#16A34A] border-2 border-[#16A34A]/20 rounded-2xl font-black text-lg cursor-default">Current Plan</button>
+                                ) : (
+                                    <button
+                                        onClick={() => { if (user.subscriptionPlan !== 'Free') { setPendingPlan('Pro'); setShowWarning(true); } else { /* Paystack handles click if not disabled */ } }}
+                                        className="w-full group/btn relative"
+                                    >
+                                        <PaystackButton
+                                            className="w-full py-5 bg-[#16A34A] text-white rounded-2xl font-black text-lg shadow-xl shadow-[#16A34A]/30 hover:shadow-[#16A34A]/50 transition-all relative z-10"
+                                            {...componentProps(settings?.proPlanPrice || 2500, 'Pro')}
+                                            text={user.subscriptionPlan && user.subscriptionPlan !== 'Free' ? "Change Plan" : "Subscribe Now"}
+                                        />
+                                    </button>
+                                )
+                            ) : (
+                                <Link to="/login?redirect=/pricing" className="block w-full text-center py-5 bg-[#16A34A] text-white rounded-2xl font-black text-lg shadow-xl shadow-[#16A34A]/30 hover:shadow-[#16A34A]/50 transition-all">Subscribe Now</Link>
+                            )}
+                        </div>
+                        <div className="space-y-6">
+                            <p className="text-[10px] font-black text-[#16A34A] uppercase tracking-[0.3em]">What's Included</p>
+                            <ul className="space-y-4">
+                                <li className="flex items-center gap-3 text-slate-600 dark:text-slate-300 font-bold">
+                                    <CheckCircle className="w-5 h-5 text-[#16A34A]" /> {settings?.proPlanLessonLimit || 1000} Lesson Notes per month
+                                </li>
+                                <li className="flex items-center gap-3 text-slate-600 dark:text-slate-300 font-bold">
+                                    <CheckCircle className="w-5 h-5 text-[#16A34A]" /> All Subjects
+                                </li>
+                                <li className="flex items-center gap-3 text-slate-600 dark:text-slate-300 font-bold">
+                                    <CheckCircle className="w-5 h-5 text-[#16A34A]" /> PDF & DOC Export
+                                </li>
+                                <li className="flex items-center gap-3 text-slate-600 dark:text-slate-300 font-bold">
+                                    <CheckCircle className="w-5 h-5 text-[#16A34A]" /> Save History
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    {/* School License */}
+                    <div className="group bg-white dark:bg-slate-900 rounded-[2.5rem] p-10 border border-slate-100 dark:border-slate-800 shadow-2xl shadow-slate-200/20 dark:shadow-black/20 transition-all hover:-translate-y-2">
+                        <div className="mb-10">
+                            <h3 className="text-2xl font-black text-slate-900 dark:text-white mb-2 tracking-tight">{settings?.schoolPlanName || 'School License'}</h3>
+                            <p className="text-slate-400 text-sm font-medium italic">For Headmasters and Owners.</p>
+                        </div>
+                        <div className="mb-10">
+                            <div className="flex items-baseline gap-1">
+                                <span className="text-5xl font-black text-slate-900 dark:text-white">₦{(settings?.schoolPlanPrice || 20000).toLocaleString()}</span>
+                                <span className="text-slate-400 font-bold uppercase tracking-widest text-xs">/term</span>
+                            </div>
+                        </div>
+                        <div className="mb-10">
+                            {user ? (
+                                isCurrentPlan('School') ? (
+                                    <button disabled className="w-full py-5 bg-slate-900/10 dark:bg-slate-800 text-slate-900 dark:text-slate-500 rounded-2xl font-black text-lg cursor-default">Current Plan</button>
+                                ) : (
+                                    <PaystackButton
+                                        className="w-full py-5 bg-slate-900 text-white rounded-2xl font-black text-lg shadow-xl shadow-slate-900/30 hover:shadow-slate-900/50 transition-all"
+                                        {...componentProps(settings?.schoolPlanPrice || 20000, 'School')}
+                                    />
+                                )
+                            ) : (
+                                <Link to="/login?redirect=/pricing" className="block w-full text-center py-5 bg-slate-900 text-white rounded-2xl font-black text-lg shadow-xl shadow-slate-900/30 hover:shadow-slate-900/50 transition-all">Subscribe Now</Link>
+                            )}
+                        </div>
+                        <div className="space-y-6">
+                            <p className="text-[10px] font-black text-[#16A34A] uppercase tracking-[0.3em]">What's Included</p>
+                            <ul className="space-y-4">
+                                <li className="flex items-center gap-3 text-slate-600 dark:text-slate-300 font-bold">
+                                    <CheckCircle className="w-5 h-5 text-[#16A34A]" /> Multi-Teacher Access
+                                </li>
+                                <li className="flex items-center gap-3 text-slate-600 dark:text-slate-300 font-bold">
+                                    <CheckCircle className="w-5 h-5 text-[#16A34A]" /> Admin Dashboard
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                {/* FAQ / Support Section */}
+                <div className="mt-24 lg:mt-40 relative group">
+                    <div className="absolute inset-0 bg-gradient-to-r from-[#16A34A]/5 to-transparent blur-[100px] rounded-full pointer-events-none"></div>
+                    <div className="relative bg-white dark:bg-slate-900 rounded-[3rem] p-8 lg:p-20 border border-slate-100 dark:border-slate-800 shadow-2xl overflow-hidden flex flex-col lg:flex-row items-center justify-between gap-12">
+                        <div className="relative z-10 w-full lg:w-1/2 space-y-6 text-center lg:text-left">
+                            <h2 className="text-4xl lg:text-5xl font-black text-slate-900 dark:text-white tracking-tight leading-none">Have questions?</h2>
+                            <p className="text-lg lg:text-xl text-slate-500 dark:text-slate-400 font-medium italic leading-relaxed">
+                                We're here to help. Contact our support team if you have any questions about plans or billing.
+                            </p>
+                            <div className="pt-4">
+                                <button
+                                    onClick={() => navigate('/contact')}
+                                    className="inline-flex items-center justify-center px-10 py-5 bg-[#16A34A] text-white text-lg font-black rounded-2xl shadow-2xl shadow-[#16A34A]/20 hover:shadow-[#16A34A]/40 hover:-translate-y-1 transition-all active:scale-95 group"
+                                >
+                                    Contact Support <ChevronRight className="ml-3 w-6 h-6 group-hover:translate-x-1 transition-transform" />
+                                </button>
                             </div>
                         </div>
 
-                        {/* Pro Plan */}
-                        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl divide-y divide-slate-200 dark:divide-slate-700 border-2 border-brand-500 relative">
-                            <div className="absolute top-0 right-0 -mr-1 -mt-1 w-24 rounded-bl-lg rounded-tr-lg bg-brand-500 text-center text-xs font-semibold text-white py-1">POPULAR</div>
-                            <div className="p-6">
-                                <h3 className="text-lg font-medium text-slate-900 dark:text-slate-100">{settings?.proPlanName || 'Professional'}</h3>
-                                <p className="mt-4 text-sm text-slate-500 dark:text-slate-300">For serious teachers.</p>
-                                <p className="mt-8">
-                                    <span className="text-4xl font-extrabold text-slate-900">₦{(settings?.proPlanPrice || 2500).toLocaleString()}</span>
-                                    <span className="text-base font-medium text-slate-500">/{settings?.proPlanDuration === 'term' ? 'term' : settings?.proPlanDuration === 'year' ? 'yr' : 'mo'}</span>
-                                </p>
-
-                                {user ? (
-                                    <div className="mt-8">
-                                        {user?.schoolId && !user?.isSchoolAdmin ? (
-                                            <button
-                                                className="block w-full bg-slate-500 border-slate-500 rounded-md py-2 text-sm font-semibold text-white text-center cursor-not-allowed"
-                                                title="Your subscription is managed by your school"
-                                                onClick={() => showAlert.info('School Managed', 'Your subscription is managed by your school. Please contact your administrator for plan upgrades.')}
-                                            >
-                                                Managed by School
-                                            </button>
-                                        ) : user.subscriptionPlan && user.subscriptionPlan !== 'Free' ? (
-                                            <button
-                                                onClick={() => {
-                                                    setPendingPlan('Pro');
-                                                    setShowWarning(true);
-                                                }}
-                                                className="block w-full bg-brand-600 border border-brand-600 rounded-md py-2 text-sm font-semibold text-white text-center hover:bg-brand-700 transition-colors"
-                                            >
-                                                Change Plan
-                                            </button>
-                                        ) : (
-                                            <PaystackButton
-                                                className="block w-full bg-brand-600 border border-brand-600 rounded-md py-2 text-sm font-semibold text-white text-center hover:bg-brand-700 transition-colors"
-                                                {...componentProps(settings?.proPlanPrice || 2500, 'Pro')}
-                                            />
-                                        )}
-                                    </div>
-                                ) : (
-                                    <a href="/login?redirect=/pricing" className="mt-8 block w-full bg-brand-600 border border-brand-600 rounded-md py-2 text-sm font-semibold text-white text-center hover:bg-brand-700">Login to Subscribe</a>
-                                )}
-
-                            </div>
-                            <div className="pt-6 pb-8 px-6">
-                                <h4 className="text-sm font-medium text-slate-900 dark:text-slate-100 tracking-wide uppercase">What's included</h4>
-                                <ul className="mt-6 space-y-4">
-                                    <li className="flex space-x-3">
-                                        <CheckCircle className="flex-shrink-0 h-5 w-5 text-green-500" />
-                                        <span className="text-sm text-slate-500 dark:text-slate-300">{settings?.proPlanLessonLimit || 100} Lesson Notes per month</span>
-                                    </li>
-                                    <li className="flex space-x-3">
-                                        <CheckCircle className="flex-shrink-0 h-5 w-5 text-green-500" />
-                                        <span className="text-sm text-slate-500">All Subjects</span>
-                                    </li>
-                                    <li className="flex space-x-3">
-                                        <CheckCircle className="flex-shrink-0 h-5 w-5 text-green-500" />
-                                        <span className="text-sm text-slate-500">PDF & DOC Export</span>
-                                    </li>
-                                    <li className="flex space-x-3">
-                                        <CheckCircle className="flex-shrink-0 h-5 w-5 text-green-500" />
-                                        <span className="text-sm text-slate-500">Save History</span>
-                                    </li>
-                                </ul>
-                            </div>
-                        </div>
-
-                        {/* School Plan */}
-                        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm divide-y divide-slate-200 dark:divide-slate-700 border border-slate-200 dark:border-slate-700">
-                            <div className="p-6">
-                                <h3 className="text-lg font-medium text-slate-900 dark:text-slate-100">{settings?.schoolPlanName || 'School License'}</h3>
-                                <p className="mt-4 text-sm text-slate-500 dark:text-slate-300">For Headmasters and Owners.</p>
-                                <p className="mt-8">
-                                    <span className="text-4xl font-extrabold text-slate-900">₦{(settings?.schoolPlanPrice || 20000).toLocaleString()}</span>
-                                    <span className="text-base font-medium text-slate-500">/{settings?.schoolPlanDuration === 'term' ? 'term' : settings?.schoolPlanDuration === 'year' ? 'yr' : 'mo'}</span>
-                                </p>
-                                {user ? (
-                                    <div className="mt-8">
-                                        {user.subscriptionPlan && user.subscriptionPlan !== 'Free' ? (
-                                            <button
-                                                onClick={() => {
-                                                    setPendingPlan('School');
-                                                    setShowWarning(true);
-                                                }}
-                                                className="block w-full bg-slate-800 border-slate-800 rounded-md py-2 text-sm font-semibold text-white text-center hover:bg-slate-900 transition-colors"
-                                            >
-                                                Change Plan
-                                            </button>
-                                        ) : (
-                                            // If the user belongs to a school but is NOT a school admin, do not render the payment button
-                                            user?.schoolId && !user?.isSchoolAdmin ? (
-                                                <button
-                                                    className="block w-full bg-slate-500 border-slate-500 rounded-md py-2 text-sm font-semibold text-white text-center cursor-not-allowed"
-                                                    title="Only school administrators can subscribe to School License"
-                                                    onClick={() => showAlert.error('Admin Access Required', 'Only school administrators can purchase or manage the School License.')}
-                                                >
-                                                    School License (Contact Admin)
-                                                </button>
-                                            ) : (
-                                                <PaystackButton
-                                                    className="block w-full bg-slate-800 border-slate-800 rounded-md py-2 text-sm font-semibold text-white text-center hover:bg-slate-900 transition-colors"
-                                                    {...componentProps(settings?.schoolPlanPrice || 20000, 'School')}
-                                                />
-                                            )
-                                        )}
-                                    </div>
-                                ) : (
-                                    <a href="/login?redirect=/pricing" className="mt-8 block w-full bg-slate-800 border-slate-800 rounded-md py-2 text-sm font-semibold text-white text-center hover:bg-slate-900">Login to Subscribe</a>
-                                )}
-                            </div>
-                            <div className="pt-6 pb-8 px-6">
-                                <h4 className="text-sm font-medium text-slate-900 tracking-wide uppercase">What's included</h4>
-                                <ul className="mt-6 space-y-4">
-                                    <li className="flex space-x-3">
-                                        <CheckCircle className="flex-shrink-0 h-5 w-5 text-green-500" />
-                                        <span className="text-sm text-slate-500">Multi-Teacher Access</span>
-                                    </li>
-                                    <li className="flex space-x-3">
-                                        <CheckCircle className="flex-shrink-0 h-5 w-5 text-green-500" />
-                                        <span className="text-sm text-slate-500">Admin Dashboard</span>
-                                    </li>
-                                </ul>
+                        <div className="relative z-10 w-full lg:w-1/3 animate-in fade-in zoom-in duration-1000">
+                            <img
+                                src="/support-illustration.png"
+                                className="w-full h-auto drop-shadow-[0_25px_25px_rgba(22,163,74,0.15)] rounded-[2rem]"
+                                alt="Support Representative"
+                            />
+                            <div className="absolute top-[-20px] left-[-20px] bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800">
+                                <div className="w-10 h-10 bg-[#16A34A]/10 rounded-xl flex items-center justify-center text-[#16A34A]">
+                                    <Sparkles className="w-6 h-6" />
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
-        </>
+            </main>
+
+            {loading && (
+                <div className="fixed inset-0 bg-white/60 dark:bg-slate-950/60 backdrop-blur-sm z-[100] flex flex-col items-center justify-center gap-4">
+                    <Loader2 className="w-12 h-12 animate-spin text-[#16A34A]" />
+                    <p className="text-sm font-black text-[#16A34A] uppercase tracking-widest">Processing Payment...</p>
+                </div>
+            )}
+        </div>
     );
 };
 

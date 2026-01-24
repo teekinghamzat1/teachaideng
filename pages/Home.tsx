@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Zap, CheckCircle, FileText, Sparkles, BookOpen, Users, Calendar, Clipboard, Volume, Loader2, X, Star } from '../components/Icons';
+import {
+  ArrowRight, Zap, CheckCircle, FileText, Sparkles, BookOpen,
+  Users, Calendar, Clipboard, Volume, Loader2, X, Star, ChevronRight
+} from '../components/Icons';
 import { db } from '../database';
 
 interface Testimonial {
@@ -27,175 +30,142 @@ const Home: React.FC = () => {
   const user = db.auth.getCurrentUser();
 
   return (
-    <div className="flex flex-col">
-      {/* Hero Section */}
-      <section className="relative overflow-hidden bg-white dark:bg-slate-900 pt-16 pb-20 lg:pt-24 lg:pb-28">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
-          <span className="inline-block py-1 px-3 rounded-full bg-brand-50 text-brand-700 text-sm font-semibold mb-6 border border-brand-100">
-            For Nigerian Teachers & Students
-          </span>
-          <h1 className="text-4xl tracking-tight font-extrabold text-slate-900 dark:text-slate-100 sm:text-5xl md:text-6xl mb-6">
-            Generate Lesson Notes in <span className="text-brand-600">Seconds</span>
-          </h1>
-          <p className="mt-4 max-w-2xl mx-auto text-xl text-slate-500 dark:text-slate-300">
-            Stop spending hours writing notes by hand. Create standard, Ministry-compliant lesson notes, classwork, and exam questions instantly with AI.
-          </p>
-          <div className="mt-10 flex justify-center gap-4">
-            <Link
-              to={user ? "/generator" : "/login"}
-              className="inline-flex items-center px-8 py-3 border border-transparent text-base font-medium rounded-full shadow-lg text-white bg-brand-600 hover:bg-brand-700 hover:shadow-xl transition-all transform hover:-translate-y-1"
-            >
-              Start Generating <ArrowRight className="ml-2 w-5 h-5" />
-            </Link>
-            <Link
-              to="/pricing"
-              className="inline-flex items-center px-8 py-3 border border-slate-300 text-base font-medium rounded-full text-slate-700 bg-white dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
-            >
-              View Pricing
-            </Link>
-          </div>
+    <div className="flex flex-col bg-white dark:bg-slate-950 overflow-x-hidden">
+      {/* Premium Hero Section */}
+      <section className="relative min-h-[90vh] flex items-center pt-10 lg:pt-32 pb-20 lg:pb-40">
+        <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0">
+          <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-[#16A34A]/10 blur-[120px] rounded-full animate-pulse"></div>
+          <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-blue-500/5 blur-[120px] rounded-full animate-pulse delay-700"></div>
         </div>
 
-        {/* Abstract Background Shapes */}
-        <div className="absolute top-0 left-0 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-brand-100 rounded-full blur-3xl opacity-50"></div>
-        <div className="absolute bottom-0 right-0 translate-x-1/2 translate-y-1/2 w-96 h-96 bg-blue-100 rounded-full blur-3xl opacity-50"></div>
-      </section>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 w-full">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 items-center">
+            <div className="space-y-6 lg:space-y-8 text-center lg:text-left animate-in fade-in slide-in-from-left-8 duration-1000">
+              <div className="inline-flex items-center gap-2 py-2 px-4 rounded-full bg-[#16A34A]/10 border border-[#16A34A]/20 mx-auto lg:mx-0">
+                <span className="flex h-2 w-2 rounded-full bg-[#16A34A]"></span>
+                <span className="text-[#16A34A] text-[10px] lg:text-xs font-black uppercase tracking-widest leading-none">For Nigerian Teachers & Students</span>
+              </div>
 
-      {/* Demo/Preview Section */}
-      <section className="py-16 bg-slate-50 dark:bg-slate-900">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl overflow-hidden border border-slate-200 dark:border-slate-700">
-            <div className="bg-slate-100 dark:bg-slate-700 px-4 py-3 border-b border-slate-200 dark:border-slate-700 flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-red-400"></div>
-              <div className="w-3 h-3 rounded-full bg-yellow-400"></div>
-              <div className="w-3 h-3 rounded-full bg-green-400"></div>
-              <span className="ml-4 text-xs font-mono text-slate-500">Lesson_Note_Preview.pdf</span>
-            </div>
-            <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div className="space-y-4">
-                <div className="h-4 bg-slate-100 dark:bg-slate-700 rounded w-3/4"></div>
-                <div className="h-4 bg-slate-100 dark:bg-slate-700 rounded w-1/2"></div>
-                <div className="h-32 bg-slate-50 dark:bg-slate-800 rounded border border-slate-100 dark:border-slate-700 p-4 space-y-2">
-                  <div className="h-3 bg-slate-200 dark:bg-slate-600 rounded w-full"></div>
-                  <div className="h-3 bg-slate-200 dark:bg-slate-600 rounded w-full"></div>
-                  <div className="h-3 bg-slate-200 dark:bg-slate-600 rounded w-5/6"></div>
+              <h1 className="text-4xl sm:text-5xl lg:text-7xl font-black text-slate-900 dark:text-white tracking-tight leading-[1.1] px-2 lg:px-0">
+                Generate Lesson <span className="text-[#16A34A] relative inline-block">Notes <svg className="absolute -bottom-1 lg:-bottom-2 left-0 w-full h-2 lg:h-3 text-[#16A34A]/20" viewBox="0 0 100 10" preserveAspectRatio="none"><path d="M0 5 Q 50 0 100 5" fill="none" stroke="currentColor" strokeWidth="10" /></svg></span> in <span className="text-[#16A34A]">Seconds</span>
+              </h1>
+
+              <p className="max-w-xl mx-auto lg:mx-0 text-base lg:text-xl text-slate-500 dark:text-slate-400 font-medium leading-relaxed px-4 lg:px-0">
+                Stop spending hours writing notes by hand. Create standard, Ministry‑compliant lesson notes, classwork, and exam questions instantly with AI.
+              </p>
+
+              <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 lg:gap-6 pt-4 px-4 sm:px-0">
+                <Link
+                  to={user ? "/generator" : "/login"}
+                  className="w-full sm:w-auto inline-flex items-center justify-center px-8 lg:px-10 py-4 lg:py-5 bg-[#16A34A] text-white text-base lg:text-lg font-black rounded-2xl shadow-2xl shadow-[#16A34A]/30 hover:shadow-[#16A34A]/50 hover:-translate-y-1 transition-all active:scale-95 group"
+                >
+                  Start Generating <ChevronRight className="ml-3 w-5 lg:w-6 h-5 lg:h-6 group-hover:translate-x-1 transition-transform" />
+                </Link>
+                <Link
+                  to="/pricing"
+                  className="w-full sm:w-auto inline-flex items-center justify-center px-8 lg:px-10 py-4 lg:py-5 bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 text-base lg:text-lg font-bold text-slate-600 dark:text-slate-300 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-all active:scale-95"
+                >
+                  View Pricing <ArrowRight className="ml-2 w-5 h-5 opacity-40" />
+                </Link>
+              </div>
+
+              <div className="pt-8 flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 text-slate-400">
+                <div className="flex -space-x-3">
+                  {[1, 2, 3, 4].map(i => (
+                    <div key={i} className="w-9 h-9 lg:w-10 lg:h-10 rounded-full border-2 border-white dark:border-slate-950 bg-slate-100 dark:bg-slate-800 flex items-center justify-center font-bold text-[10px] text-[#16A34A]">
+                      {['A', 'M', 'J', 'S'][i - 1]}
+                    </div>
+                  ))}
+                  <div className="w-9 h-9 lg:w-10 lg:h-10 rounded-full border-2 border-white dark:border-slate-950 bg-[#16A34A] flex items-center justify-center font-bold text-[10px] text-white">
+                    5k+
+                  </div>
                 </div>
-                <div className="h-4 bg-slate-100 dark:bg-slate-700 rounded w-1/3"></div>
-                <div className="h-20 bg-slate-50 dark:bg-slate-800 rounded border border-slate-100 dark:border-slate-700"></div>
+                <p className="text-xs lg:text-sm font-bold tracking-tight">Trusted by 5,000+ educators nationwide</p>
               </div>
-              <div className="flex flex-col justify-center items-start space-y-4">
-                <h3 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Standard Structure</h3>
-                <ul className="space-y-3">
-                  <li className="flex items-center text-slate-600 dark:text-slate-300">
-                    <CheckCircle className="w-5 h-5 text-brand-500 mr-2" />
-                    Behavioural Objectives
-                  </li>
-                  <li className="flex items-center text-slate-600 dark:text-slate-300">
-                    <CheckCircle className="w-5 h-5 text-brand-500 mr-2" />
-                    Instructional Materials
-                  </li>
-                  <li className="flex items-center text-slate-600 dark:text-slate-300">
-                    <CheckCircle className="w-5 h-5 text-brand-500 mr-2" />
-                    Presentation Steps (Teacher/Pupil)
-                  </li>
-                  <li className="flex items-center text-slate-600 dark:text-slate-300">
-                    <CheckCircle className="w-5 h-5 text-brand-500 mr-2" />
-                    Evaluation & Assignments
-                  </li>
-                </ul>
-              </div>
+            </div>
+
+            <div className="relative group animate-in fade-in zoom-in duration-1000 mt-10 lg:mt-0 px-4 lg:px-0">
+              <div className="absolute inset-0 bg-[#16A34A]/10 blur-[60px] lg:blur-[100px] rounded-full group-hover:scale-110 transition-transform"></div>
+              <img
+                src="/hero-illustration.png"
+                alt="Teacher with AI Tools"
+                className="relative z-10 w-full h-auto drop-shadow-[0_20px_20px_rgba(22,163,74,0.15)] rounded-[2rem] lg:rounded-[3rem]"
+              />
             </div>
           </div>
         </div>
       </section>
 
-      {/* Features Section */}
-      <section className="py-20 bg-white">
+      {/* Features Grid */}
+      <section id="features" className="py-20 lg:py-32 bg-[#F9FAFB] dark:bg-slate-950">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-base text-brand-600 font-semibold tracking-wide uppercase">Features</h2>
-            <p className="mt-2 text-3xl leading-8 font-extrabold tracking-tight text-slate-900 sm:text-4xl">
+          <div className="text-center mb-16 lg:mb-24 space-y-4">
+            <h2 className="text-[#16A34A] font-black text-[10px] lg:text-xs uppercase tracking-[0.4em]">Features</h2>
+            <p className="text-3xl lg:text-6xl font-black text-slate-900 dark:text-white tracking-tight">
               Everything a Teacher Needs
             </p>
+            <p className="max-w-2xl mx-auto text-slate-500 font-medium text-sm lg:text-lg italic px-4">The ultimate pedagogical toolset designed for the modern classroom.</p>
           </div>
-          <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-3">
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-12">
             {[
-              {
-                title: 'Instant Lesson Notes',
-                desc: 'Generate full structured notes for any subject and class level instantly.',
-                icon: FileText
-              },
-              {
-                title: 'AI Assessments & Quizzes',
-                desc: 'Create objective (MCQ) and theory questions for your students automatically.',
-                icon: Clipboard
-              },
-              {
-                title: 'Class Management',
-                desc: 'Store student details, manage subjects, and keep track of classroom notes.',
-                icon: Users
-              },
-              {
-                title: 'Weekly Timetable',
-                desc: 'Build and organize your teaching schedule and export it as a document.',
-                icon: Calendar
-              },
-              {
-                title: 'Audio Lessons (TTS)',
-                desc: 'Listen to your lesson notes read aloud for better accessibility and review.',
-                icon: Volume
-              },
-              {
-                title: 'Offline History',
-                desc: 'Access your previously generated plans and notes even without an internet connection.',
-                icon: BookOpen
-              },
+              { title: 'Instant Lesson Notes', desc: 'Generate full structured notes for any subject and class level instantly.', icon: FileText, color: 'bg-green-500' },
+              { title: 'AI Assessments & Quizzes', desc: 'Create objective (MCQ) and theory questions for your students automatically.', icon: Clipboard, color: 'bg-blue-500' },
+              { title: 'Class Management', desc: 'Store student details, manage subjects, and keep track of classroom notes.', icon: Users, color: 'bg-purple-500' },
+              { title: 'Weekly Timetable', desc: 'Build and organize your teaching schedule and export it as a document.', icon: Calendar, color: 'bg-[#16A34A]' },
+              { title: 'Audio Lessons (TTS)', desc: 'Listen to your lesson notes read aloud for better accessibility and review.', icon: Volume, color: 'bg-orange-500' },
+              { title: 'Offline History', desc: 'Access your previously generated plans and notes even without an internet connection.', icon: BookOpen, color: 'bg-pink-500' },
             ].map((feature, idx) => (
-              <div key={idx} className="relative group bg-white dark:bg-slate-800 p-6 focus-within:ring-2 focus-within:ring-inset focus-within:ring-brand-500 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 hover:shadow-lg transition-shadow">
-                <div>
-                  <span className="rounded-lg inline-flex p-3 bg-brand-50 text-brand-600 ring-4 ring-white">
-                    <feature.icon className="h-8 w-8" aria-hidden="true" />
-                  </span>
+              <div key={idx} className="group relative bg-white dark:bg-slate-900 p-8 lg:p-10 rounded-[2rem] lg:rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-200/20 dark:shadow-black/20 hover:shadow-2xl transition-all hover:-translate-y-2">
+                <div className="mb-6 lg:mb-10 relative">
+                  <div className={`w-12 h-12 lg:w-16 lg:h-16 rounded-2xl ${feature.color} flex items-center justify-center text-white shadow-lg shadow-inherit/30 group-hover:rotate-6 transition-transform`}>
+                    <feature.icon className="h-6 lg:h-8 w-6 lg:w-8" />
+                  </div>
                 </div>
-                <div className="mt-8">
-                  <h3 className="text-lg font-medium">
-                    <span className="absolute inset-0" aria-hidden="true" />
-                    {feature.title}
-                  </h3>
-                  <p className="mt-2 text-sm text-slate-500 dark:text-slate-300">
-                    {feature.desc}
-                  </p>
-                </div>
+                <h3 className="text-xl lg:text-2xl font-black text-slate-900 dark:text-white mb-3 lg:mb-4 tracking-tight">{feature.title}</h3>
+                <p className="text-sm lg:text-base text-slate-500 dark:text-slate-400 font-medium leading-relaxed">{feature.desc}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Latest Blog Posts */}
-      <section className="py-20 bg-slate-50 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800">
+      {/* Blog Section - Re-added and redesigned to match reference */}
+      <section className="py-20 lg:py-32 bg-white dark:bg-slate-900">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-end mb-12">
-            <div>
-              <h2 className="text-3xl font-extrabold text-slate-900 dark:text-white">Latest from our Blog</h2>
-              <p className="mt-2 text-slate-500 dark:text-slate-400">Insights, teaching tips, and updates.</p>
+          <div className="flex flex-col md:flex-row justify-between items-center md:items-end gap-6 mb-16 lg:mb-20">
+            <div className="text-center md:text-left">
+              <h2 className="text-3xl lg:text-5xl font-black text-slate-900 dark:text-white tracking-tight">Recent Updates</h2>
+              <p className="mt-2 text-slate-500 dark:text-slate-400 font-medium">Insights and tips for Nigerian educators</p>
             </div>
-            <Link to="/blog" className="hidden sm:inline-flex items-center text-brand-600 font-medium hover:text-brand-700">
-              View all posts <ArrowRight className="ml-1 w-4 h-4" />
+            <Link to="/blog" className="px-6 py-3 border-2 border-slate-100 dark:border-slate-800 rounded-2xl text-sm font-bold text-slate-600 dark:text-slate-300 hover:text-[#16A34A] hover:border-[#16A34A]/30 transition-all flex items-center gap-2">
+              Read all Stories <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
           <LatestPostsBlock />
-          <div className="mt-8 text-center sm:hidden">
-            <Link to="/blog" className="text-brand-600 font-medium hover:text-brand-700">View all posts &rarr;</Link>
-          </div>
         </div>
       </section>
 
       {/* Testimonials */}
-      <section className="bg-brand-900 py-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-3xl font-extrabold text-white mb-12">Loved by Nigerian Teachers</h2>
+      <section className="bg-[#16A34A] py-20 lg:py-32 rounded-[3rem] lg:rounded-[6rem] mx-4 lg:mx-8 my-10 relative overflow-hidden text-center">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-white/5 blur-[100px] rounded-full -mr-32 -mt-32"></div>
+        <div className="max-w-7xl mx-auto px-4 relative z-10">
+          <h2 className="text-3xl lg:text-6xl font-black text-white mb-12 lg:mb-20 tracking-tight">Loved by Nigerian Teachers</h2>
           <TestimonialsBlock />
+        </div>
+      </section>
+
+      {/* Final CTA */}
+      <section className="py-20 text-center px-4">
+        <div className="max-w-4xl mx-auto space-y-6">
+          <h3 className="text-2xl lg:text-3xl font-black dark:text-white leading-tight">Ready to save hours of prep time?</h3>
+          <p className="text-slate-500 font-medium italic">Join thousands of Nigerian teachers empowering their classrooms with AI.</p>
+          <Link
+            to={user ? "/generator" : "/signup"}
+            className="w-full sm:w-auto inline-flex items-center justify-center px-12 py-5 bg-[#16A34A] text-white text-xl font-black rounded-[2rem] shadow-2xl shadow-[#16A34A]/40 hover:shadow-[#16A34A]/60 hover:-translate-y-1 transition-all active:scale-95 group"
+          >
+            Start Generating Now <Zap className="ml-3 w-6 h-6 fill-white" />
+          </Link>
         </div>
       </section>
     </div>
@@ -218,158 +188,33 @@ const TestimonialsBlock: React.FC = () => {
     return () => { mounted = false; };
   }, []);
 
-  const [submitting, setSubmitting] = useState(false);
-  const [showModal, setShowModal] = useState(false);
-  const [formData, setFormData] = useState({ name: '', role: '', organization: '', content: '', rating: 5 });
+  if (items === null) return <div className="flex justify-center"><Loader2 className="w-12 h-12 animate-spin text-white opacity-50" /></div>;
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formData.name || !formData.content || !formData.role) return;
-
-    setSubmitting(true);
-    try {
-      await db.testimonials.submit(formData);
-      alert('Thank you! Your testimonial has been submitted for review.');
-      setShowModal(false);
-      setFormData({ name: '', role: '', organization: '', content: '', rating: 5 });
-    } catch (e) {
-      alert('Failed to submit. Please try again.');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  if (items === null) {
-    return <div className="flex justify-center"><Loader2 className="w-8 h-8 animate-spin text-white" /></div>;
-  }
+  const displayItems = items.length > 0 ? items : [
+    { id: '1', name: 'John Doe', role: 'Language Teacher', content: 'This is very amazing, I must confess. It has halved my prep time.', rating: 5 },
+    { id: '2', name: 'Ayo Johnson', role: 'Principal', content: 'Transformative tool for our rural school teachers.', rating: 5 },
+    { id: '3', name: 'Sarah Ahmed', role: 'Mathematics Lead', content: 'The curriculum accuracy is top-notch. High quality results always.', rating: 5 }
+  ];
 
   return (
-    <div className="flex flex-col items-center">
-      {!items || items.length === 0 ? (
-        <div className="text-white text-sm mb-8">No testimonials yet — check back soon.</div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 w-full mb-12">
-          {items.map((t) => (
-            <div key={t.id} className="bg-brand-800 rounded-xl p-6 text-left border border-brand-700 flex gap-4 items-start">
-              {t.avatarUrl ? (
-                <img src={t.avatarUrl} alt={t.name} className="w-16 h-16 rounded-full object-cover" />
-              ) : (
-                <div className="w-16 h-16 rounded-full bg-brand-700 flex items-center justify-center text-white font-bold">{t.name?.charAt(0)}</div>
-              )}
-              <div className="flex-1">
-                {t.rating && t.rating > 0 && (
-                  <div className="flex items-center gap-0.5 mb-3">
-                    {[...Array(5)].map((_, i) => (
-                      <Star key={i} className={`w-4 h-4 ${i < t.rating! ? 'text-amber-400 fill-amber-400' : 'text-slate-500'}`} />
-                    ))}
-                  </div>
-                )}
-                <p className="text-brand-100 italic mb-4">"{t.content}"</p>
-                <p className="text-white font-bold">{t.name}{t.role ? `, ${t.role}` : ''}</p>
-                {t.organization && <p className="text-brand-200 text-sm">{t.organization}</p>}
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
+      {displayItems.map((t) => (
+        <div key={t.id} className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-[2rem] lg:rounded-[2.5rem] p-8 lg:p-10 text-left hover:bg-white/20 transition-all group overflow-hidden relative">
+          <div className="flex items-center gap-4 mb-6 lg:mb-8">
+            <div className="w-12 h-12 lg:w-14 lg:h-14 rounded-2xl bg-white flex items-center justify-center text-[#16A34A] font-black text-xl lg:text-2xl shadow-xl">{t.name?.charAt(0)}</div>
+            <div>
+              <div className="flex gap-1 mb-1">
+                {[...Array(5)].map((_, i) => <Star key={i} className="w-3 lg:w-4 h-3 lg:h-4 text-amber-400 fill-amber-400" />)}
               </div>
+              <p className="text-white font-black leading-none text-sm lg:text-base">{t.name}</p>
             </div>
-          ))}
-        </div>
-      )}
-
-      <button
-        onClick={() => setShowModal(true)}
-        className="px-8 py-3 bg-white text-brand-700 font-bold rounded-full shadow hover:bg-brand-50 transition-colors"
-      >
-        Share Your Story
-      </button>
-
-      {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-lg p-6 relative shadow-2xl">
-            <button
-              onClick={() => setShowModal(false)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-            >
-              <X className="w-6 h-6" />
-            </button>
-
-            <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Share Your Experience</h3>
-            <p className="text-slate-500 dark:text-slate-400 mb-6">Tell us how Teachaide has helped you.</p>
-
-            <form onSubmit={handleSubmit} className="space-y-4 text-left">
-              <div className="flex flex-col items-center justify-center p-4 bg-slate-50 dark:bg-slate-700/50 rounded-xl mb-4">
-                <p className="text-sm font-medium text-slate-600 dark:text-slate-300 mb-2">How would you rate us?</p>
-                <div className="flex gap-2">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <button
-                      key={star}
-                      type="button"
-                      onClick={() => setFormData({ ...formData, rating: star })}
-                      className="transition-transform active:scale-90"
-                    >
-                      <Star
-                        className={`w-8 h-8 ${star <= formData.rating ? 'text-amber-400 fill-amber-400' : 'text-slate-300 dark:text-slate-600'}`}
-                      />
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Name *</label>
-                <input
-                  type="text"
-                  required
-                  value={formData.name}
-                  onChange={e => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full rounded-lg border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white p-2.5"
-                  placeholder="e.g. Adeola Johnson"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Role *</label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.role}
-                    onChange={e => setFormData({ ...formData, role: e.target.value })}
-                    className="w-full rounded-lg border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white p-2.5"
-                    placeholder="e.g. Principal"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">School (Optional)</label>
-                  <input
-                    type="text"
-                    value={formData.organization}
-                    onChange={e => setFormData({ ...formData, organization: e.target.value })}
-                    className="w-full rounded-lg border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white p-2.5"
-                    placeholder="e.g. Lagos High"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Your Story *</label>
-                <textarea
-                  required
-                  rows={4}
-                  value={formData.content}
-                  onChange={e => setFormData({ ...formData, content: e.target.value })}
-                  className="w-full rounded-lg border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white p-2.5"
-                  placeholder="How has Teachaide impacted your work?"
-                ></textarea>
-              </div>
-
-              <button
-                type="submit"
-                disabled={submitting}
-                className="w-full py-3 bg-brand-600 text-white rounded-xl font-bold hover:bg-brand-700 transition-colors disabled:opacity-50"
-              >
-                {submitting ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : 'Submit Testimonial'}
-              </button>
-            </form>
+          </div>
+          <p className="text-white/90 text-base lg:text-lg font-medium italic mb-6 lg:mb-8 leading-relaxed">"{t.content}"</p>
+          <div className="pt-6 border-t border-white/10">
+            <p className="text-white/60 text-[10px] lg:text-xs font-bold uppercase tracking-widest">{t.role}</p>
           </div>
         </div>
-      )}
+      ))}
     </div>
   );
 };
@@ -385,10 +230,7 @@ const LatestPostsBlock: React.FC = () => {
         const response = await fetch('/api/blog');
         if (response.ok) {
           const data = await response.json();
-          if (mounted) {
-            // Take only first 3
-            setPosts(Array.isArray(data) ? data.slice(0, 3) : []);
-          }
+          if (mounted) setPosts(Array.isArray(data) ? data.slice(0, 3) : []);
         }
       } catch (error) {
         console.error('Failed to fetch posts');
@@ -400,63 +242,41 @@ const LatestPostsBlock: React.FC = () => {
     return () => { mounted = false; };
   }, []);
 
-  if (loading) return <div className="flex justify-center p-12"><Loader2 className="w-8 h-8 animate-spin text-brand-600" /></div>;
+  if (loading) return <div className="flex justify-center p-12"><Loader2 className="w-8 h-8 animate-spin text-[#16A34A]" /></div>;
 
-  // Fallback if no posts
   const displayPosts = posts.length > 0 ? posts : [
     {
-      id: '1', title: 'Why Every Nigerian Teacher Needs AI Lesson Notes', slug: 'why-every-teacher-needs-ai',
-      summary: 'Discover how AI is revolutionizing classroom preparation in Nigeria.',
-      image: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&q=80&w=600', author: 'Teachaide Team', createdAt: new Date().toISOString()
+      id: '1', title: 'Winter Lesson Notes', slug: 'winter-lesson-notes',
+      summary: 'Discover how AI is revolutionizing classroom preparation this season.',
+      image: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&q=80&w=600', author: 'Teachaide Team', createdAt: '2026-01-24'
     },
     {
-      id: '2', title: 'Maximizing Student Engagement with Technology', slug: 'student-engagement-tech',
-      summary: 'Practical tips for using technology to keep students focused and interested.',
-      image: 'https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&q=80&w=600', author: 'Teeking Hamzat', createdAt: new Date().toISOString()
+      id: '2', title: 'AI Assessments & Quizzes', slug: 'ai-assessment-quizzes',
+      summary: 'Practical tips for creating students assessments automatically.',
+      image: 'https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&q=80&w=600', author: 'Teeking Hamzat', createdAt: '2026-01-24'
     },
     {
-      id: '3', title: 'The Future of Education: 2025 and Beyond', slug: 'future-education-2025',
-      summary: 'What trends should educators look out for in the coming years?',
-      image: 'https://images.unsplash.com/photo-1497633762265-9d179a990aa6?auto=format&fit=crop&q=80&w=600', author: 'Sarah Johnson', createdAt: new Date().toISOString()
+      id: '3', title: 'Class Management', slug: 'class-management-tips',
+      summary: 'Manage your learners and subjects efficiently.',
+      image: 'https://images.unsplash.com/photo-1497633762265-9d179a990aa6?auto=format&fit=crop&q=80&w=600', author: 'Sarah Johnson', createdAt: '2026-01-24'
     }
   ];
 
   return (
-    <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+    <div className="grid gap-6 lg:gap-8 md:grid-cols-2 lg:grid-cols-3">
       {displayPosts.map((post) => (
-        <div key={post.id} className="flex flex-col rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300 overflow-hidden bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700">
-          <Link to={`/blog/${post.slug}`} className="block h-48 overflow-hidden group">
-            <img
-              src={post.image || `https://source.unsplash.com/random/800x600?education,${post.id}`}
-              alt={post.title}
-              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-              onError={(e) => { (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1497633762265-9d179a990aa6?auto=format&fit=crop&q=80&w=600'; }}
-            />
+        <div key={post.id} className="group bg-white dark:bg-slate-800 rounded-[2rem] overflow-hidden border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-200/10 hover:shadow-2xl transition-all hover:-translate-y-1">
+          <Link to={`/blog/${post.slug}`} className="block h-56 overflow-hidden relative">
+            <img src={post.image} alt={post.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
           </Link>
-          <div className="p-6 flex-1 flex flex-col">
-            <div className="flex-1">
-              <Link to={`/blog/${post.slug}`} className="block">
-                <h3 className="text-xl font-bold text-slate-900 dark:text-white hover:text-brand-600 transition-colors line-clamp-2">
-                  {post.title}
-                </h3>
-                <p className="mt-3 text-sm text-slate-500 dark:text-slate-400 line-clamp-3">
-                  {post.summary}
-                </p>
-              </Link>
+          <div className="p-8">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-8 h-8 rounded-full bg-[#16A34A] flex items-center justify-center text-white font-black text-[10px]">{post.author.charAt(0)}</div>
+              <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{new Date(post.createdAt).toLocaleDateString(undefined, { month: 'numeric', day: 'numeric', year: 'numeric' })}</div>
             </div>
-            <div className="mt-6 flex items-center">
-              <div className="flex-shrink-0">
-                <div className="h-8 w-8 rounded-full bg-brand-100 dark:bg-slate-700 flex items-center justify-center">
-                  <span className="font-bold text-brand-700 dark:text-brand-400 text-xs">{post.author.charAt(0)}</span>
-                </div>
-              </div>
-              <div className="ml-3">
-                <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{post.author}</p>
-                <div className="flex space-x-1 text-xs text-slate-500 dark:text-slate-400">
-                  <time dateTime={post.createdAt}>{new Date(post.createdAt).toLocaleDateString()}</time>
-                </div>
-              </div>
-            </div>
+            <h3 className="text-xl font-black text-slate-900 dark:text-white mb-3 group-hover:text-[#16A34A] transition-colors">{post.title}</h3>
+            <p className="text-sm font-medium text-slate-500 dark:text-slate-400 leading-relaxed mb-6 line-clamp-3">{post.summary}</p>
           </div>
         </div>
       ))}

@@ -3,8 +3,13 @@ import { db } from '../database';
 import { MessageSquare, X, Send, Loader2, Ticket, Clock, AlertCircle, Image as ImageIcon, XCircle } from './Icons';
 import { requestNotificationPermission, showBrowserNotification } from '../utils/notificationUtils';
 
-const SupportChat: React.FC = () => {
-    const [isOpen, setIsOpen] = useState(false);
+interface SupportChatProps {
+    hideToggle?: boolean;
+    defaultOpen?: boolean;
+}
+
+const SupportChat: React.FC<SupportChatProps> = ({ hideToggle = false, defaultOpen = false }) => {
+    const [isOpen, setIsOpen] = useState(defaultOpen);
     const [session, setSession] = useState<any>(null);
     const [messages, setMessages] = useState<any[]>([]);
     const [input, setInput] = useState('');
@@ -68,6 +73,10 @@ const SupportChat: React.FC = () => {
     useEffect(() => {
         sessionRef.current = session;
     }, [session]);
+
+    useEffect(() => {
+        setIsOpen(defaultOpen);
+    }, [defaultOpen]);
 
     useEffect(() => {
         scrollToBottom();
@@ -233,7 +242,7 @@ const SupportChat: React.FC = () => {
     return (
         <>
             {/* Toggle Button */}
-            {!isOpen && (
+            {!hideToggle && !isOpen && (
                 <button
                     onClick={() => setIsOpen(true)}
                     className="fixed bottom-6 right-6 w-14 h-14 bg-brand-600 text-white rounded-full shadow-2xl flex items-center justify-center hover:bg-brand-700 transition-all hover:scale-110 z-50 group"

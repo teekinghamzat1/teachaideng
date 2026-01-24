@@ -51,7 +51,10 @@ const withRetry = async (fn, maxRetries = 5, initialDelay = 2000) => {
  * Generate Lesson Note
  */
 async function generateLessonNoteViaGenAI(options) {
-  const { topic, subject, classLevel, duration, subtopic, lessonType, maxTokens } = options;
+  const {
+    topic, subject, classLevel, duration, subtopic, lessonType,
+    smartHint, includeEvaluation, includeTeachingAids, nigerianCurriculum, maxTokens
+  } = options;
   const apiKey = getApiKey();
   const model = normalizeModel(process.env.GENAI_MODEL || 'gemini-2.5-flash');
 
@@ -132,6 +135,15 @@ LESSON TYPE HANDLING (CRITICAL LOGIC):
    - JSS and SSS: longer and more complex passages
    - Ensure ALL sections have complete content
 
+4. Practical Lesson:
+   - Focus heavily on hands-on activities, materials, and step-by-step demonstrations.
+   - The "lessonContent" should emphasize the "How-To" and observation.
+   - Procedures should be experimental or craft-focused.
+
+5. Revision Lesson:
+   - Focus on summarizing key points, highlighting common pitfalls, and reinforcing previously taught concepts.
+   - The "lessonContent" should be a concise overview + intensive drill/review questions.
+
 METADATA HANDLING (CRITICAL):
 1. Topic & Subtopic Mapping for "Comprehension":
    - IF Lesson Type is "Comprehension":
@@ -166,9 +178,11 @@ FAILURE CONDITIONS (THINGS YOU MUST NEVER DO):
 - Do not ask teachers to supply comprehension passages.
 - Do not assume access to textbooks or copyrighted material.
 
-YOUR GOAL:
-Behave like an experienced Nigerian teacher who understands class differences, lesson sequencing, and real classroom practice.
 Your output should feel like it was written by someone who has actually stood in front of pupils.
+
+${includeEvaluation === false ? 'CRITICAL: DO NOT generate any evaluation or assessment questions. Leave the "evaluation" field as an empty array [].' : 'Ensure you include age-appropriate evaluation questions.'}
+${includeTeachingAids === false ? 'CRITICAL: DO NOT suggest any instructional materials or teaching aids. Leave the "instructionalMaterials" field as an empty array [].' : 'Provide a list of practical teaching aids relevant to the Nigerian context.'}
+${nigerianCurriculum === true ? 'ADHERENCE: Strictly align this lesson with the Nigerian NERDC curriculum and classroom standards.' : 'ADHERENCE: Use general international educational standards while keeping the context local.'}
 
 Date Context: Today is ${today}.
 

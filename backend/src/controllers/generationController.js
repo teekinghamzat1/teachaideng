@@ -27,7 +27,10 @@ const getEstimates = async () => {
 // Checks tokens, estimates price, invokes GenAI and charges tokens based on usage
 const generateLesson = asyncHandler(async (req, res) => {
   const userId = req.user.id;
-  const { topic, subject, classLevel, duration, subtopic, lessonType, skipCache, smartHint } = req.body;
+  const {
+    topic, subject, classLevel, duration, subtopic, lessonType,
+    skipCache, smartHint, includeEvaluation, includeTeachingAids, nigerianCurriculum
+  } = req.body;
 
   const estimates = await getEstimates();
   const estimate = estimates.lesson;
@@ -80,6 +83,7 @@ const generateLesson = asyncHandler(async (req, res) => {
   try {
     genResult = await genai.generateLessonNoteViaGenAI({
       topic, subject, classLevel, duration, subtopic, lessonType, smartHint,
+      includeEvaluation, includeTeachingAids, nigerianCurriculum,
       userPlan: req.user.subscriptionPlan,
       maxTokens: estimates.maxTokens
     });

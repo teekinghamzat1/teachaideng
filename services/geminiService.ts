@@ -22,7 +22,10 @@ export const generateLessonNote = async (
   lessonType: string = "Normal Lesson",
   userPlan: 'Free' | 'Pro' | 'School' = 'Free',
   limitReached: boolean = false,
-  smartHint: string = ""
+  smartHint: string = "",
+  includeEvaluation: boolean = true,
+  includeTeachingAids: boolean = true,
+  nigerianCurriculum: boolean = true
 ): Promise<LessonNote> => {
   try {
     const token = db.auth.getToken();
@@ -43,7 +46,10 @@ export const generateLessonNote = async (
         duration,
         subtopic,
         lessonType,
-        smartHint
+        smartHint,
+        includeEvaluation,
+        includeTeachingAids,
+        nigerianCurriculum
       }),
     });
 

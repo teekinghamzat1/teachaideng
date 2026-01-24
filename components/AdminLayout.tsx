@@ -8,6 +8,7 @@ import { User } from '../types';
 const AdminLayout: React.FC = () => {
     const [isSidebarOpen, setSidebarOpen] = useState(false);
     const [user, setUser] = useState<User | null>(null);
+    const mainContentRef = React.useRef<HTMLElement>(null);
     const location = useLocation();
     const navigate = useNavigate();
     const [theme, setTheme] = useState<'light' | 'dark'>(db.settings.get()?.theme || 'light');
@@ -50,9 +51,15 @@ const AdminLayout: React.FC = () => {
         }
 
         // Apply theme settings on load
-        const settings = db.settings.get();
-        if (settings) {
-            db.settings.save(settings); // Re-applies css side effects
+        const dbSettings = db.settings.get();
+        if (dbSettings) {
+            db.settings.save(dbSettings); // Re-applies css side effects
+        }
+
+        // Fix: Close sidebar on route change and scroll content to top
+        setSidebarOpen(false);
+        if (mainContentRef.current) {
+            mainContentRef.current.scrollTo(0, 0);
         }
     }, [location.pathname]);
 
@@ -172,7 +179,7 @@ const AdminLayout: React.FC = () => {
                 </header>
 
                 {/* Page Content */}
-                <main className="flex-1 overflow-y-auto bg-slate-100 dark:bg-slate-900 p-4 sm:p-8">
+                <main ref={mainContentRef} className="flex-1 overflow-y-auto bg-slate-100 dark:bg-slate-900 p-4 sm:p-8">
                     <Outlet />
                 </main>
             </div>

@@ -71,3 +71,76 @@ body,
   background-size: 200% 100%;
   animation: shimmer 2s infinite;
 }
+
+/* Premium Dashboard Styles */
+.dashboard-bg {
+  @apply bg-slate-50 transition-colors duration-300;
+  background-image:
+    radial-gradient(circle at 20% 20%, rgba(16, 185, 129, 0.05) 0%, transparent 40%),
+    radial-gradient(circle at 80% 80%, rgba(99, 102, 241, 0.05) 0%, transparent 40%);
+}
+
+.dark .dashboard-bg {
+  background-color: #06080c;
+  background-image:
+    radial-gradient(circle at 20% 20%, rgba(16, 185, 129, 0.1) 0%, transparent 40%),
+    radial-gradient(circle at 80% 80%, rgba(99, 102, 241, 0.1) 0%, transparent 40%);
+}
+
+.glass-card {
+  @apply bg-white border border-slate-200/60 shadow-sm backdrop-blur-md transition-all duration-300;
+}
+
+.dark .glass-card {
+  background: rgba(17, 24, 39, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  @apply border-white/10;
+}
+
+.glow-edge-emerald {
+  position: relative;
+}
+
+.glow-edge-emerald::after {
+  content: '';
+  position: absolute;
+  bottom: 0px;
+  left: 20%;
+  right: 20%;
+  height: 2px;
+  background: #10b981;
+  filter: blur(4px);
+  opacity: 0.3;
+}
+
+.dark .glow-edge-emerald::after {
+  opacity: 0.6;
+}
+
+.glow-edge-indigo {
+  position: relative;
+}
+
+.glow-edge-indigo::after {
+  content: '';
+  position: absolute;
+  bottom: 0px;
+  left: 20%;
+  right: 20%;
+  height: 2px;
+  background: #6366f1;
+  filter: blur(4px);
+  opacity: 0.3;
+}
+
+.dark .glow-edge-indigo::after {
+  opacity: 0.6;
+}
+
+.dashboard-header-input {
+  @apply bg-slate-100 border-none focus:ring-2 focus:ring-brand-500 rounded-full py-2 px-10 text-sm transition-all;
+}
+
+.dark .dashboard-header-input {
+  @apply bg-white/5 text-white shadow-inner;
+}
