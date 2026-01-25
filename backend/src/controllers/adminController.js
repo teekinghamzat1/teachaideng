@@ -393,19 +393,8 @@ const updateNoteStatus = asyncHandler(async (req, res) => {
 // @route   POST /api/admin/users
 // @access  Private/Admin
 const createUser = asyncHandler(async (req, res) => {
-    const { name, email, password, role, isSchoolAdmin, schoolId, subscriptionPlan } = req.body;
-
-    // Restrict Admin/SuperAdmin creation
-    if (role && (role.toLowerCase() === 'admin' || role.toLowerCase() === 'superadmin')) {
-        res.status(403);
-        throw new Error('Forbidden: Admins cannot create other admins or superadmins.');
-    }
-
-    // Only SuperAdmin can create School Admins
-    if (isSchoolAdmin && req.user.role !== 'superadmin') {
-        res.status(403);
-        throw new Error('Forbidden: Only SuperAdmins can create School Admins.');
-    }
+    const { name, email, password, schoolId: schoolIdFromRequest, subscriptionPlan } = req.body;
+    const { isSchoolAdmin: isRequestingUserSchoolAdmin, schoolId: requestingUserSchoolId } = req.user;
 
     const userExists = await prisma.user.findUnique({
         where: { email },
@@ -419,22 +408,37 @@ const createUser = asyncHandler(async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
+    // Prepare user data with secure defaults. This endpoint should never create admins.
+    const createData = {
+        name,
+        email,
+        password: hashedPassword,
+        role: 'user', // Prevent privilege escalation by hardcoding role
+        isSchoolAdmin: false, // Prevent privilege escalation
+    };
+
+    // If the requesting user is a school admin, enforce that the new user
+    // is created within their school.
+    if (isRequestingUserSchoolAdmin) {
+        createData.schoolId = requestingUserSchoolId;
+        createData.subscriptionPlan = 'School'; // Users in a school have the 'School' plan
+    } else if (schoolIdFromRequest) {
+        // Only global admins can specify a schoolId
+        createData.schoolId = schoolIdFromRequest;
+        createData.subscriptionPlan = subscriptionPlan || 'Free';
+    } else {
+        createData.subscriptionPlan = subscriptionPlan || 'Free';
+    }
+
     const user = await prisma.user.create({
-        data: {
-            name,
-            email,
-            password: hashedPassword,
-            role: role || 'user',
-            isSchoolAdmin: !!isSchoolAdmin,
-            schoolId: schoolId || null,
-            subscriptionPlan: subscriptionPlan || 'Free',
-        },
+        data: createData,
     });
 
     await createAdminLog(req.user.id, req.user.schoolId, 'CREATE_USER', {
         createdUserId: user.id,
-        role,
-        email
+        role: user.role,
+        email: user.email,
+        schoolId: user.schoolId,
     });
 
     if (user) {
@@ -445,7 +449,7 @@ const createUser = asyncHandler(async (req, res) => {
                 email: user.email,
                 role: user.role,
                 isSchoolAdmin: user.isSchoolAdmin,
-                schoolId: user.schoolId
+                schoolId: user.schoolId,
             })
         );
     } else {
