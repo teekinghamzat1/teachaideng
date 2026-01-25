@@ -79,10 +79,10 @@ const Home: React.FC = () => {
                     </div>
                   ))}
                   <div className="w-9 h-9 lg:w-10 lg:h-10 rounded-full border-2 border-white dark:border-slate-950 bg-[#16A34A] flex items-center justify-center font-bold text-[10px] text-white">
-                    {branding.userCount > 1000 ? `${(branding.userCount / 1000).toFixed(0)}k+` : branding.userCount}
+                    {branding.userCount > 1000 ? `${(branding.userCount / 1000).toFixed(0)}k+` : (branding.userCount || 0)}
                   </div>
                 </div>
-                <p className="text-xs lg:text-sm font-bold tracking-tight">Trusted by {branding.userCount > 1000 ? `${(branding.userCount / 1000).toFixed(0)}k+` : branding.userCount.toLocaleString()}+ educators nationwide</p>
+                <p className="text-xs lg:text-sm font-bold tracking-tight">Trusted by {branding.userCount > 1000 ? `${(branding.userCount / 1000).toFixed(0)}k+` : (branding.userCount || 0).toLocaleString()}+ educators nationwide</p>
               </div>
             </div>
 

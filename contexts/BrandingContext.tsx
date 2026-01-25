@@ -39,7 +39,12 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             .then(res => res.json())
             .then(data => {
                 if (data.success && data.data) {
-                    setBranding(data.data);
+                    setBranding(prev => ({
+                        ...prev,
+                        ...data.data,
+                        // Ensure userCount always has a value even if missing in API response
+                        userCount: data.data.userCount ?? prev.userCount
+                    }));
 
                     // Apply favicon dynamically
                     if (data.data.siteFavicon) {

@@ -49,7 +49,7 @@ const AdminOverview: React.FC = () => {
     const cards = [
         { title: 'Total Users', value: stats.totalUsers, icon: Users, color: 'text-blue-600', bg: 'bg-blue-100' },
         { title: 'Notes Generated', value: stats.totalNotes, icon: FileText, color: 'text-green-600', bg: 'bg-green-100' },
-        { title: 'Premium Revenue', value: `₦${(stats.premiumUsers * 2500).toLocaleString()}`, icon: CreditCard, color: 'text-purple-600', bg: 'bg-purple-100' },
+        { title: 'Premium Revenue', value: `₦${((stats.premiumUsers || 0) * 2500).toLocaleString()}`, icon: CreditCard, color: 'text-purple-600', bg: 'bg-purple-100' },
         { title: 'Active Students', value: stats.totalStudents, icon: Activity, color: 'text-orange-600', bg: 'bg-orange-100' },
     ];
 
