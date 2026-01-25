@@ -3,6 +3,7 @@ import { db } from '../database';
 import { User } from '../types';
 import { Search, Filter, MoreVertical, Edit, Trash, CheckSquare, XSquare, Loader2, RotateCcw } from '../components/Icons';
 import { showAlert } from '../utils/alerts';
+import UserAvatar from '../components/UserAvatar';
 
 const AdminUsers: React.FC = () => {
     const [users, setUsers] = useState<User[]>([]);
@@ -459,9 +460,7 @@ const AdminUsers: React.FC = () => {
                                     <tr key={user.id} className="hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <div className="flex items-center">
-                                                <div className="flex-shrink-0 h-10 w-10 bg-slate-200 rounded-full flex items-center justify-center text-slate-500 font-bold">
-                                                    {user.name.charAt(0)}
-                                                </div>
+                                                <UserAvatar user={user} className="h-10 w-10" />
                                                 <div className="ml-4">
                                                     <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{user.name}</div>
                                                     <div className="text-sm text-slate-500 dark:text-slate-400">{user.email}</div>

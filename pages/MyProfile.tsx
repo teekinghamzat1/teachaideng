@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { db, getAuthHeader, getAdminAuthHeader } from '../database';
 import { showAlert } from '../utils/alerts';
+import UserAvatar from '../components/UserAvatar';
 
 interface MyProfileProps {
   isAdminView?: boolean;
@@ -107,13 +108,7 @@ const MyProfile: React.FC<MyProfileProps> = ({ isAdminView = false }) => {
       <div className="flex flex-col md:flex-row items-center gap-8 pb-10 border-b border-slate-100 dark:border-slate-800">
         <div className="relative group">
           <div className="w-32 h-32 sm:w-40 sm:h-40 bg-white dark:bg-slate-900 rounded-[3.5rem] overflow-hidden flex items-center justify-center border-4 border-white dark:border-slate-800 shadow-2xl relative z-10">
-            {avatar ? (
-              <img src={avatar} alt="avatar" className="w-full h-full object-cover transition-transform group-hover:scale-110 duration-500" />
-            ) : (
-              <div className="w-full h-full bg-slate-50 dark:bg-slate-800 flex items-center justify-center">
-                <span className="text-5xl font-black text-[#16A34A]">{(name || 'U').charAt(0)}</span>
-              </div>
-            )}
+            <UserAvatar user={{ name, avatar }} className="w-full h-full" fallbackClassName="bg-slate-50 dark:bg-slate-800 text-5xl" />
 
             {uploading && (
               <div className="absolute inset-0 bg-white/60 dark:bg-black/60 backdrop-blur-sm flex items-center justify-center">

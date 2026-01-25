@@ -9,6 +9,7 @@ import { db } from '../database';
 import SEO from './SEO';
 import { User } from '../types';
 import { useBranding } from '../contexts/BrandingContext';
+import UserAvatar from './UserAvatar';
 
 const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -254,11 +255,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                 <div className="relative group">
                   <button className="flex items-center gap-2 p-1 pl-3 pr-1 rounded-full border border-slate-200 dark:border-slate-800 hover:border-[#16A34A] transition-all bg-white dark:bg-slate-900">
                     <span className="text-xs font-black text-slate-600 dark:text-slate-300 hidden xl:block uppercase tracking-widest">{user.name.split(' ')[0]}</span>
-                    {user.avatar ? (
-                      <img src={user.avatar} className="w-8 h-8 rounded-full border border-slate-100 dark:border-slate-800" />
-                    ) : (
-                      <div className="w-8 h-8 rounded-full bg-[#16A34A] text-white flex items-center justify-center font-black text-xs">{user.name.charAt(0)}</div>
-                    )}
+                    <UserAvatar user={user} className="w-8 h-8" />
                   </button>
                   <div className="absolute top-full right-0 pt-2 w-56 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300">
                     <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-2xl border border-slate-100 dark:border-slate-800 p-2 overflow-hidden">
@@ -334,9 +331,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                     <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest hidden xs:block">
                       {user.name.split(' ')[0]}
                     </span>
-                    <div className="w-8 h-8 rounded-full bg-[#16A34A] text-white flex items-center justify-center font-black text-sm">
-                      {user.name.charAt(0)}
-                    </div>
+                    <UserAvatar user={user} className="w-8 h-8" />
                   </Link>
                 ) : (
                   <Link to="/login" className="w-10 h-10 flex items-center justify-center rounded-full bg-slate-50 dark:bg-slate-900 text-slate-400">
@@ -386,9 +381,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                 <div className="space-y-6">
                   {/* User Profile Summary */}
                   <div className="flex items-center gap-4 p-4 bg-[#16A34A]/5 rounded-3xl border border-[#16A34A]/10">
-                    <div className="w-12 h-12 rounded-2xl bg-[#16A34A] text-white flex items-center justify-center font-black text-xl shadow-lg shadow-[#16A34A]/20">
-                      {user.name.charAt(0)}
-                    </div>
+                    <UserAvatar user={user} className="w-12 h-12 shadow-lg shadow-[#16A34A]/20" fallbackClassName="text-xl" />
                     <div className="min-w-0 flex-1">
                       <p className="text-lg font-black text-slate-900 dark:text-white truncate leading-none mb-1">{user.name}</p>
                       <p className="text-[10px] font-black text-[#16A34A] uppercase tracking-widest">{user.subscriptionPlan} Plan</p>

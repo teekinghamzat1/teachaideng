@@ -7,6 +7,7 @@ import {
     SettingsIcon, Zap, Edit, Save, X, Shield, Sparkles, FileText, Clipboard, ArrowRight, ChevronRight, BookOpen, Search
 } from '../components/Icons';
 import { showAlert } from '../utils/alerts';
+import UserAvatar from '../components/UserAvatar';
 
 interface ProfileModalProps {
     isOpen: boolean;
@@ -584,8 +585,8 @@ const SchoolManagement: React.FC = () => {
                                                 <tr key={t.id} onClick={() => setSelectedTeacher(t)} className="group hover:bg-[#16A34A]/[0.02] cursor-pointer transition-all">
                                                     <td className="px-8 py-6 min-w-[280px]">
                                                         <div className="flex items-center gap-5">
-                                                            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-white text-xl font-black shadow-lg relative group-hover:scale-105 transition-transform ${t.teacherStatus === 'Active' ? 'bg-gradient-to-br from-[#16A34A] to-[#15803d]' : 'bg-slate-200 dark:bg-slate-700 text-slate-400'}`}>
-                                                                {t.name[0]}
+                                                            <div className="relative group-hover:scale-105 transition-transform">
+                                                                <UserAvatar user={t} className="w-14 h-14 shadow-lg" fallbackClassName="bg-gradient-to-br from-[#16A34A] to-[#15803d]" />
                                                                 {t.teacherStatus === 'Active' && <div className="absolute -top-1 -right-1 w-4 h-4 bg-[#16A34A] border-2 border-white dark:border-slate-900 rounded-full"></div>}
                                                             </div>
                                                             <div className="min-w-0">
@@ -699,9 +700,7 @@ const SchoolManagement: React.FC = () => {
                         <div className="p-8 lg:p-14 flex-1 overflow-y-auto custom-scrollbar space-y-12">
                             <div className="flex justify-between items-start">
                                 <div className="relative group">
-                                    <div className="w-24 h-24 lg:w-32 lg:h-32 rounded-[2.5rem] bg-gradient-to-br from-[#16A34A] to-[#15803d] text-white text-4xl lg:text-6xl flex items-center justify-center font-black shadow-2xl shadow-[#16A34A]/30 transition-transform group-hover:rotate-6">
-                                        {selectedTeacher.name[0]}
-                                    </div>
+                                    <UserAvatar user={selectedTeacher} className="w-24 h-24 lg:w-32 lg:h-32 shadow-2xl shadow-[#16A34A]/30 transition-transform group-hover:rotate-6" fallbackClassName="bg-gradient-to-br from-[#16A34A] to-[#15803d] text-4xl lg:text-6xl" />
                                     <div className="absolute -bottom-2 -right-2 w-10 h-10 bg-white dark:bg-slate-800 rounded-2xl flex items-center justify-center shadow-lg border border-slate-100 dark:border-slate-800">
                                         <Shield className="w-5 h-5 text-[#16A34A]" />
                                     </div>

@@ -4,6 +4,7 @@ import { db } from '../database';
 import { LayoutDashboard, Users, FileText, SettingsIcon, LogOut, Menu, X, Shield, BookOpen, Bell, Search, Activity, Sun, Moon, AlertTriangle, MessageSquare, Map } from './Icons';
 import SEO from './SEO';
 import { User } from '../types';
+import UserAvatar from './UserAvatar';
 
 const AdminLayout: React.FC = () => {
     const [isSidebarOpen, setSidebarOpen] = useState(false);
@@ -171,9 +172,7 @@ const AdminLayout: React.FC = () => {
                                 <p className="text-sm font-medium text-slate-900 dark:text-slate-100">{user?.name}</p>
                                 <p className="text-xs text-slate-500 dark:text-slate-400">{roleTitle}</p>
                             </div>
-                            <div className="h-8 w-8 rounded-full bg-brand-100 flex items-center justify-center text-brand-700 font-bold border border-brand-200">
-                                {user?.name?.charAt(0)}
-                            </div>
+                            <UserAvatar user={user} className="w-8 h-8" />
                         </div>
                     </div>
                 </header>
