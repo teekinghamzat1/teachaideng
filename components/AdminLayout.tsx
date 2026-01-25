@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { db } from '../database';
-import { LayoutDashboard, Users, FileText, SettingsIcon, LogOut, Menu, X, Shield, BookOpen, Bell, Search, Activity, Sun, Moon, AlertTriangle, MessageSquare, Map } from './Icons';
+import { LayoutDashboard, Users, FileText, SettingsIcon, LogOut, Menu, X, Shield, BookOpen, Bell, Search, Activity, Sun, Moon, AlertTriangle, MessageSquare, Map, BarChart } from './Icons';
 import SEO from './SEO';
 import { User } from '../types';
 import UserAvatar from './UserAvatar';
@@ -71,6 +71,7 @@ const AdminLayout: React.FC = () => {
 
     const navItems = [
         { name: 'Overview', path: '/admin', icon: LayoutDashboard },
+        { name: 'Analytics', path: '/admin/analytics', icon: BarChart },
         { name: 'Users', path: '/admin/users', icon: Users },
         { name: 'Content', path: '/admin/content', icon: FileText },
         { name: 'Support', path: '/admin/support', icon: MessageSquare },

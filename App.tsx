@@ -41,9 +41,11 @@ import AdminBlog from './pages/AdminBlog';
 import AdminErrors from './pages/AdminErrors';
 import AdminSupport from './pages/AdminSupport';
 import AdminSchemes from './pages/AdminSchemes';
+import AdminAnalytics from './pages/AdminAnalytics';
 
 import ProtectedRoute from './components/ProtectedRoute';
 import { BrandingProvider } from './contexts/BrandingContext';
+import AnalyticsTracker from './components/AnalyticsTracker';
 
 const App: React.FC = () => {
   useEffect(() => {
@@ -58,6 +60,7 @@ const App: React.FC = () => {
   return (
     <BrandingProvider>
       <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+        <AnalyticsTracker />
         <Routes>
           {/* Main Application Routes */}
           <Route path="/" element={<Layout><Home /></Layout>} />
@@ -141,6 +144,7 @@ const App: React.FC = () => {
           {/* Admin Routes */}
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<AdminOverview />} />
+            <Route path="analytics" element={<AdminAnalytics />} />
             <Route path="users" element={<AdminUsers />} />
             <Route path="content" element={<AdminContent />} />
             <Route path="testimonials" element={<AdminTestimonials />} />

@@ -114,6 +114,7 @@ app.use('/api/sitemap.xml', require('./src/routes/sitemapRoutes'));
 app.use('/api/support', require('./src/routes/supportRoutes'));
 app.use('/api/smart-class', require('./src/routes/smartClassRoutes'));
 app.use('/api/reference-schemes', require('./src/routes/referenceSchemeRoutes'));
+app.use('/api/analytics', require('./src/routes/analyticsRoutes'));
 
 // Error Handler
 app.use(errorHandler);

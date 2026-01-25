@@ -74,6 +74,26 @@ model User {
   chatSessions     ChatSession[]     @relation("UserChats")
   supportTickets   SupportTicket[]   @relation("UserTickets")
   smartClasses     SmartClass[]
+  trafficLogs      TrafficLog[]
+}
+
+model TrafficLog {
+  id        String   @id @default(uuid())
+  path      String
+  ip        String?
+  userAgent String?
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  createdAt DateTime @default(now())
+}
+
+model ActiveSession {
+  id        String   @id @default(uuid())
+  sessionId String   @unique // Browser session ID or random string
+  userId    String?
+  ip        String?
+  userAgent String?
+  lastSeen  DateTime @default(now())
 }
 
 model Product {
