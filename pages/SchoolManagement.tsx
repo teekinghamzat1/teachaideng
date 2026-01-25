@@ -4,7 +4,7 @@ import { db } from '../database';
 import { School, Teacher } from '../types';
 import {
     Users, UserPlus, UserCheck, UserX, Trash, Loader2, AlertCircle,
-    SettingsIcon, Zap, Edit, Save, X, Shield, Sparkles, FileText, Clipboard, ArrowRight, ChevronRight, BookOpen
+    SettingsIcon, Zap, Edit, Save, X, Shield, Sparkles, FileText, Clipboard, ArrowRight, ChevronRight, BookOpen, Search
 } from '../components/Icons';
 import { showAlert } from '../utils/alerts';
 
@@ -22,75 +22,84 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, editProfil
 
     return (
         <div className="fixed inset-0 bg-slate-900/60 dark:bg-black/80 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
-            <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col border border-slate-200 dark:border-slate-800">
-                <div className="p-8 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between sticky top-0 bg-white dark:bg-slate-900 z-10">
-                    <div>
-                        <h3 className="text-2xl font-bold text-[#111827] dark:text-white">Registry Profile</h3>
-                        <p className="text-sm text-[#6B7280] dark:text-slate-400 mt-1">Institutional Identity</p>
+            <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-2xl rounded-[2.5rem] shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col border border-slate-200/50 dark:border-slate-800/50 animate-in zoom-in-95 duration-500">
+                <div className="p-8 lg:p-10 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between sticky top-0 z-10">
+                    <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-[#16A34A]/10 rounded-2xl flex items-center justify-center text-[#16A34A]">
+                            <Edit className="w-6 h-6" />
+                        </div>
+                        <div>
+                            <h3 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Registry Profile</h3>
+                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Institutional Identity</p>
+                        </div>
                     </div>
-                    <button onClick={onClose} className="p-2 hover:bg-[#F9FAFB] dark:hover:bg-white/5 rounded-xl text-[#6B7280] dark:text-slate-400 transition-colors">
+                    <button onClick={onClose} className="w-10 h-10 flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl text-slate-400 transition-all">
                         <X className="w-6 h-6" />
                     </button>
                 </div>
 
-                <form onSubmit={onSubmit} className="p-8 overflow-y-auto space-y-8">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        <div className="col-span-1 md:col-span-2">
-                            <label className="block text-sm font-semibold text-[#111827] dark:text-white mb-2">School Name</label>
+                <form onSubmit={onSubmit} className="p-8 lg:p-10 overflow-y-auto space-y-8 custom-scrollbar">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8">
+                        <div className="col-span-1 md:col-span-2 space-y-2">
+                            <label className="block text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Official School Name</label>
                             <input
                                 type="text"
                                 value={editProfile.name}
                                 onChange={(e) => setEditProfile({ ...editProfile, name: e.target.value })}
-                                className="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-3 text-[#111827] dark:text-white focus:ring-2 focus:ring-[#16A34A] focus:border-[#16A34A] transition-all"
+                                className="w-full bg-slate-50 dark:bg-slate-800/50 border-2 border-transparent focus:border-[#16A34A] rounded-2xl px-6 py-4 text-slate-900 dark:text-white font-bold placeholder:text-slate-300 outline-none transition-all"
                                 required
+                                placeholder="Enter school name"
                             />
                         </div>
 
-                        <div className="col-span-1 md:col-span-2">
-                            <label className="block text-sm font-semibold text-[#111827] dark:text-white mb-2">Physical Address</label>
+                        <div className="col-span-1 md:col-span-2 space-y-2">
+                            <label className="block text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Physical Campus Address</label>
                             <textarea
                                 value={editProfile.address}
                                 onChange={(e) => setEditProfile({ ...editProfile, address: e.target.value })}
-                                className="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-3 text-[#111827] dark:text-white focus:ring-2 focus:ring-[#16A34A] focus:border-[#16A34A] transition-all"
+                                className="w-full bg-slate-50 dark:bg-slate-800/50 border-2 border-transparent focus:border-[#16A34A] rounded-2xl px-6 py-4 text-slate-900 dark:text-white font-bold placeholder:text-slate-300 outline-none transition-all resize-none"
                                 rows={3}
+                                placeholder="Enter address"
                             />
                         </div>
 
-                        <div>
-                            <label className="block text-sm font-semibold text-[#111827] dark:text-white mb-2">Official Phone</label>
+                        <div className="space-y-2">
+                            <label className="block text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Primary Hotline</label>
                             <input
                                 type="tel"
                                 value={editProfile.phone}
                                 onChange={(e) => setEditProfile({ ...editProfile, phone: e.target.value })}
-                                className="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-3 text-[#111827] dark:text-white focus:ring-2 focus:ring-[#16A34A] focus:border-[#16A34A] transition-all"
+                                className="w-full bg-slate-50 dark:bg-slate-800/50 border-2 border-transparent focus:border-[#16A34A] rounded-2xl px-6 py-4 text-slate-900 dark:text-white font-bold placeholder:text-slate-300 outline-none transition-all"
+                                placeholder="+234..."
                             />
                         </div>
 
-                        <div>
-                            <label className="block text-sm font-semibold text-[#111827] dark:text-white mb-2">Official Email</label>
+                        <div className="space-y-2">
+                            <label className="block text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Contact Protocol Email</label>
                             <input
                                 type="email"
                                 value={editProfile.email}
                                 onChange={(e) => setEditProfile({ ...editProfile, email: e.target.value })}
-                                className="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-3 text-[#111827] dark:text-white focus:ring-2 focus:ring-[#16A34A] focus:border-[#16A34A] transition-all"
+                                className="w-full bg-slate-50 dark:bg-slate-800/50 border-2 border-transparent focus:border-[#16A34A] rounded-2xl px-6 py-4 text-slate-900 dark:text-white font-bold placeholder:text-slate-300 outline-none transition-all"
+                                placeholder="school@example.com"
                             />
                         </div>
                     </div>
 
-                    <div className="flex gap-4 pt-6">
+                    <div className="flex flex-col sm:flex-row gap-4 pt-6">
                         <button
                             type="button"
                             onClick={onClose}
-                            className="flex-1 py-4 bg-[#F9FAFB] dark:bg-slate-800 text-[#6B7280] dark:text-white rounded-2xl font-semibold hover:bg-slate-100 dark:hover:bg-slate-700 transition-all border border-slate-200 dark:border-slate-700"
+                            className="flex-1 py-5 bg-slate-50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 rounded-2xl font-black text-xs uppercase tracking-widest border border-slate-100 dark:border-slate-800 hover:bg-slate-100 transition-all"
                         >
-                            Dismiss
+                            Cancel Changes
                         </button>
                         <button
                             type="submit"
                             disabled={saving}
-                            className="flex-1 py-4 bg-[#16A34A] text-white rounded-2xl font-semibold hover:bg-[#15803d] disabled:opacity-50 transition-all shadow-xl shadow-[#16A34A]/20"
+                            className="flex-1 py-5 bg-[#16A34A] text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:shadow-xl hover:shadow-[#16A34A]/30 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
                         >
-                            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save Changes"}
+                            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Sync Identity"}
                         </button>
                     </div>
                 </form>
@@ -119,6 +128,7 @@ const SchoolManagement: React.FC = () => {
         name: '', address: '', phone: '', email: '', website: '', capacity: 0
     });
     const [savingProfile, setSavingProfile] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
 
     useEffect(() => { loadSchoolData(); }, []);
     useEffect(() => { if (activeTab === 'overview') loadActivities(); }, [activeTab]);
@@ -528,64 +538,101 @@ const SchoolManagement: React.FC = () => {
                 )}
 
                 {activeTab === 'teachers' && (
-                    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-6 duration-700 delay-100">
                         <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
-                            <div>
-                                <h1 className="text-2xl lg:text-3xl font-bold text-[#111827] dark:text-white">Staff Registry</h1>
-                                <p className="text-sm lg:text-base text-[#6B7280] dark:text-slate-400">Institutional Faculty Control</p>
+                            <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 bg-white dark:bg-slate-900 rounded-2xl flex items-center justify-center border border-slate-200 dark:border-slate-800 shadow-sm">
+                                    <Users className="w-6 h-6 text-[#16A34A]" />
+                                </div>
+                                <div>
+                                    <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">Staff Registry</h1>
+                                    <p className="text-xs font-bold text-slate-400 uppercase tracking-[0.2em] mt-1">Institutional Faculty Control</p>
+                                </div>
                             </div>
-                            <button onClick={() => setShowAddModal(true)} disabled={stats.slotsRemaining <= 0} className="w-full md:w-auto px-8 py-3.5 bg-[#16A34A] text-white rounded-xl font-bold hover:bg-opacity-90 shadow-lg shadow-[#16A34A]/20 flex items-center justify-center gap-3">
-                                <UserPlus className="w-5 h-5" /> Invite Staff
-                            </button>
+                            <div className="w-full md:w-auto flex flex-col sm:flex-row items-center gap-4">
+                                <div className="relative w-full sm:w-64 group">
+                                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                        <Search className="h-4 w-4 text-slate-300 group-focus-within:text-[#16A34A] transition-colors" />
+                                    </div>
+                                    <input
+                                        type="text"
+                                        className="w-full pl-11 pr-4 py-3.5 bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 rounded-2xl text-sm font-bold placeholder:text-slate-300 outline-none focus:border-[#16A34A] transition-all shadow-sm"
+                                        placeholder="Search faculty..."
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                    />
+                                </div>
+                                <button onClick={() => setShowAddModal(true)} disabled={stats.slotsRemaining <= 0} className="w-full sm:w-auto px-10 py-3.5 bg-[#16A34A] text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:shadow-xl hover:shadow-[#16A34A]/20 transition-all flex items-center justify-center gap-3 disabled:opacity-50">
+                                    <UserPlus className="w-5 h-5" /> Invite Staff
+                                </button>
+                            </div>
                         </div>
 
-                        <div className="bg-white dark:bg-slate-900 rounded-3xl lg:rounded-[2rem] border border-slate-200 dark:border-slate-800 overflow-hidden shadow-xl shadow-slate-200/50 dark:shadow-black/20 w-full max-w-full">
+                        <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl rounded-[2.5rem] border border-slate-200/50 dark:border-slate-800/50 overflow-hidden shadow-2xl shadow-slate-200/50 dark:shadow-black/20 w-full">
                             <div className="overflow-x-auto custom-scrollbar w-full">
                                 <table className="w-full text-left">
                                     <thead>
-                                        <tr className="bg-[#F9FAFB] dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800">
-                                            {['Identity', 'State', 'Quota', 'Sync Date', 'Actions'].map((h, i) => (
-                                                <th key={i} className={`px-6 lg:px-8 py-4 lg:py-5 text-xs lg:text-sm font-bold text-[#6B7280] dark:text-slate-400 ${i === 4 ? 'text-right' : ''}`}>{h}</th>
+                                        <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50">
+                                            {['Identity', 'Status Protocol', 'Monthly Gen Quota', 'Sync Origin', 'Actions'].map((h, i) => (
+                                                <th key={i} className={`px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] ${i === 4 ? 'text-right' : ''}`}>{h}</th>
                                             ))}
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-xs lg:text-sm">
-                                        {school.teachers && school.teachers.length > 0 ? (
-                                            school.teachers.map((t) => (
-                                                <tr key={t.id} onClick={() => setSelectedTeacher(t)} className="group hover:bg-[#F9FAFB] dark:hover:bg-slate-800/30 cursor-pointer transition-all">
-                                                    <td className="px-6 lg:px-8 py-4 lg:py-6 min-w-[200px]">
-                                                        <div className="flex items-center gap-4">
-                                                            <div className="w-10 h-10 lg:w-12 lg:h-12 rounded-xl bg-[#16A34A] text-white flex items-center justify-center font-bold shadow-lg flex-shrink-0">{t.name[0]}</div>
+                                    <tbody className="divide-y divide-slate-50 dark:divide-slate-800/50">
+                                        {(school.teachers || []).filter(t => t.name.toLowerCase().includes(searchQuery.toLowerCase()) || t.email.toLowerCase().includes(searchQuery.toLowerCase())).length > 0 ? (
+                                            (school.teachers || []).filter(t => t.name.toLowerCase().includes(searchQuery.toLowerCase()) || t.email.toLowerCase().includes(searchQuery.toLowerCase())).map((t) => (
+                                                <tr key={t.id} onClick={() => setSelectedTeacher(t)} className="group hover:bg-[#16A34A]/[0.02] cursor-pointer transition-all">
+                                                    <td className="px-8 py-6 min-w-[280px]">
+                                                        <div className="flex items-center gap-5">
+                                                            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-white text-xl font-black shadow-lg relative group-hover:scale-105 transition-transform ${t.teacherStatus === 'Active' ? 'bg-gradient-to-br from-[#16A34A] to-[#15803d]' : 'bg-slate-200 dark:bg-slate-700 text-slate-400'}`}>
+                                                                {t.name[0]}
+                                                                {t.teacherStatus === 'Active' && <div className="absolute -top-1 -right-1 w-4 h-4 bg-[#16A34A] border-2 border-white dark:border-slate-900 rounded-full"></div>}
+                                                            </div>
                                                             <div className="min-w-0">
-                                                                <p className="font-bold text-[#111827] dark:text-white mb-0.5 truncate">{t.name}</p>
-                                                                <p className="text-[10px] lg:text-xs text-[#6B7280] dark:text-slate-400 truncate">{t.email}</p>
+                                                                <p className="font-black text-slate-900 dark:text-white text-lg truncate group-hover:text-[#16A34A] transition-colors leading-tight">{t.name}</p>
+                                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1 opacity-70 truncate">{t.email}</p>
                                                             </div>
                                                         </div>
                                                     </td>
-                                                    <td className="px-6 lg:px-8 py-4 lg:py-6">
-                                                        <span className={`inline-flex items-center px-3 lg:px-4 py-1 rounded-full text-[9px] lg:text-[10px] font-bold border transition-all ${t.teacherStatus === 'Active' ? 'bg-[#16A34A]/10 text-[#16A34A] border-[#16A34A]/20' : 'bg-[#FBBF24]/10 text-[#FBBF24] border-[#FBBF24]/20'}`}>
-                                                            {t.teacherStatus}
+                                                    <td className="px-8 py-6">
+                                                        <span className={`inline-flex items-center px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] border transition-all ${t.teacherStatus === 'Active' ? 'bg-[#16A34A]/5 text-[#16A34A] border-[#16A34A]/10' : 'bg-amber-500/5 text-amber-500 border-amber-500/10'}`}>
+                                                            {t.teacherStatus === 'Active' ? 'Sync Active' : 'Pending Link'}
                                                         </span>
                                                     </td>
-                                                    <td className="px-6 lg:px-8 py-4 lg:py-6 min-w-[120px]">
-                                                        <div className="flex items-center gap-3">
-                                                            <span className="font-bold text-[#111827] dark:text-white">{t.lessonsUsedThisMonth || 0} / {t.monthlyLessonLimit}</span>
-                                                            <div className="hidden md:block w-20 h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                                                                <div className="h-full bg-[#16A34A] transition-all" style={{ width: `${Math.min(((t.lessonsUsedThisMonth || 0) / (t.monthlyLessonLimit || 1)) * 100, 100)}%` }} />
+                                                    <td className="px-8 py-6 min-w-[180px]">
+                                                        <div className="space-y-3">
+                                                            <div className="flex items-center justify-between text-[10px] font-black">
+                                                                <span className="text-slate-400 uppercase tracking-widest">{t.lessonsUsedThisMonth || 0} Synced</span>
+                                                                <span className="text-slate-900 dark:text-white">{t.monthlyLessonLimit} Cap</span>
+                                                            </div>
+                                                            <div className="h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden shadow-inner">
+                                                                <div className="h-full bg-gradient-to-r from-[#16A34A] to-[#34d399] transition-all duration-1000" style={{ width: `${Math.min(((t.lessonsUsedThisMonth || 0) / (t.monthlyLessonLimit || 1)) * 100, 100)}%` }} />
                                                             </div>
                                                         </div>
                                                     </td>
-                                                    <td className="px-6 lg:px-8 py-4 lg:py-6 text-[#6B7280] dark:text-slate-500 whitespace-nowrap">{new Date(t.createdAt).toLocaleDateString()}</td>
-                                                    <td className="px-6 lg:px-8 py-4 lg:py-6 text-right" onClick={e => e.stopPropagation()}>
-                                                        <div className="flex items-center justify-end gap-1 lg:gap-2 lg:opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                                                            <button onClick={() => { setEditingLimit(t.id); setNewLimitValue(t.monthlyLessonLimit || 0); }} className="p-2 text-[#6B7280] hover:text-[#16A34A] hover:bg-white dark:hover:bg-slate-700 rounded-lg transition-all"><Edit className="w-4 h-4" /></button>
-                                                            <button onClick={() => handleRemoveTeacher(t.id, t.name)} className="p-2 text-[#6B7280] hover:text-red-600 hover:bg-white dark:hover:bg-slate-700 rounded-lg transition-all"><Trash className="w-4 h-4" /></button>
+                                                    <td className="px-8 py-6 text-[11px] font-black text-slate-400 uppercase tracking-wider">{new Date(t.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</td>
+                                                    <td className="px-8 py-6 text-right" onClick={e => e.stopPropagation()}>
+                                                        <div className="flex items-center justify-end gap-2 lg:opacity-0 group-hover:opacity-100 transition-all duration-300">
+                                                            <button onClick={() => { setEditingLimit(t.id); setNewLimitValue(t.monthlyLessonLimit || 0); }} className="w-10 h-10 flex items-center justify-center bg-white dark:bg-slate-800 text-slate-400 hover:text-[#16A34A] rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm transition-all hover:scale-110"><Edit className="w-4 h-4" /></button>
+                                                            <button onClick={() => handleRemoveTeacher(t.id, t.name)} className="w-10 h-10 flex items-center justify-center bg-white dark:bg-slate-800 text-slate-400 hover:text-red-500 rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm transition-all hover:scale-110"><Trash className="w-4 h-4" /></button>
                                                         </div>
                                                     </td>
                                                 </tr>
                                             ))
                                         ) : (
-                                            <tr><td colSpan={5} className="py-20 text-center opacity-30 text-[#6B7280]"><Users className="w-20 h-20 mx-auto mb-4" /><p className="font-bold uppercase tracking-widest text-xs lg:text-sm text-[#111827] dark:text-white">No staff detected</p></td></tr>
+                                            <tr>
+                                                <td colSpan={5} className="py-32">
+                                                    <div className="flex flex-col items-center text-center space-y-6">
+                                                        <div className="w-24 h-24 bg-slate-50 dark:bg-slate-800 rounded-[2.5rem] flex items-center justify-center text-slate-200 dark:text-slate-700 shadow-inner">
+                                                            <Users className="w-12 h-12" />
+                                                        </div>
+                                                        <div className="space-y-2">
+                                                            <h3 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">No faculty found</h3>
+                                                            <p className="text-slate-400 font-bold uppercase text-[10px] tracking-[0.3em]">Institutional Search Mismatch</p>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                            </tr>
                                         )}
                                     </tbody>
                                 </table>
@@ -595,30 +642,46 @@ const SchoolManagement: React.FC = () => {
                 )}
 
                 {activeTab === 'settings' && (
-                    <div className="space-y-6 lg:space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-4xl">
-                        <div>
-                            <h1 className="text-2xl lg:text-3xl font-bold text-[#111827] dark:text-white">System Protocol</h1>
-                            <p className="text-sm lg:text-base text-[#6B7280] dark:text-slate-400">Institutional System Configuration</p>
+                    <div className="space-y-10 animate-in fade-in slide-in-from-bottom-6 duration-700 delay-100 max-w-5xl">
+                        <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 bg-white dark:bg-slate-900 rounded-2xl flex items-center justify-center border border-slate-200 dark:border-slate-800 shadow-sm">
+                                <SettingsIcon className="w-6 h-6 text-[#16A34A]" />
+                            </div>
+                            <div>
+                                <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">System Protocol</h1>
+                                <p className="text-xs font-bold text-slate-400 uppercase tracking-[0.2em] mt-1">Institutional Configuration Hub</p>
+                            </div>
                         </div>
 
-                        <div className="space-y-6 lg:space-y-8">
-                            <div className="bg-white dark:bg-slate-900 rounded-[2rem] p-6 lg:p-8 border border-slate-200 dark:border-slate-800 shadow-xl shadow-slate-200/50 dark:shadow-black/20">
-                                <div className="flex items-center justify-between mb-8">
-                                    <h3 className="text-lg font-bold text-[#111827] dark:text-white">Organizational Profile</h3>
-                                    <button onClick={() => setShowProfileModal(true)} className="px-4 py-2 border-2 border-[#16A34A] text-[#16A34A] dark:text-[#34d399] rounded-xl text-xs lg:text-sm font-bold hover:bg-[#F9FAFB] transition-all whitespace-nowrap">Update Identity</button>
+                        <div className="grid grid-cols-1 gap-8">
+                            <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl rounded-[2.5rem] p-8 lg:p-12 border border-slate-200/50 dark:border-slate-800/50 shadow-2xl shadow-slate-200/50 dark:shadow-black/20 relative overflow-hidden group">
+                                <div className="absolute top-0 right-0 w-64 h-64 bg-[#16A34A]/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 group-hover:bg-[#16A34A]/10 transition-colors"></div>
+
+                                <div className="flex items-center justify-between mb-12 relative z-10">
+                                    <div className="space-y-1">
+                                        <h3 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Organizational Profile</h3>
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest opacity-80 decoration-2 decoration-[#16A34A]/30 underline underline-offset-4 font-bold">Registry Info</p>
+                                    </div>
+                                    <button onClick={() => setShowProfileModal(true)} className="px-8 py-4 bg-white dark:bg-slate-900 border-2 border-[#16A34A]/20 text-[#16A34A] rounded-2xl text-[10px] font-black uppercase tracking-widest hover:border-[#16A34A] hover:bg-slate-50 transition-all shadow-sm">Update Identity</button>
                                 </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-8">
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 relative z-10">
                                     {[
-                                        { k: 'Identity', v: school.name },
-                                        { k: 'Location', v: school.address || 'Awaiting entry' },
-                                        { k: 'Electronic Sync', v: school.email || 'Awaiting entry' },
-                                        { k: 'Phone Protocol', v: school.phone || 'Awaiting entry' },
-                                        { k: 'Slug Protocol', v: `#${school.slug}`, c: 'text-[#16A34A] font-bold truncate' },
-                                        { k: 'Staff Quota', v: `${stats.totalTeachers} / ${school.teacherLimit} Slots` }
+                                        { k: 'Identity', v: school.name, icon: <Shield className="w-4 h-4" /> },
+                                        { k: 'Physical Location', v: school.address || 'Awaiting entry', icon: <Edit className="w-4 h-4" /> },
+                                        { k: 'Electronic Sync', v: school.email || 'Awaiting entry', icon: <Sparkles className="w-4 h-4" /> },
+                                        { k: 'Phone Protocol', v: school.phone || 'Awaiting entry', icon: <Edit className="w-4 h-4" /> },
+                                        { k: 'Slug Unique Protocol', v: `#${school.slug}`, c: 'text-[#16A34A] font-black italic', icon: <Zap className="w-4 h-4" /> },
+                                        { k: 'Faculty Quota', v: `${stats.totalTeachers} / ${school.teacherLimit} Staff Capacity`, icon: <Users className="w-4 h-4" /> }
                                     ].map((item, i) => (
-                                        <div key={i} className="space-y-1 p-4 bg-[#F9FAFB] dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800 overflow-hidden">
-                                            <p className="text-[9px] lg:text-xs font-bold text-[#6B7280] dark:text-slate-500 uppercase tracking-widest">{item.k}</p>
-                                            <p className={`text-sm lg:text-base font-semibold ${item.c || 'text-[#111827] dark:text-white truncate'}`}>{item.v}</p>
+                                        <div key={i} className="group/item flex items-start gap-4 p-6 bg-slate-50/50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 hover:border-[#16A34A]/30 transition-all">
+                                            <div className="w-10 h-10 rounded-xl bg-white dark:bg-slate-900 flex items-center justify-center text-[#16A34A] shadow-sm border border-slate-50 dark:border-slate-800 group-hover/item:scale-110 transition-transform">
+                                                {item.icon}
+                                            </div>
+                                            <div className="min-w-0">
+                                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest opacity-80">{item.k}</p>
+                                                <p className={`text-base font-bold mt-1.5 truncate ${item.c || 'text-slate-900 dark:text-white'}`}>{item.v}</p>
+                                            </div>
                                         </div>
                                     ))}
                                 </div>
@@ -631,62 +694,85 @@ const SchoolManagement: React.FC = () => {
             {/* Slide Panel for Teacher Details */}
             {selectedTeacher && (
                 <div className="fixed inset-0 z-50 flex justify-end">
-                    <div className="absolute inset-0 bg-slate-900/60 dark:bg-black/80 backdrop-blur-sm animate-in fade-in duration-500" onClick={() => setSelectedTeacher(null)} />
-                    <div className="relative w-full max-w-xl bg-white dark:bg-slate-900 h-full shadow-2xl flex flex-col animate-in slide-in-from-right duration-500 rounded-l-3xl border-l border-slate-200 dark:border-slate-800">
-                        <div className="p-6 lg:p-14 flex-1 overflow-y-auto custom-scrollbar space-y-8 lg:space-y-12">
+                    <div className="absolute inset-0 bg-slate-900/60 dark:bg-black/80 backdrop-blur-md animate-in fade-in duration-500" onClick={() => setSelectedTeacher(null)} />
+                    <div className="relative w-full max-w-xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-2xl h-full shadow-2xl flex flex-col animate-in slide-in-from-right duration-700 rounded-l-[3rem] border-l border-slate-200/50 dark:border-slate-800/50 overflow-hidden">
+                        <div className="p-8 lg:p-14 flex-1 overflow-y-auto custom-scrollbar space-y-12">
                             <div className="flex justify-between items-start">
-                                <div className="w-20 h-20 lg:w-28 lg:h-28 rounded-2xl lg:rounded-[2rem] bg-[#16A34A] text-white text-3xl lg:text-5xl flex items-center justify-center font-bold shadow-2xl shadow-[#16A34A]/30 flex-shrink-0">{selectedTeacher.name[0]}</div>
-                                <button onClick={() => setSelectedTeacher(null)} className="p-3 lg:p-4 bg-[#F9FAFB] dark:bg-slate-800 text-[#6B7280] hover:text-[#111827] dark:hover:text-white rounded-2xl transition-all"><X className="w-6 h-6 lg:w-8 lg:h-8" /></button>
+                                <div className="relative group">
+                                    <div className="w-24 h-24 lg:w-32 lg:h-32 rounded-[2.5rem] bg-gradient-to-br from-[#16A34A] to-[#15803d] text-white text-4xl lg:text-6xl flex items-center justify-center font-black shadow-2xl shadow-[#16A34A]/30 transition-transform group-hover:rotate-6">
+                                        {selectedTeacher.name[0]}
+                                    </div>
+                                    <div className="absolute -bottom-2 -right-2 w-10 h-10 bg-white dark:bg-slate-800 rounded-2xl flex items-center justify-center shadow-lg border border-slate-100 dark:border-slate-800">
+                                        <Shield className="w-5 h-5 text-[#16A34A]" />
+                                    </div>
+                                </div>
+                                <button onClick={() => setSelectedTeacher(null)} className="w-12 h-12 flex items-center justify-center bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-2xl transition-all hover:rotate-90">
+                                    <X className="w-6 h-6" />
+                                </button>
                             </div>
 
-                            <div>
-                                <h3 className="text-3xl lg:text-5xl font-bold text-[#111827] dark:text-white leading-tight mb-2 lg:mb-3 truncate">{selectedTeacher.name}</h3>
-                                <div className="flex flex-wrap items-center gap-2 lg:gap-3">
-                                    <p className="text-xs lg:text-base text-[#6B7280] dark:text-slate-400 font-medium">{selectedTeacher.isSchoolAdmin ? "Administrative Faculty" : "Teaching Faculty"}</p>
-                                    <span className={`px-3 lg:px-4 py-0.5 lg:py-1 rounded-full text-[10px] lg:text-xs font-bold border transition-all ${selectedTeacher.teacherStatus === 'Active' ? "bg-[#16A34A]/10 text-[#16A34A] border-[#16A34A]/20" : "bg-[#FBBF24]/10 text-[#FBBF24] border-[#FBBF24]/20"}`}>{selectedTeacher.teacherStatus}</span>
+                            <div className="space-y-4">
+                                <h3 className="text-4xl lg:text-5xl font-black text-slate-900 dark:text-white leading-tight tracking-tight">{selectedTeacher.name}</h3>
+                                <div className="flex flex-wrap items-center gap-3">
+                                    <span className="px-5 py-2 bg-slate-100 dark:bg-slate-800 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] rounded-full border border-slate-200 dark:border-slate-700">
+                                        {selectedTeacher.isSchoolAdmin ? "Faculty Administrator" : "Teaching Staff"}
+                                    </span>
+                                    <span className={`px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.2em] border transition-all ${selectedTeacher.teacherStatus === 'Active' ? "bg-[#16A34A]/5 text-[#16A34A] border-[#16A34A]/10" : "bg-amber-500/5 text-amber-500 border-amber-500/10"}`}>
+                                        {selectedTeacher.teacherStatus === 'Active' ? "Registry Active" : "Pending Sync"}
+                                    </span>
                                 </div>
                             </div>
 
                             <div className="grid grid-cols-2 gap-4 lg:gap-6">
-                                <div className="p-4 lg:p-8 bg-[#F9FAFB] dark:bg-slate-800/50 rounded-2xl lg:rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-sm">
-                                    <p className="text-[9px] lg:text-[10px] font-bold text-[#6B7280] dark:text-slate-500 uppercase tracking-widest mb-1 lg:mb-3 whitespace-nowrap">Pedagogical Score</p>
-                                    <p className="text-2xl lg:text-4xl font-bold text-[#111827] dark:text-white">{selectedTeacher.lessonsUsedThisMonth || 0}</p>
+                                <div className="p-8 bg-slate-50/50 dark:bg-slate-800/50 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-sm group/card transition-all hover:bg-white dark:hover:bg-slate-800">
+                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3 opacity-80">Sync Activity</p>
+                                    <p className="text-3xl lg:text-5xl font-black text-slate-900 dark:text-white group-hover/card:text-[#16A34A] transition-colors">{selectedTeacher.lessonsUsedThisMonth || 0}</p>
+                                    <p className="text-[10px] font-bold text-slate-400 mt-2">Gens this cycle</p>
                                 </div>
-                                <div className="p-4 lg:p-8 bg-[#F9FAFB] dark:bg-slate-800/50 rounded-2xl lg:rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-sm">
-                                    <p className="text-[9px] lg:text-[10px] font-bold text-[#6B7280] dark:text-slate-500 uppercase tracking-widest mb-1 lg:mb-3 whitespace-nowrap">Registry State</p>
-                                    <p className={`text-base lg:text-xl font-bold uppercase truncate ${selectedTeacher.teacherStatus === 'Active' ? "text-[#16A34A]" : "text-[#FBBF24]"}`}>{selectedTeacher.teacherStatus === 'Active' ? "Operational" : "Pending"}</p>
+                                <div className="p-8 bg-slate-50/50 dark:bg-slate-800/50 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-sm group/card transition-all hover:bg-white dark:hover:bg-slate-800">
+                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3 opacity-80">Generation Limit</p>
+                                    <p className="text-3xl lg:text-5xl font-black text-slate-900 dark:text-white group-hover/card:text-[#16A34A] transition-colors">{selectedTeacher.monthlyLessonLimit}</p>
+                                    <p className="text-[10px] font-bold text-slate-400 mt-2">Monthly Tier</p>
                                 </div>
                             </div>
 
-                            <div className="space-y-4 lg:space-y-6">
-                                <h4 className="text-[10px] lg:text-xs font-bold text-[#6B7280] dark:text-slate-400 uppercase tracking-widest px-2">Recent AI Signals</h4>
-                                <div className="space-y-3">
+                            <div className="space-y-6">
+                                <div className="flex items-center justify-between px-2">
+                                    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Institutional Signals</h4>
+                                    <Sparkles className="w-4 h-4 text-amber-400 animate-pulse" />
+                                </div>
+                                <div className="space-y-4">
                                     {activities.filter(a => a.userId === selectedTeacher.id).length > 0 ? (
                                         activities.filter(a => a.userId === selectedTeacher.id).slice(0, 5).map(log => (
-                                            <div key={log.id} className="p-4 lg:p-6 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl flex items-center gap-4 lg:gap-5 shadow-sm hover:border-[#16A34A] transition-all">
-                                                <div className={`w-10 h-10 lg:w-12 lg:h-12 rounded-xl flex items-center justify-center shadow-lg flex-shrink-0 ${log.action === 'LESSON_GENERATION' ? "bg-[#16A34A] text-white shadow-[#16A34A]/20" : "bg-[#3B82F6] text-white shadow-[#3B82F6]/20"}`}>{log.action === 'LESSON_GENERATION' ? <FileText className="w-5 h-5 lg:w-6 lg:h-6" /> : <Clipboard className="w-5 h-5 lg:w-6 lg:h-6" />}</div>
+                                            <div key={log.id} className="p-5 bg-white dark:bg-slate-800/80 border border-slate-100 dark:border-slate-800 rounded-2xl flex items-center gap-5 shadow-sm hover:border-[#16A34A] transition-all group/log">
+                                                <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-white shadow-lg flex-shrink-0 transition-transform group-hover/log:scale-110 ${log.action === 'LESSON_GENERATION' ? "bg-[#16A34A] shadow-[#16A34A]/20" : "bg-blue-500 shadow-blue-500/20"}`}>
+                                                    {log.action === 'LESSON_GENERATION' ? <FileText className="w-5 h-5" /> : <Clipboard className="w-5 h-5" />}
+                                                </div>
                                                 <div className="min-w-0">
-                                                    <p className="text-sm font-bold text-[#111827] dark:text-white leading-tight mb-1 truncate">{log.action === 'LESSON_GENERATION' ? "Lesson Generation" : "Assessment Sync"}</p>
-                                                    <p className="text-[10px] lg:text-xs text-[#6B7280] dark:text-slate-500 font-medium whitespace-nowrap">{new Date(log.createdAt).toLocaleDateString()} at {new Date(log.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                                                    <p className="text-sm font-black text-slate-900 dark:text-white leading-tight mb-1 truncate">{log.action === 'LESSON_GENERATION' ? "Lesson Mastery Generation" : "Quiz Assessment Sync"}</p>
+                                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest opacity-70">{new Date(log.createdAt).toLocaleDateString()} • {new Date(log.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
                                                 </div>
                                             </div>
                                         ))
                                     ) : (
-                                        <div className="py-12 lg:py-20 text-center border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-3xl lg:rounded-[3rem] opacity-30 text-[#6B7280]"><Sparkles className="w-10 h-10 lg:w-12 lg:h-12 mx-auto mb-4" /><p className="font-bold text-[10px] lg:text-sm tracking-widest uppercase text-center px-10">No signals recorded</p></div>
+                                        <div className="py-20 text-center border-2 border-dashed border-slate-100 dark:border-slate-800 rounded-[3rem] text-slate-200 dark:text-slate-800">
+                                            <Sparkles className="w-12 h-12 mx-auto mb-4" />
+                                            <p className="font-black text-[10px] tracking-[0.3em] uppercase">Awaiting Registry Signals</p>
+                                        </div>
                                     )}
                                 </div>
                             </div>
 
-                            <div className="p-6 lg:p-8 bg-[#F9FAFB] dark:bg-slate-800/50 rounded-2xl lg:rounded-[2rem] border border-slate-100 dark:border-slate-800 relative overflow-hidden group">
-                                <p className="text-[9px] lg:text-[10px] font-bold text-[#6B7280] dark:text-slate-500 uppercase tracking-widest mb-1 relative z-10">Institutional Identification</p>
-                                <p className="text-base lg:text-xl font-bold text-[#111827] dark:text-white truncate relative z-10">{selectedTeacher.email}</p>
-                                <div className="absolute top-0 right-0 w-32 h-32 bg-[#16A34A]/5 rounded-full blur-2xl -mr-16 -mt-16" />
+                            <div className="p-8 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 relative overflow-hidden group/id">
+                                <div className="absolute top-0 right-0 w-32 h-32 bg-[#16A34A]/5 blur-2xl rounded-full translate-x-12 -translate-y-12"></div>
+                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1 relative z-10 opacity-70">Registry Identification Protocol</p>
+                                <p className="text-lg lg:text-xl font-black text-slate-900 dark:text-white truncate relative z-10 group-hover/id:text-[#16A34A] transition-colors">{selectedTeacher.email}</p>
                             </div>
                         </div>
 
-                        <div className="p-6 lg:p-14 bg-[#F9FAFB] dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 grid grid-cols-2 gap-4 lg:gap-6">
-                            <button onClick={e => { e.stopPropagation(); handleRemoveTeacher(selectedTeacher.id, selectedTeacher.name); }} className="py-4 lg:py-5 bg-white dark:bg-slate-800 border-2 border-red-200 dark:border-red-900/30 text-red-600 rounded-2xl font-bold text-[10px] lg:text-xs uppercase tracking-widest hover:bg-red-50 transition-all flex items-center justify-center">Remove Staff</button>
-                            <button onClick={e => { e.stopPropagation(); setEditingLimit(selectedTeacher.id); setNewLimitValue(selectedTeacher.monthlyLessonLimit || 0); }} className="py-4 lg:py-5 bg-[#16A34A] text-white rounded-2xl font-bold text-[10px] lg:text-xs uppercase tracking-widest shadow-xl shadow-[#16A34A]/20 hover:bg-opacity-90 transition-all flex items-center justify-center">Adjust Quota</button>
+                        <div className="p-8 lg:p-14 bg-slate-50/50 dark:bg-slate-900/50 backdrop-blur-xl border-t border-slate-100 dark:border-slate-800 grid grid-cols-2 gap-6 relative z-10">
+                            <button onClick={e => { e.stopPropagation(); handleRemoveTeacher(selectedTeacher.id, selectedTeacher.name); }} className="py-5 bg-white dark:bg-slate-800 border-2 border-red-100 dark:border-red-900/30 text-red-500 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-red-50 transition-all flex items-center justify-center">Terminate Access</button>
+                            <button onClick={e => { e.stopPropagation(); setEditingLimit(selectedTeacher.id); setNewLimitValue(selectedTeacher.monthlyLessonLimit || 0); }} className="py-5 bg-[#16A34A] text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-[#16A34A]/20 hover:scale-[1.02] transition-all flex items-center justify-center">Adjust Limits</button>
                         </div>
                     </div>
                 </div>

@@ -102,99 +102,154 @@ const MyProfile: React.FC<MyProfileProps> = ({ isAdminView = false }) => {
   const isSystemAdmin = current?.role.toLowerCase() === 'admin' || current?.role.toLowerCase() === 'superadmin';
 
   return (
-    <div className="p-6 bg-white dark:bg-slate-800 rounded-lg shadow border border-slate-100 dark:border-slate-700">
-      <h3 className="text-lg font-medium text-slate-900 dark:text-slate-100 mb-4">
-        {isAdminView ? 'Admin Account Settings' : 'My Profile'}
-      </h3>
+    <div className="space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      {/* Profile Header section */}
+      <div className="flex flex-col md:flex-row items-center gap-8 pb-10 border-b border-slate-100 dark:border-slate-800">
+        <div className="relative group">
+          <div className="w-32 h-32 sm:w-40 sm:h-40 bg-white dark:bg-slate-900 rounded-[3.5rem] overflow-hidden flex items-center justify-center border-4 border-white dark:border-slate-800 shadow-2xl relative z-10">
+            {avatar ? (
+              <img src={avatar} alt="avatar" className="w-full h-full object-cover transition-transform group-hover:scale-110 duration-500" />
+            ) : (
+              <div className="w-full h-full bg-slate-50 dark:bg-slate-800 flex items-center justify-center">
+                <span className="text-5xl font-black text-[#16A34A]">{(name || 'U').charAt(0)}</span>
+              </div>
+            )}
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="col-span-1 flex flex-col items-center">
-          <div className="relative group">
-            <div className="w-32 h-32 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden flex items-center justify-center border-4 border-slate-50 dark:border-slate-800 shadow-inner">
-              {avatar ? (
-                <img src={avatar} alt="avatar" className="w-full h-full object-cover" />
-              ) : (
-                <span className="text-4xl font-bold text-brand-600">{(name || 'U').charAt(0)}</span>
-              )}
-            </div>
             {uploading && (
-              <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center">
-                <div className="w-6 h-6 border-2 border-white border-t-transparent animate-spin rounded-full"></div>
+              <div className="absolute inset-0 bg-white/60 dark:bg-black/60 backdrop-blur-sm flex items-center justify-center">
+                <div className="w-8 h-8 border-4 border-[#16A34A] border-t-transparent animate-spin rounded-full"></div>
               </div>
             )}
           </div>
 
-          <div className="mt-4 w-full">
-            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider text-center mb-2">Change Profile Photo</label>
-            <input type="file" accept="image/*" onChange={handleFile} className="block w-full text-xs text-slate-500 file:mr-2 file:py-1 file:px-2 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-brand-50 file:text-brand-700 hover:file:bg-brand-100" />
-            {uploadError && <div className="text-xs text-red-500 mt-1 text-center">{uploadError}</div>}
-          </div>
+          {/* Decorative Ring */}
+          <div className="absolute inset-[-8px] border-2 border-dashed border-[#16A34A]/20 rounded-[4rem] animate-spin-slow"></div>
+
+          <label className="absolute bottom-2 right-2 w-10 h-10 bg-[#16A34A] text-white rounded-2xl flex items-center justify-center shadow-xl cursor-pointer hover:scale-110 transition-all z-20">
+            <input type="file" accept="image/*" onChange={handleFile} className="hidden" />
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+          </label>
         </div>
 
-        <div className="col-span-2">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Full Name</label>
-              <input value={name} onChange={(e) => setName(e.target.value)} className="mt-1 block w-full rounded-md border border-slate-300 dark:border-slate-700 p-2 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-brand-500 outline-none" placeholder="Your Name" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Email Address</label>
-              <input value={email} onChange={(e) => setEmail(e.target.value)} className="mt-1 block w-full rounded-md border border-slate-300 dark:border-slate-700 p-2 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-brand-500 outline-none" placeholder="email@example.com" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Professional Title</label>
-              {isSystemAdmin ? (
-                <div className="mt-1 block w-full rounded-md border border-slate-100 dark:border-slate-800 p-2 bg-slate-50 dark:bg-slate-900 text-slate-500 cursor-not-allowed">
-                  {current?.role || 'Admin'} (System Role)
-                </div>
-              ) : (
-                <select value={role} onChange={(e) => setRole(e.target.value)} className="mt-1 block w-full rounded-md border border-slate-300 dark:border-slate-700 p-2 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-brand-500 outline-none">
-                  <option value="Teacher">Teacher</option>
-                  <option value="Principal">Principal</option>
-                  <option value="Proprietor/Proprietress">Proprietor/Proprietress</option>
-                  <option value="Headmaster/Headmistress">Headmaster/Headmistress</option>
-                  <option value="Educator">Educator</option>
-                  <option value="Student">Student</option>
-                  <option value="School Admin">School Admin</option>
-                </select>
-              )}
-            </div>
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">New Password</label>
-              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="mt-1 block w-full rounded-md border border-slate-300 dark:border-slate-700 p-2 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-brand-500 outline-none" placeholder="Leave blank to keep current password" />
-            </div>
+        <div className="text-center md:text-left space-y-2">
+          <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">{name || 'Your Profile'}</h2>
+          <div className="flex flex-wrap items-center justify-center md:justify-start gap-3">
+            <span className="bg-[#16A34A]/10 text-[#16A34A] px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border border-[#16A34A]/20">
+              {role}
+            </span>
+            <span className="text-slate-400 font-bold text-sm">{email}</span>
           </div>
+        </div>
+      </div>
 
-          <div className="mt-8 flex items-center gap-3">
-            <button onClick={handleSave} disabled={saving} className="px-6 py-2 bg-brand-600 text-white rounded-lg font-semibold hover:bg-brand-700 transition-colors shadow-sm disabled:opacity-50">
-              {saving ? 'Saving...' : 'Save Profile Changes'}
-            </button>
-            {!isAdminView && (
-              <button onClick={handleDeleteAccount} className="px-4 py-2 border border-red-200 text-red-600 rounded-lg text-sm hover:bg-red-50 transition-colors">
-                Delete Account
-              </button>
-            )}
-          </div>
+      {/* Form Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="space-y-2 md:col-span-2">
+          <label className="block text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Full Identity Name</label>
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="w-full bg-slate-50 dark:bg-slate-800/50 border-2 border-transparent focus:border-[#16A34A] rounded-2xl px-6 py-4 text-slate-900 dark:text-white font-bold placeholder:text-slate-300 outline-none transition-all shadow-sm"
+            placeholder="Your Name"
+          />
+        </div>
 
-          {!isAdminView && schoolInfo && (
-            <div className="mt-10 p-4 bg-brand-50/50 dark:bg-slate-900 rounded-xl border border-brand-100 dark:border-slate-800">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-2 h-2 rounded-full bg-brand-500"></div>
-                <h4 className="font-bold text-sm text-slate-700 dark:text-slate-200 uppercase tracking-wider">Linked School</h4>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-xs text-slate-500 uppercase">School Name</p>
-                  <p className="font-semibold text-slate-900 dark:text-slate-100">{schoolInfo.name}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-slate-500 uppercase">Teacher Capacity</p>
-                  <p className="font-semibold text-slate-900 dark:text-slate-100">{schoolInfo.teachers?.length || 0} Teachers</p>
-                </div>
+        <div className="space-y-2">
+          <label className="block text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Email Address</label>
+          <input
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="w-full bg-slate-50 dark:bg-slate-800/50 border-2 border-transparent focus:border-[#16A34A] rounded-2xl px-6 py-4 text-slate-900 dark:text-white font-bold placeholder:text-slate-300 outline-none transition-all shadow-sm"
+            placeholder="email@example.com"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <label className="block text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Professional Focus</label>
+          {isSystemAdmin ? (
+            <div className="w-full bg-slate-100 dark:bg-slate-900/50 rounded-2xl px-6 py-4 text-slate-400 font-bold border-2 border-transparent">
+              {current?.role || 'Admin'} (System Locked)
+            </div>
+          ) : (
+            <div className="relative">
+              <select
+                value={role}
+                onChange={(e) => setRole(e.target.value)}
+                className="w-full bg-slate-50 dark:bg-slate-800/50 border-2 border-transparent focus:border-[#16A34A] rounded-2xl px-6 py-4 text-slate-900 dark:text-white font-bold appearance-none outline-none transition-all shadow-sm"
+              >
+                <option value="Teacher">Teacher</option>
+                <option value="Principal">Principal</option>
+                <option value="Proprietor/Proprietress">Proprietor/Proprietress</option>
+                <option value="Headmaster/Headmistress">Headmaster/Headmistress</option>
+                <option value="Educator">Educator</option>
+                <option value="Student">Student</option>
+                <option value="School Admin">School Admin</option>
+              </select>
+              <div className="absolute inset-y-0 right-5 flex items-center pointer-events-none">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
               </div>
             </div>
           )}
         </div>
+
+        <div className="space-y-2 md:col-span-2">
+          <label className="block text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Update Password</label>
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="w-full bg-slate-50 dark:bg-slate-800/50 border-2 border-transparent focus:border-[#16A34A] rounded-2xl px-6 py-4 text-slate-900 dark:text-white font-bold placeholder:text-slate-300 outline-none transition-all shadow-sm"
+            placeholder="Leave blank to keep current"
+          />
+        </div>
+      </div>
+
+      {/* Linked School Card */}
+      {!isAdminView && schoolInfo && (
+        <div className="bg-gradient-to-br from-[#16A34A]/5 to-blue-500/5 dark:from-[#16A34A]/10 dark:to-blue-500/10 p-8 rounded-[2rem] border-2 border-[#16A34A]/10 relative overflow-hidden group">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-[#16A34A]/5 blur-3xl rounded-full translate-x-12 -translate-y-12"></div>
+          <div className="flex items-center gap-4 mb-6">
+            <div className="w-12 h-12 bg-white dark:bg-slate-900 rounded-2xl flex items-center justify-center text-[#16A34A] shadow-lg border border-slate-100 dark:border-slate-800 transition-transform group-hover:rotate-6">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+              </svg>
+            </div>
+            <div>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Institutional Affiliation</p>
+              <h4 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">{schoolInfo.name}</h4>
+            </div>
+          </div>
+          <div className="flex items-center gap-6">
+            <div className="flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#16A34A]"></span>
+              <span className="text-sm font-bold text-slate-500 dark:text-slate-400">{schoolInfo.teachers?.length || 0} Registered Educators</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Action Buttons */}
+      <div className="pt-6 flex flex-col sm:flex-row items-center gap-4">
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="w-full sm:w-auto px-10 py-5 bg-[#16A34A] text-white font-black rounded-2xl shadow-xl shadow-[#16A34A]/20 hover:shadow-[#16A34A]/40 transition-all hover:scale-[1.05] active:scale-[0.95] disabled:opacity-50 flex items-center justify-center gap-3 text-lg"
+        >
+          {saving ? 'Syncing...' : 'Save Profile Changes'}
+        </button>
+        {!isAdminView && (
+          <button
+            onClick={handleDeleteAccount}
+            className="w-full sm:w-auto px-8 py-5 text-red-500 font-black rounded-2xl border-2 border-red-100 dark:border-red-900/30 hover:bg-red-50 dark:hover:bg-red-900/10 transition-all text-xs uppercase tracking-widest"
+          >
+            Permanently Terminate Account
+          </button>
+        )}
       </div>
     </div>
   );

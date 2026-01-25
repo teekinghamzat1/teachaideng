@@ -4,7 +4,7 @@ import { generateAssessment } from '../services/geminiService';
 import { Assessment, Subject, ClassLevel } from '../types';
 import {
     Loader2, Clipboard, Save, CheckCircle, Share, WifiOff, Star, Send,
-    ChevronRight, ArrowLeft, BookOpen, Users, Zap, Clock, Search, Edit3,
+    ChevronRight, ArrowLeft, BookOpen, Users, Zap, Clock, Search, Edit,
     SettingsIcon as Settings, AlertCircle, Sparkles, FileText, CheckSquare
 } from '../components/Icons';
 import { useNavigate } from 'react-router-dom';
@@ -148,7 +148,7 @@ const AssessmentGenerator: React.FC = () => {
                         <div className="flex flex-col items-center relative gap-2">
                             <div
                                 className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300 ${step >= s.id ? 'bg-[#16A34A] text-white shadow-lg shadow-[#16A34A]/20' :
-                                        'bg-white dark:bg-slate-800 text-slate-400 dark:text-slate-500 border border-slate-200 dark:border-slate-700'
+                                    'bg-white dark:bg-slate-800 text-slate-400 dark:text-slate-500 border border-slate-200 dark:border-slate-700'
                                     }`}
                             >
                                 {step > s.id ? <CheckCircle className="w-5 h-5" /> : s.id}
