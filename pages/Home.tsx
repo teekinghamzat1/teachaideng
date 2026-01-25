@@ -5,6 +5,7 @@ import {
   Users, Calendar, Clipboard, Volume, Loader2, X, Star, ChevronRight
 } from '../components/Icons';
 import { db } from '../database';
+import { useBranding } from '../contexts/BrandingContext';
 
 interface Testimonial {
   id: string;
@@ -28,6 +29,7 @@ interface BlogPostStub {
 
 const Home: React.FC = () => {
   const user = db.auth.getCurrentUser();
+  const branding = useBranding();
 
   return (
     <div className="flex flex-col bg-white dark:bg-slate-950 overflow-x-hidden">
@@ -77,10 +79,10 @@ const Home: React.FC = () => {
                     </div>
                   ))}
                   <div className="w-9 h-9 lg:w-10 lg:h-10 rounded-full border-2 border-white dark:border-slate-950 bg-[#16A34A] flex items-center justify-center font-bold text-[10px] text-white">
-                    5k+
+                    {branding.userCount > 1000 ? `${(branding.userCount / 1000).toFixed(0)}k+` : branding.userCount}
                   </div>
                 </div>
-                <p className="text-xs lg:text-sm font-bold tracking-tight">Trusted by 5,000+ educators nationwide</p>
+                <p className="text-xs lg:text-sm font-bold tracking-tight">Trusted by {branding.userCount > 1000 ? `${(branding.userCount / 1000).toFixed(0)}k+` : branding.userCount.toLocaleString()}+ educators nationwide</p>
               </div>
             </div>
 

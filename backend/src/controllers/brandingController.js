@@ -7,6 +7,7 @@ const formatResponse = require('../utils/formatResponse');
 // @access  Public
 const getBrandingSettings = asyncHandler(async (req, res) => {
     try {
+        const userCount = await prisma.user.count();
         const settings = await prisma.systemSetting.findFirst({
             select: {
                 siteName: true,
@@ -32,11 +33,12 @@ const getBrandingSettings = asyncHandler(async (req, res) => {
                 brandPrimaryColor: '#1F4FD8',
                 brandSecondaryColor: '#16A34A',
                 brandAccentColor: '#FBBF24',
-                brandFont: 'Inter'
+                brandFont: 'Inter',
+                userCount
             }));
         }
 
-        res.json(formatResponse(true, 'Branding settings retrieved', settings));
+        res.json(formatResponse(true, 'Branding settings retrieved', { ...settings, userCount }));
     } catch (err) {
         console.error('Failed to retrieve branding settings', err);
         res.status(500);

@@ -10,6 +10,7 @@ interface BrandingSettings {
     brandSecondaryColor: string;
     brandAccentColor: string;
     brandFont: string;
+    userCount: number;
 }
 
 const defaultBranding: BrandingSettings = {
@@ -21,7 +22,8 @@ const defaultBranding: BrandingSettings = {
     brandPrimaryColor: '#1F4FD8',
     brandSecondaryColor: '#16A34A',
     brandAccentColor: '#FBBF24',
-    brandFont: 'Inter'
+    brandFont: 'Inter',
+    userCount: 1000
 };
 
 const BrandingContext = createContext<BrandingSettings>(defaultBranding);

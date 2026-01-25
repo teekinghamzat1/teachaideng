@@ -456,7 +456,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
               <div className="space-y-3 pt-2">
                 {[
-                  'Trusted by 1,000+ Nigerian teachers',
+                  `Trusted by ${branding.userCount > 1000 ? `${(branding.userCount / 1000).toFixed(0)}k+` : branding.userCount.toLocaleString()}+ Nigerian teachers`,
                   'Ministry-compliant lesson format',
                   'Dedicated Nigerian support team'
                 ].map((item, i) => (
