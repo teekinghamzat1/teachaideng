@@ -89,10 +89,9 @@ const loginUser = asyncHandler(async (req, res) => {
 
         const user = await prisma.user.findUnique({ where: { email } });
 
-        // If user is not found, provide precise feedback that account is missing/deleted
         if (!user) {
-            res.status(404);
-            throw new Error('Account not found or has been deleted');
+            res.status(401);
+            throw new Error('Invalid credentials');
         }
 
         // Ensure password field exists on user record
@@ -151,9 +150,8 @@ const loginUser = asyncHandler(async (req, res) => {
                 })
             );
         } else {
-            // At this point the user exists but password did not match
             res.status(401);
-            throw new Error('Incorrect password');
+            throw new Error('Invalid credentials');
         }
     } catch (err) {
         console.error('Login error for', req?.body?.email, err);
