@@ -1,6 +1,9 @@
 const nodemailer = require('nodemailer');
 const prisma = require('../config/db');
 
+let cachedTransporter = null;
+let lastSettingsHash = '';
+
 /**
  * Get SMTP transporter from system settings
  */
@@ -13,6 +16,13 @@ const getTransporter = async () => {
         if (!settings || !settings.smtpHost || !settings.smtpUser) {
             console.warn('SMTP not configured. Email will not be sent.');
             return null;
+        }
+
+        // Create a simple hash/string of settings to check for changes
+        const settingsHash = `${settings.smtpHost}-${settings.smtpPort}-${settings.smtpUser}-${settings.smtpPassword}`;
+
+        if (cachedTransporter && lastSettingsHash === settingsHash) {
+            return cachedTransporter;
         }
 
         // Sanitize settings to remove potential hidden characters/newlines
@@ -31,8 +41,14 @@ const getTransporter = async () => {
             },
             tls: {
                 rejectUnauthorized: false
-            }
+            },
+            pool: true, // Use connection pooling
+            maxConnections: 5,
+            maxMessages: 100
         });
+
+        cachedTransporter = transporter;
+        lastSettingsHash = settingsHash;
 
         return transporter;
     } catch (error) {

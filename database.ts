@@ -33,8 +33,9 @@ export const getAnyAuthHeader = () => {
 
 const handleResponse = async (response: Response) => {
   if (response.status === 401) {
-    const url = response.url;
-    const isLoginPage = window.location.pathname === '/login' || window.location.pathname === '/admin/login';
+    const { url } = response;
+    const { pathname } = window.location;
+    const isLoginPage = pathname === '/login' || pathname === '/admin/login';
 
     // Unified 401 logic
     const isAdminPath = window.location.pathname.startsWith('/admin');
@@ -740,6 +741,25 @@ export const db = {
         body: JSON.stringify(data),
       });
       await handleResponse(response);
+    },
+
+    async sendMassEmail(data: { subject: string; body: string; targetGroup: string }): Promise<void> {
+      const response = await fetch(`${API_URL}/admin/mass-email`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAdminAuthHeader(),
+        },
+        body: JSON.stringify(data),
+      });
+      await handleResponse(response);
+    },
+
+    async getMassEmailHistory(): Promise<any[]> {
+      const response = await fetch(`${API_URL}/admin/mass-email`, {
+        headers: getAdminAuthHeader(),
+      });
+      return handleResponse(response);
     },
 
     referenceSchemes: {

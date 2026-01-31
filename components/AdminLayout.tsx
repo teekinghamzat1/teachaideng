@@ -75,6 +75,7 @@ const AdminLayout: React.FC = () => {
         { name: 'Users', path: '/admin/users', icon: Users },
         { name: 'Content', path: '/admin/content', icon: FileText },
         { name: 'Support', path: '/admin/support', icon: MessageSquare },
+        { name: 'Mass Email', path: '/admin/mass-email', icon: Bell },
         { name: 'Error Logs', path: '/admin/errors', icon: AlertTriangle },
         { name: 'My Account', path: '/admin/profile', icon: SettingsIcon },
     ];

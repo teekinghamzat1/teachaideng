@@ -42,6 +42,7 @@ import AdminErrors from './pages/AdminErrors';
 import AdminSupport from './pages/AdminSupport';
 import AdminSchemes from './pages/AdminSchemes';
 import AdminAnalytics from './pages/AdminAnalytics';
+import AdminMassEmail from './pages/AdminMassEmail';
 
 import ProtectedRoute from './components/ProtectedRoute';
 import { BrandingProvider } from './contexts/BrandingContext';
@@ -155,6 +156,7 @@ const App: React.FC = () => {
             <Route path="blog" element={<AdminBlog />} />
             <Route path="errors" element={<AdminErrors />} />
             <Route path="support" element={<AdminSupport />} />
+            <Route path="mass-email" element={<AdminMassEmail />} />
           </Route>
 
           {/* 404 Route */}

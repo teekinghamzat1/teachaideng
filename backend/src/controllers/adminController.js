@@ -773,11 +773,134 @@ const updateUserPlan = asyncHandler(async (req, res) => {
     res.json(formatResponse(true, `User plan updated to ${normalizedPlan}`, updatedUser));
 });
 
-const errorLogController = require('./errorLogController');
+// @desc    Send mass email to all or filtered users
+// @route   POST /api/admin/mass-email
+// @access  Private/SuperAdmin (or Admin if allowed)
+const sendMassEmail = asyncHandler(async (req, res) => {
+    const { subject, body, targetGroup } = req.body; // targetGroup: 'all', 'pro', 'free', 'school'
 
-const getErrorLogs = errorLogController.getErrorLogs;
-const logError = errorLogController.logError;
-const resolveError = errorLogController.resolveError;
+    if (!subject || !body) {
+        res.status(400);
+        throw new Error('Subject and body are required');
+    }
+
+    let where = { teacherStatus: 'Active' };
+    if (targetGroup === 'pro') where.subscriptionPlan = 'Pro';
+    if (targetGroup === 'free') where.subscriptionPlan = 'Free';
+    if (targetGroup === 'school') where.subscriptionPlan = 'School';
+
+    const users = await prisma.user.findMany({
+        where,
+        select: { email: true, name: true }
+    });
+
+    if (users.length === 0) {
+        return res.json(formatResponse(true, 'No users found to email'));
+    }
+
+    const { getTransporter } = require('../utils/emailService');
+    const transporter = await getTransporter();
+
+    if (!transporter) {
+        res.status(500);
+        throw new Error('Email service not configured');
+    }
+
+    const settings = await prisma.systemSetting.findUnique({ where: { id: 1 } });
+    const fromEmail = settings.smtpFromEmail || settings.smtpUser;
+    const fromName = settings.smtpFromName || 'TeachAide AI';
+
+    // Create history record
+    const massEmailRecord = await prisma.massEmail.create({
+        data: {
+            subject,
+            body,
+            targetGroup,
+            recipientCount: users.length,
+            adminId: req.user.id
+        }
+    });
+
+    // Start sending in "background"
+    res.json(formatResponse(true, `Started sending mass email to ${users.length} users.`, massEmailRecord));
+
+    // Process in batches to avoid overwhelming SMTP or timing out if possible
+    // Note: In serverless, this might still be cut off. 
+    // But for now, we'll implement it as a robust loop.
+
+    const sendBatch = async (batch) => {
+        let successCount = 0;
+        let failCount = 0;
+
+        console.log(`Starting mass email send for ${batch.length} recipients...`);
+
+        for (const user of batch) {
+            try {
+                const personalizedBody = body.replace(/\${user\.name}/g, user.name);
+
+                await transporter.sendMail({
+                    from: `"${fromName}" <${fromEmail}>`,
+                    to: user.email,
+                    subject: subject,
+                    html: `
+                        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
+                            <div style="background: #1e293b; color: white; padding: 15px; border-radius: 8px 8px 0 0;">
+                                <h2 style="margin: 0; font-size: 18px;">${settings.siteName || 'TeachAide AI'}</h2>
+                            </div>
+                            <div style="padding: 20px; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 8px 8px; line-height: 1.6;">
+                                <p>Hello ${user.name},</p>
+                                ${personalizedBody}
+                                <hr style="margin: 20px 0; border: none; border-top: 1px solid #eee;" />
+                                <p style="font-size: 12px; color: #64748b;">
+                                    You are receiving this because you are a registered user on TeachAide AI.<br>
+                                    To manage your notification settings, please visit your account dashboard.
+                                </p>
+                            </div>
+                        </div>
+                    `
+                });
+                successCount++;
+                // Small delay between emails to avoid spam filters (e.g. 500ms)
+                await new Promise(resolve => setTimeout(resolve, 500));
+            } catch (err) {
+                failCount++;
+                console.error(`[MASS_EMAIL_ERROR] Failed to send to ${user.email}:`, err.message);
+            }
+        }
+        console.log(`Mass email finished. Success: ${successCount}, Failed: ${failCount}`);
+    };
+
+    // Run the sending process
+    (async () => {
+        await sendBatch(users);
+        console.info(`Finished sending mass email: ${subject}`);
+        await createAdminLog(req.user.id, null, 'SEND_MASS_EMAIL', {
+            subject,
+            recipientCount: users.length,
+            targetGroup
+        });
+    })().catch(err => {
+        console.error('Background mass email failed:', err);
+        // Log individual failures if needed, but for now we log to console
+    });
+});
+
+// @desc    Get mass email history
+// @route   GET /api/admin/mass-email
+// @access  Private/Admin
+const getMassEmailHistory = asyncHandler(async (req, res) => {
+    const history = await prisma.massEmail.findMany({
+        orderBy: { createdAt: 'desc' },
+        include: {
+            admin: {
+                select: { name: true, email: true }
+            }
+        }
+    });
+    res.json(formatResponse(true, 'Mass email history retrieved', history));
+});
+
+const { getErrorLogs, logError, resolveError } = require('./errorLogController');
 
 module.exports = {
     getDashboardStats,
@@ -799,5 +922,7 @@ module.exports = {
     getAdminLogs,
     getErrorLogs,
     logError,
-    resolveError
+    resolveError,
+    sendMassEmail,
+    getMassEmailHistory
 };

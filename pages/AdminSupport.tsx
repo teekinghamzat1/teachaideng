@@ -31,8 +31,13 @@ const AdminSupport: React.FC = () => {
 
     const scrollRef = useRef<HTMLDivElement>(null);
     const pollInterval = useRef<any>(null);
+    const lastUnreadTotal = useRef<number>(0);
 
     useEffect(() => {
+        // Request notification permission
+        if ('Notification' in window && Notification.permission === 'default') {
+            Notification.requestPermission();
+        }
         loadData();
         const interval = setInterval(loadData, 10000); // Poll list
         return () => clearInterval(interval);
@@ -58,6 +63,24 @@ const AdminSupport: React.FC = () => {
         try {
             if (activeTab === 'chats') {
                 const data = await db.support.admin.getAllSessions();
+
+                // Calculate total unread
+                const currentUnread = data.reduce((acc: number, s: any) => acc + (s.unreadCount || 0), 0);
+
+                // If unread count increased, trigger notification
+                if (currentUnread > lastUnreadTotal.current) {
+                    const newMessages = data.filter((s: any) => s.unreadCount > 0);
+                    const latest = newMessages[0];
+
+                    if (latest && 'Notification' in window && Notification.permission === 'granted') {
+                        new Notification('New Support Message', {
+                            body: `${latest.user?.name || 'User'} sent a message: ${latest.lastMessage}`,
+                            icon: '/logo.png' // Adjust icon path as needed
+                        });
+                    }
+                }
+
+                lastUnreadTotal.current = currentUnread;
                 setSessions(data);
             } else {
                 const data = await db.support.admin.getTickets();

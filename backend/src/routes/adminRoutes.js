@@ -18,7 +18,11 @@ const {
     getAdminLogs,
     getErrorLogs,
     logError,
-    resolveError
+    resolveError,
+    sendMassEmail,
+    getMassEmailHistory,
+    provisionSchool,
+    deleteUserPermanently
 } = require('../controllers/adminController');
 
 const {
@@ -29,8 +33,6 @@ const {
     toggleTestimonialActive
 } = require('../controllers/testimonialController');
 
-const { provisionSchool } = require('../controllers/adminController');
-const { deleteUserPermanently } = require('../controllers/adminController');
 const { protect } = require('../middlewares/authMiddleware');
 const { admin } = require('../middlewares/adminMiddleware');
 const { superAdmin } = require('../middlewares/superAdminMiddleware');
@@ -89,5 +91,9 @@ router.post('/testimonials', createTestimonial);
 router.patch('/testimonials/:id', updateTestimonial);
 router.delete('/testimonials/:id', deleteTestimonial);
 router.patch('/testimonials/:id/toggle', toggleTestimonialActive);
+
+// Mass Emailing
+router.post('/mass-email', sendMassEmail);
+router.get('/mass-email', getMassEmailHistory);
 
 module.exports = router;
