@@ -4,6 +4,13 @@ import {
     Edit, Trash, Plus, CheckCircle, X, Search, FileText, Eye, EyeOff
 } from '../components/Icons';
 import { showAlert } from '../utils/alerts';
+import ReactQuill from 'react-quill';
+import 'react-quill/dist/quill.snow.css';
+import { useDebounce } from '../hooks/useDebounce';
+
+const LoadingSpinner = () => (
+    <div className="w-4 h-4 border-2 border-brand-600 border-t-transparent rounded-full animate-spin"></div>
+);
 
 interface BlogPost {
     id: string;
@@ -20,11 +27,6 @@ interface BlogPost {
     createdAt: string;
 }
 
-const LoadingSpinner = () => <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-brand-600"></div>;
-
-import ReactQuill from 'react-quill';
-import 'react-quill/dist/quill.snow.css';
-
 const AdminBlog: React.FC = () => {
     const [posts, setPosts] = useState<BlogPost[]>([]);
     const [loading, setLoading] = useState(true);
@@ -32,6 +34,14 @@ const AdminBlog: React.FC = () => {
     const [isEditing, setIsEditing] = useState(false);
     const [currentPost, setCurrentPost] = useState<Partial<BlogPost>>({});
     const [showModal, setShowModal] = useState(false);
+    const [activeTab, setActiveTab] = useState<'all' | 'published' | 'drafts'>('all');
+
+    // Autosave State
+    const [isSaving, setIsSaving] = useState(false);
+    const [lastSaved, setLastSaved] = useState<Date | null>(null);
+    const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+
+    const debouncedPost = useDebounce(currentPost, 2000);
 
     // Image Upload State
     const [uploadingImage, setUploadingImage] = useState(false);
@@ -39,6 +49,46 @@ const AdminBlog: React.FC = () => {
     useEffect(() => {
         fetchPosts();
     }, []);
+
+    // Autosave logic
+    useEffect(() => {
+        if (showModal && isEditing && debouncedPost.id && hasUnsavedChanges) {
+            autoSave();
+        }
+    }, [debouncedPost]);
+
+    const autoSave = async () => {
+        if (!currentPost.title || !currentPost.content) return;
+
+        try {
+            setIsSaving(true);
+            const response = await fetch(`/api/blog/${currentPost.id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...getAnyAuthHeader()
+                },
+                body: JSON.stringify(currentPost)
+            });
+
+            if (response.ok) {
+                setLastSaved(new Date());
+                setHasUnsavedChanges(false);
+                // Refresh the list in the background
+                const postsRes = await fetch('/api/blog/admin/all', {
+                    headers: getAnyAuthHeader()
+                });
+                if (postsRes.ok) {
+                    const data = await postsRes.json();
+                    setPosts(data);
+                }
+            }
+        } catch (error) {
+            console.error('Autosave failed:', error);
+        } finally {
+            setIsSaving(false);
+        }
+    };
 
     const fetchPosts = async () => {
         try {
@@ -141,20 +191,26 @@ const AdminBlog: React.FC = () => {
 
     const openEdit = (post: BlogPost) => {
         setCurrentPost(post);
+        setHasUnsavedChanges(false);
         setIsEditing(true);
         setShowModal(true);
     };
 
     const openNew = () => {
         setCurrentPost({ published: false, author: 'Teachaide Team', content: '' });
+        setHasUnsavedChanges(false);
         setIsEditing(false);
         setShowModal(true);
     };
 
-    const filteredPosts = posts.filter(post =>
-        post.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        post.slug.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const filteredPosts = posts.filter(post => {
+        const matchesSearch = post.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            post.slug.toLowerCase().includes(searchTerm.toLowerCase());
+
+        if (activeTab === 'published') return matchesSearch && post.published;
+        if (activeTab === 'drafts') return matchesSearch && !post.published;
+        return matchesSearch;
+    });
 
     return (
         <div className="p-6 max-w-7xl mx-auto">
@@ -162,6 +218,26 @@ const AdminBlog: React.FC = () => {
                 <div>
                     <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Blog Management</h1>
                     <p className="text-slate-500 dark:text-slate-400">Create, edit, and manage blog articles</p>
+                </div>
+                <div className="flex bg-white dark:bg-slate-800 p-1 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                    <button
+                        onClick={() => setActiveTab('all')}
+                        className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'all' ? 'bg-brand-600 text-white shadow-md' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'}`}
+                    >
+                        All ({posts.length})
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('published')}
+                        className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'published' ? 'bg-brand-600 text-white shadow-md' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'}`}
+                    >
+                        Published ({posts.filter(p => p.published).length})
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('drafts')}
+                        className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'drafts' ? 'bg-brand-600 text-white shadow-md' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'}`}
+                    >
+                        Drafts ({posts.filter(p => !p.published).length})
+                    </button>
                 </div>
                 <button
                     onClick={openNew}
@@ -261,9 +337,24 @@ const AdminBlog: React.FC = () => {
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
                     <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-5xl max-h-[92vh] overflow-y-auto flex flex-col">
                         <div className="p-6 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center sticky top-0 bg-white dark:bg-slate-800 z-10 shrink-0">
-                            <h2 className="text-xl font-bold text-slate-900 dark:text-white">
-                                {isEditing ? 'Edit Post' : 'New Blog Post'}
-                            </h2>
+                            <div>
+                                <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+                                    {isEditing ? 'Edit Post' : 'New Blog Post'}
+                                </h2>
+                                {isEditing && (
+                                    <div className="flex items-center gap-2 mt-1">
+                                        {isSaving ? (
+                                            <span className="text-xs text-brand-600 flex items-center gap-1 font-medium">
+                                                <LoadingSpinner /> Saving...
+                                            </span>
+                                        ) : lastSaved ? (
+                                            <span className="text-xs text-slate-400 font-medium">
+                                                Last saved: {lastSaved.toLocaleTimeString()}
+                                            </span>
+                                        ) : null}
+                                    </div>
+                                )}
+                            </div>
                             <button onClick={() => setShowModal(false)} className="text-slate-400 hover:text-slate-600">
                                 <X className="w-6 h-6" />
                             </button>
@@ -277,7 +368,10 @@ const AdminBlog: React.FC = () => {
                                         type="text"
                                         required
                                         value={currentPost.title || ''}
-                                        onChange={e => setCurrentPost({ ...currentPost, title: e.target.value })}
+                                        onChange={e => {
+                                            setCurrentPost({ ...currentPost, title: e.target.value });
+                                            setHasUnsavedChanges(true);
+                                        }}
                                         className="w-full rounded-lg border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 dark:text-white focus:ring-brand-500"
                                     />
                                 </div>
@@ -287,7 +381,10 @@ const AdminBlog: React.FC = () => {
                                         type="text"
                                         placeholder="auto-generated-if-empty"
                                         value={currentPost.slug || ''}
-                                        onChange={e => setCurrentPost({ ...currentPost, slug: e.target.value })}
+                                        onChange={e => {
+                                            setCurrentPost({ ...currentPost, slug: e.target.value });
+                                            setHasUnsavedChanges(true);
+                                        }}
                                         className="w-full rounded-lg border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 dark:text-white focus:ring-brand-500"
                                     />
                                 </div>
@@ -346,7 +443,10 @@ const AdminBlog: React.FC = () => {
                                 <textarea
                                     rows={2}
                                     value={currentPost.summary || ''}
-                                    onChange={e => setCurrentPost({ ...currentPost, summary: e.target.value })}
+                                    onChange={e => {
+                                        setCurrentPost({ ...currentPost, summary: e.target.value });
+                                        setHasUnsavedChanges(true);
+                                    }}
                                     className="w-full rounded-lg border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 dark:text-white focus:ring-brand-500"
                                 />
                             </div>
@@ -357,7 +457,10 @@ const AdminBlog: React.FC = () => {
                                     <ReactQuill
                                         theme="snow"
                                         value={currentPost.content || ''}
-                                        onChange={(value) => setCurrentPost({ ...currentPost, content: value })}
+                                        onChange={(value) => {
+                                            setCurrentPost({ ...currentPost, content: value });
+                                            setHasUnsavedChanges(true);
+                                        }}
                                         className="h-64 mb-12 text-slate-900 dark:text-white"
                                         placeholder="Write something amazing..."
                                     />
@@ -370,7 +473,10 @@ const AdminBlog: React.FC = () => {
                                     <input
                                         type="text"
                                         value={currentPost.author || ''}
-                                        onChange={e => setCurrentPost({ ...currentPost, author: e.target.value })}
+                                        onChange={e => {
+                                            setCurrentPost({ ...currentPost, author: e.target.value });
+                                            setHasUnsavedChanges(true);
+                                        }}
                                         className="w-full rounded-lg border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 dark:text-white focus:ring-brand-500"
                                     />
                                 </div>
@@ -379,7 +485,10 @@ const AdminBlog: React.FC = () => {
                                         type="checkbox"
                                         id="published"
                                         checked={currentPost.published || false}
-                                        onChange={e => setCurrentPost({ ...currentPost, published: e.target.checked })}
+                                        onChange={e => {
+                                            setCurrentPost({ ...currentPost, published: e.target.checked });
+                                            setHasUnsavedChanges(true);
+                                        }}
                                         className="rounded text-brand-600 focus:ring-brand-500 w-5 h-5 mr-3"
                                     />
                                     <label htmlFor="published" className="text-sm font-medium text-slate-700 dark:text-slate-300 select-none cursor-pointer">
@@ -397,7 +506,10 @@ const AdminBlog: React.FC = () => {
                                         <input
                                             type="text"
                                             value={currentPost.metaTitle || ''}
-                                            onChange={e => setCurrentPost({ ...currentPost, metaTitle: e.target.value })}
+                                            onChange={e => {
+                                                setCurrentPost({ ...currentPost, metaTitle: e.target.value });
+                                                setHasUnsavedChanges(true);
+                                            }}
                                             placeholder="Leave empty to use the Article Title"
                                             className="w-full rounded-lg border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 dark:text-white focus:ring-brand-500"
                                         />
@@ -407,7 +519,10 @@ const AdminBlog: React.FC = () => {
                                         <textarea
                                             rows={2}
                                             value={currentPost.metaDescription || ''}
-                                            onChange={e => setCurrentPost({ ...currentPost, metaDescription: e.target.value })}
+                                            onChange={e => {
+                                                setCurrentPost({ ...currentPost, metaDescription: e.target.value });
+                                                setHasUnsavedChanges(true);
+                                            }}
                                             placeholder="Leave empty to use the Article Summary"
                                             className="w-full rounded-lg border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 dark:text-white focus:ring-brand-500"
                                         />
@@ -417,7 +532,10 @@ const AdminBlog: React.FC = () => {
                                         <input
                                             type="text"
                                             value={currentPost.keywords || ''}
-                                            onChange={e => setCurrentPost({ ...currentPost, keywords: e.target.value })}
+                                            onChange={e => {
+                                                setCurrentPost({ ...currentPost, keywords: e.target.value });
+                                                setHasUnsavedChanges(true);
+                                            }}
                                             placeholder="lesson planning, AI for teachers, etc."
                                             className="w-full rounded-lg border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 dark:text-white focus:ring-brand-500"
                                         />

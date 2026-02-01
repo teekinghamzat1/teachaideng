@@ -99,8 +99,8 @@ const AdminLayout: React.FC = () => {
         <div className="min-h-screen bg-slate-100 dark:bg-slate-900 flex">
             <SEO />
             {/* Sidebar */}
-            <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 text-white transform transition-transform duration-200 ease-in-out ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:relative md:translate-x-0`}>
-                <div className="flex items-center justify-between h-16 px-4 bg-slate-800 dark:bg-slate-800">
+            <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 text-white transform transition-transform duration-200 ease-in-out ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:relative md:translate-x-0 flex flex-col`}>
+                <div className="flex items-center justify-between h-16 px-4 bg-slate-800 dark:bg-slate-800 flex-shrink-0">
                     <div className="flex items-center gap-2">
                         <div className="w-8 h-8 bg-brand-500 rounded-lg flex items-center justify-center text-white">
                             <Shield className="w-5 h-5" />
@@ -112,7 +112,7 @@ const AdminLayout: React.FC = () => {
                     </button>
                 </div>
 
-                <nav className="px-4 py-6 space-y-1">
+                <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto custom-scrollbar">
                     {navItems.map((item) => (
                         <Link
                             key={item.path}
@@ -128,7 +128,7 @@ const AdminLayout: React.FC = () => {
                     ))}
                 </nav>
 
-                <div className="absolute bottom-0 w-full p-4 border-t border-slate-800">
+                <div className="p-4 border-t border-slate-800 flex-shrink-0 bg-slate-900">
                     <button
                         onClick={handleLogout}
                         className="flex items-center w-full px-4 py-3 text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
