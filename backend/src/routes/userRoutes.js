@@ -19,7 +19,6 @@ const updateProfileSchema = z.object({
         email: z.string().email().optional(),
         password: z.string().min(6).optional(),
         avatar: z.string().optional(),
-        role: z.string().optional(),
     }),
 });
 
