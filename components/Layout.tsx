@@ -245,7 +245,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                             <div key={n.id} className="border-b border-slate-50 dark:border-slate-800 last:border-0">
                               <div
                                 onClick={() => setExpandedNotification(expandedNotification === n.id ? null : n.id)}
-                                className={`p-5 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer relative ${!n.isRead ? 'bg-brand-50/30 dark:bg-brand-500/5' : ''}`}
+                                className={`p-5 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer relative ${n.isRead ? '' : 'bg-brand-50/30 dark:bg-brand-500/5'}`}
                               >
                                 {!n.isRead && (
                                   <div className="absolute left-2 top-6 w-1 h-8 bg-brand-500 rounded-full"></div>
@@ -380,7 +380,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                               <div key={n.id} className="border-b border-slate-50 dark:border-slate-800 last:border-0">
                                 <div
                                   onClick={() => setExpandedNotification(expandedNotification === n.id ? null : n.id)}
-                                  className={`p-5 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer relative ${!n.isRead ? 'bg-brand-50/30 dark:bg-brand-500/5' : ''}`}
+                                  className={`p-5 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer relative ${n.isRead ? '' : 'bg-brand-50/30 dark:bg-brand-500/5'}`}
                                 >
                                   <div className="flex items-start justify-between gap-2">
                                     <p className={`text-sm flex-1 ${!n.isRead ? 'font-black text-slate-900 dark:text-white' : 'font-bold text-slate-600 dark:text-slate-400'}`}>{n.title}</p>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../database';
-import { Mail, Users, CheckCircle, XCircle, Eye, Clock, ChevronRight } from './Icons';
+import { Mail, Users, CheckCircle, XCircle, Eye, Clock, ChevronRight } from '../components/Icons';
 
 interface MassEmail {
     id: string;
