@@ -31,6 +31,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
   const [notifications, setNotifications] = useState<any[]>([]);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [expandedNotification, setExpandedNotification] = useState<string | null>(null);
   const [maintenanceMode, setMaintenanceMode] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
@@ -238,24 +239,48 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                         <span className="font-black text-sm text-slate-900 dark:text-white uppercase tracking-widest">Inbox</span>
                         <button onClick={() => setNotificationsOpen(false)} className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors"><X className="w-4 h-4" /></button>
                       </div>
-                      <div className="max-h-[400px] overflow-y-auto custom-scrollbar">
+                      <div className="max-h-[500px] overflow-y-auto custom-scrollbar">
                         {notifications.length > 0 ? (
                           notifications.map(n => (
-                            <div
-                              key={n.id}
-                              onClick={() => !n.isRead && handleMarkAsRead(n.id)}
-                              className={`p-5 border-b border-slate-50 dark:border-slate-800 last:border-0 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer relative group ${!n.isRead ? 'bg-brand-50/30 dark:bg-brand-500/5' : ''}`}
-                            >
-                              {!n.isRead && (
-                                <div className="absolute left-2 top-6 w-1 h-8 bg-brand-500 rounded-full"></div>
-                              )}
-                              <div className="pl-2">
-                                <p className={`text-sm mb-1 ${!n.isRead ? 'font-black text-slate-900 dark:text-white' : 'font-bold text-slate-600 dark:text-slate-400'}`}>{n.title}</p>
-                                <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">{n.message}</p>
-                                <p className="text-[10px] text-slate-400 mt-2 font-bold uppercase tracking-widest">
-                                  {new Date(n.createdAt).toLocaleDateString()}
-                                </p>
+                            <div key={n.id} className="border-b border-slate-50 dark:border-slate-800 last:border-0">
+                              <div
+                                onClick={() => setExpandedNotification(expandedNotification === n.id ? null : n.id)}
+                                className={`p-5 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer relative ${!n.isRead ? 'bg-brand-50/30 dark:bg-brand-500/5' : ''}`}
+                              >
+                                {!n.isRead && (
+                                  <div className="absolute left-2 top-6 w-1 h-8 bg-brand-500 rounded-full"></div>
+                                )}
+                                <div className="pl-2">
+                                  <div className="flex items-start justify-between gap-2">
+                                    <p className={`text-sm flex-1 ${!n.isRead ? 'font-black text-slate-900 dark:text-white' : 'font-bold text-slate-600 dark:text-slate-400'}`}>{n.title}</p>
+                                    <ChevronRight className={`w-4 h-4 text-slate-400 transition-transform ${expandedNotification === n.id ? 'rotate-90' : ''}`} />
+                                  </div>
+                                  {expandedNotification !== n.id && (
+                                    <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed mt-1">{n.message}</p>
+                                  )}
+                                  <p className="text-[10px] text-slate-400 mt-2 font-bold uppercase tracking-widest">
+                                    {new Date(n.createdAt).toLocaleDateString()}
+                                  </p>
+                                </div>
                               </div>
+                              {expandedNotification === n.id && (
+                                <div className="px-5 pb-5 pl-7 bg-slate-50/50 dark:bg-slate-800/30">
+                                  <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap mb-4">{n.message}</p>
+                                  {!n.isRead && (
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleMarkAsRead(n.id);
+                                        setExpandedNotification(null);
+                                      }}
+                                      className="px-4 py-2 bg-brand-500 hover:bg-brand-600 text-white text-xs font-bold rounded-xl transition-colors flex items-center gap-2"
+                                    >
+                                      <CheckCircle className="w-4 h-4" />
+                                      Mark as Read
+                                    </button>
+                                  )}
+                                </div>
+                              )}
                             </div>
                           ))
                         ) : (
@@ -352,16 +377,37 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                         <div className="max-h-[60vh] overflow-y-auto custom-scrollbar">
                           {notifications.length > 0 ? (
                             notifications.map(n => (
-                              <div
-                                key={n.id}
-                                onClick={() => {
-                                  if (!n.isRead) handleMarkAsRead(n.id);
-                                  setNotificationsOpen(false);
-                                }}
-                                className={`p-5 border-b border-slate-50 dark:border-slate-800 last:border-0 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors relative ${!n.isRead ? 'bg-brand-50/30 dark:bg-brand-500/5' : ''}`}
-                              >
-                                <p className={`text-sm mb-1 ${!n.isRead ? 'font-black text-slate-900 dark:text-white' : 'font-bold text-slate-600 dark:text-slate-400'}`}>{n.title}</p>
-                                <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">{n.message}</p>
+                              <div key={n.id} className="border-b border-slate-50 dark:border-slate-800 last:border-0">
+                                <div
+                                  onClick={() => setExpandedNotification(expandedNotification === n.id ? null : n.id)}
+                                  className={`p-5 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer relative ${!n.isRead ? 'bg-brand-50/30 dark:bg-brand-500/5' : ''}`}
+                                >
+                                  <div className="flex items-start justify-between gap-2">
+                                    <p className={`text-sm flex-1 ${!n.isRead ? 'font-black text-slate-900 dark:text-white' : 'font-bold text-slate-600 dark:text-slate-400'}`}>{n.title}</p>
+                                    <ChevronRight className={`w-4 h-4 text-slate-400 transition-transform ${expandedNotification === n.id ? 'rotate-90' : ''}`} />
+                                  </div>
+                                  {expandedNotification !== n.id && (
+                                    <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed mt-1">{n.message}</p>
+                                  )}
+                                </div>
+                                {expandedNotification === n.id && (
+                                  <div className="px-5 pb-5 bg-slate-50/50 dark:bg-slate-800/30">
+                                    <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap mb-4">{n.message}</p>
+                                    {!n.isRead && (
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleMarkAsRead(n.id);
+                                          setExpandedNotification(null);
+                                        }}
+                                        className="px-4 py-2 bg-brand-500 hover:bg-brand-600 text-white text-xs font-bold rounded-xl transition-colors flex items-center gap-2"
+                                      >
+                                        <CheckCircle className="w-4 h-4" />
+                                        Mark as Read
+                                      </button>
+                                    )}
+                                  </div>
+                                )}
                               </div>
                             ))
                           ) : (

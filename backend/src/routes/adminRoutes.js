@@ -19,11 +19,16 @@ const {
     getErrorLogs,
     logError,
     resolveError,
-    sendMassEmail,
-    getMassEmailHistory,
     provisionSchool,
     deleteUserPermanently
 } = require('../controllers/adminController');
+
+const {
+    sendMassEmailWithTracking,
+    trackEmailOpen,
+    getMassEmailHistory,
+    getMassEmailRecipients
+} = require('../controllers/massEmailController');
 
 const {
     getAllTestimonials,
@@ -49,6 +54,9 @@ const createAdminSchema = z.object({
 
 // Public error logging endpoint (allows logging even if not logged in or admin)
 router.post('/error-logs', logError);
+
+// Public email tracking endpoint (tracking pixel - no auth required)
+router.get('/mass-email/:emailId/track/:recipientId/open', trackEmailOpen);
 
 router.use(protect);
 router.use(admin);
@@ -92,8 +100,9 @@ router.patch('/testimonials/:id', updateTestimonial);
 router.delete('/testimonials/:id', deleteTestimonial);
 router.patch('/testimonials/:id/toggle', toggleTestimonialActive);
 
-// Mass Emailing
-router.post('/mass-email', sendMassEmail);
+// Mass Emailing with Tracking
+router.post('/mass-email', sendMassEmailWithTracking);
 router.get('/mass-email', getMassEmailHistory);
+router.get('/mass-email/:id/recipients', getMassEmailRecipients);
 
 module.exports = router;

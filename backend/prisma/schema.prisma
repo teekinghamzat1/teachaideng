@@ -641,5 +641,41 @@ model MassEmail {
   recipientCount Int
   adminId       String
   admin         User     @relation("AdminMassEmails", fields: [adminId], references: [id])
+  
+  // Tracking fields
+  sentCount     Int      @default(0)
+  deliveredCount Int     @default(0)
+  openedCount   Int      @default(0)
+  clickedCount  Int      @default(0)
+  bouncedCount  Int      @default(0)
+  failedCount   Int      @default(0)
+  
+  recipients    EmailRecipient[]
   createdAt     DateTime @default(now())
+}
+
+model EmailRecipient {
+  id            String   @id @default(uuid())
+  massEmailId   String
+  massEmail     MassEmail @relation(fields: [massEmailId], references: [id], onDelete: Cascade)
+  
+  userId        String
+  userEmail     String
+  userName      String
+  
+  status        String   @default("pending") // 'pending', 'sent', 'delivered', 'opened', 'clicked', 'bounced', 'failed'
+  sentAt        DateTime?
+  deliveredAt   DateTime?
+  openedAt      DateTime?
+  clickedAt     DateTime?
+  bouncedAt     DateTime?
+  failedAt      DateTime?
+  
+  errorMessage  String?
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  @@index([massEmailId, status])
+  @@index([userId])
 }

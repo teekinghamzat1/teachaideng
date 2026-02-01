@@ -762,6 +762,14 @@ export const db = {
       return handleResponse(response);
     },
 
+    async getMassEmailRecipients(emailId: string, status?: string): Promise<any[]> {
+      const query = status ? `?status=${status}` : '';
+      const response = await fetch(`${API_URL}/admin/mass-email/${emailId}/recipients${query}`, {
+        headers: getAdminAuthHeader(),
+      });
+      return handleResponse(response);
+    },
+
     referenceSchemes: {
       async getAll(params?: { subject?: string; classLevel?: string; term?: string }): Promise<any[]> {
         const query = new URLSearchParams(params as any).toString();
