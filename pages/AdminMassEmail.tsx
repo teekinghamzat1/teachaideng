@@ -119,8 +119,8 @@ const AdminMassEmail: React.FC = () => {
 
                     {status && (
                         <div className={`p-4 rounded-xl flex gap-3 items-center ${status.type === 'success'
-                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-900/30'
-                                : 'bg-red-50 text-red-700 border border-red-100 dark:bg-red-900/20 dark:text-red-400 dark:border-red-900/30'
+                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-900/30'
+                            : 'bg-red-50 text-red-700 border border-red-100 dark:bg-red-900/20 dark:text-red-400 dark:border-red-900/30'
                             }`}>
                             {status.type === 'success' ? <CheckCircle className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
                             <p className="text-sm font-medium">{status.message}</p>
@@ -143,8 +143,8 @@ const AdminMassEmail: React.FC = () => {
                                             type="button"
                                             onClick={() => setTargetGroup(group.id)}
                                             className={`flex items-center gap-2 px-4 py-3 rounded-xl border text-sm font-medium transition-all ${targetGroup === group.id
-                                                    ? 'bg-brand-600 border-brand-600 text-white shadow-md shadow-brand-200 dark:shadow-none'
-                                                    : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-brand-500'
+                                                ? 'bg-brand-600 border-brand-600 text-white shadow-md shadow-brand-200 dark:shadow-none'
+                                                : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-brand-500'
                                                 }`}
                                         >
                                             <group.icon className="w-4 h-4" />
@@ -246,52 +246,16 @@ const AdminMassEmail: React.FC = () => {
                     ) : (
                         <div className="grid grid-cols-1 gap-4">
                             {filteredHistory.map((item) => (
-                                <div key={item.id} className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-all group">
-                                    <div className="flex justify-between items-start gap-4">
-                                        <div className="flex-1 min-w-0">
-                                            <div className="flex items-center gap-3 mb-2">
-                                                <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider ${item.targetGroup === 'all' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
-                                                        item.targetGroup === 'pro' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' :
-                                                            item.targetGroup === 'school' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' :
-                                                                'bg-slate-100 text-slate-700 dark:bg-slate-900/30 dark:text-slate-400'
-                                                    }`}>
-                                                    {item.targetGroup}
-                                                </span>
-                                                <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium">
-                                                    <Calendar className="w-3.5 h-3.5" />
-                                                    {new Date(item.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                                                </div>
-                                            </div>
-                                            <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100 truncate mb-1">{item.subject}</h3>
-                                            <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-2 mb-4 leading-relaxed">{item.body.replace(/<[^>]*>/g, '')}</p>
-
-                                            <div className="flex items-center gap-6">
-                                                <div className="flex items-center gap-2">
-                                                    <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-xs font-bold text-slate-600 dark:text-slate-300 uppercase">
-                                                        {item.admin?.name?.substring(0, 2) || 'AD'}
-                                                    </div>
-                                                    <span className="text-xs font-medium text-slate-600 dark:text-slate-400">{item.admin?.name || 'Admin'}</span>
-                                                </div>
-                                                <div className="flex items-center gap-1.5 text-xs font-bold text-brand-600">
-                                                    <Users className="w-3.5 h-3.5" />
-                                                    {item.recipientCount} Recipients
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <button
-                                            onClick={() => {
-                                                setSubject(item.subject);
-                                                setBody(item.body);
-                                                setTargetGroup(item.targetGroup);
-                                                setActiveTab('compose');
-                                            }}
-                                            className="p-2 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-400 hover:bg-brand-50 hover:text-brand-600 dark:hover:bg-brand-900/20 transition-all"
-                                            title="Reuse this email"
-                                        >
-                                            <ChevronRight className="w-6 h-6" />
-                                        </button>
-                                    </div>
-                                </div>
+                                <EmailCampaignCard
+                                    key={item.id}
+                                    campaign={item}
+                                    onReuse={(campaign) => {
+                                        setSubject(campaign.subject);
+                                        setBody(campaign.body);
+                                        setTargetGroup(campaign.targetGroup);
+                                        setActiveTab('compose');
+                                    }}
+                                />
                             ))}
                         </div>
                     )}
@@ -307,5 +271,179 @@ const Sparkles = ({ className }: { className?: string }) => (
         <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
     </svg>
 );
+
+// Email Campaign Card with Tracking
+const EmailCampaignCard: React.FC<{ campaign: any; onReuse: (campaign: any) => void }> = ({ campaign, onReuse }) => {
+    const [showRecipients, setShowRecipients] = useState(false);
+    const [recipients, setRecipients] = useState<any[]>([]);
+    const [recipientFilter, setRecipientFilter] = useState<string>('');
+    const [loadingRecipients, setLoadingRecipients] = useState(false);
+
+    const loadRecipients = async (status?: string) => {
+        setLoadingRecipients(true);
+        try {
+            const data = await db.admin.getMassEmailRecipients(campaign.id, status);
+            setRecipients(data);
+            setRecipientFilter(status || '');
+            setShowRecipients(true);
+        } catch (err) {
+            console.error('Failed to load recipients:', err);
+        } finally {
+            setLoadingRecipients(false);
+        }
+    };
+
+    const calculatePercentage = (count: number, total: number) => {
+        return total > 0 ? Math.round((count / total) * 100) : 0;
+    };
+
+    const getStatusColor = (status: string) => {
+        switch (status) {
+            case 'sent': return 'text-blue-600 bg-blue-50 dark:bg-blue-900/20';
+            case 'opened': return 'text-green-600 bg-green-50 dark:bg-green-900/20';
+            case 'failed': return 'text-red-600 bg-red-50 dark:bg-red-900/20';
+            case 'pending': return 'text-gray-600 bg-gray-50 dark:bg-gray-900/20';
+            default: return 'text-gray-600 bg-gray-50 dark:bg-gray-900/20';
+        }
+    };
+
+    return (
+        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden mb-4">
+            <div className="p-6">
+                <div className="flex justify-between items-start gap-4 mb-4">
+                    <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-3 mb-2">
+                            <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider ${campaign.targetGroup === 'all' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
+                                campaign.targetGroup === 'pro' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' :
+                                    campaign.targetGroup === 'school' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' :
+                                        'bg-slate-100 text-slate-700 dark:bg-slate-900/30 dark:text-slate-400'
+                                }`}>
+                                {campaign.targetGroup}
+                            </span>
+                            <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium">
+                                <Calendar className="w-3.5 h-3.5" />
+                                {new Date(campaign.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                            </div>
+                        </div>
+                        <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100 truncate mb-1">{campaign.subject}</h3>
+                        <div className="text-sm text-slate-500 dark:text-slate-400 line-clamp-2 mb-4 leading-relaxed" dangerouslySetInnerHTML={{ __html: campaign.body.replace(/<[^>]*>/g, '').substring(0, 200) + '...' }}></div>
+                    </div>
+                    <button
+                        onClick={() => onReuse(campaign)}
+                        className="p-2 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-400 hover:bg-brand-50 hover:text-brand-600 dark:hover:bg-brand-900/20 transition-all"
+                        title="Reuse this email"
+                    >
+                        <ChevronRight className="w-6 h-6" />
+                    </button>
+                </div>
+
+                {/* Tracking Stats */}
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                    <div className="text-center p-3 bg-slate-50 dark:bg-slate-900/50 rounded-xl">
+                        <Users className="w-4 h-4 text-slate-400 mx-auto mb-1" />
+                        <div className="text-lg font-black text-slate-900 dark:text-white">{campaign.recipientCount}</div>
+                        <div className="text-[10px] text-slate-500 uppercase font-bold">Total</div>
+                    </div>
+
+                    <button
+                        onClick={() => loadRecipients('sent')}
+                        className="text-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
+                    >
+                        <Send className="w-4 h-4 text-blue-600 mx-auto mb-1" />
+                        <div className="text-lg font-black text-blue-600">{campaign.sentCount || 0}</div>
+                        <div className="text-[10px] text-blue-600 uppercase font-bold">
+                            Sent ({calculatePercentage(campaign.sentCount || 0, campaign.recipientCount)}%)
+                        </div>
+                    </button>
+
+                    <button
+                        onClick={() => loadRecipients('opened')}
+                        className="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-xl hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors"
+                    >
+                        <Mail className="w-4 h-4 text-green-600 mx-auto mb-1" />
+                        <div className="text-lg font-black text-green-600">{campaign.openedCount || 0}</div>
+                        <div className="text-[10px] text-green-600 uppercase font-bold">
+                            Opened ({calculatePercentage(campaign.openedCount || 0, campaign.sentCount || 1)}%)
+                        </div>
+                    </button>
+
+                    <button
+                        onClick={() => loadRecipients('failed')}
+                        className="text-center p-3 bg-red-50 dark:bg-red-900/20 rounded-xl hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
+                    >
+                        <AlertCircle className="w-4 h-4 text-red-600 mx-auto mb-1" />
+                        <div className="text-lg font-black text-red-600">{campaign.failedCount || 0}</div>
+                        <div className="text-[10px] text-red-600 uppercase font-bold">
+                            Failed ({calculatePercentage(campaign.failedCount || 0, campaign.recipientCount)}%)
+                        </div>
+                    </button>
+
+                    <button
+                        onClick={() => loadRecipients()}
+                        className="text-center p-3 bg-slate-50 dark:bg-slate-900/50 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                    >
+                        <Info className="w-4 h-4 text-slate-600 mx-auto mb-1" />
+                        <div className="text-lg font-black text-slate-900 dark:text-white">All</div>
+                        <div className="text-[10px] text-slate-500 uppercase font-bold">View All</div>
+                    </button>
+                </div>
+            </div>
+
+            {/* Recipients Modal */}
+            {showRecipients && (
+                <div className="border-t border-slate-200 dark:border-slate-700 p-6 bg-slate-50/50 dark:bg-slate-900/50">
+                    <div className="flex justify-between items-center mb-4">
+                        <h4 className="font-bold text-slate-900 dark:text-white">
+                            {recipientFilter ? `${recipientFilter.charAt(0).toUpperCase() + recipientFilter.slice(1)} Recipients` : 'All Recipients'}
+                            <span className="ml-2 text-sm text-slate-500">({recipients.length})</span>
+                        </h4>
+                        <button
+                            onClick={() => setShowRecipients(false)}
+                            className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                        >
+                            ✕
+                        </button>
+                    </div>
+
+                    {loadingRecipients ? (
+                        <div className="flex justify-center py-8">
+                            <Loader2 className="w-6 h-6 animate-spin text-brand-600" />
+                        </div>
+                    ) : (
+                        <div className="max-h-96 overflow-y-auto space-y-2 custom-scrollbar">
+                            {recipients.length > 0 ? recipients.map((recipient) => (
+                                <div key={recipient.id} className="flex items-center justify-between p-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700">
+                                    <div className="flex-1">
+                                        <div className="font-bold text-sm text-slate-900 dark:text-white">{recipient.userName}</div>
+                                        <div className="text-xs text-slate-500">{recipient.userEmail}</div>
+                                        {recipient.errorMessage && (
+                                            <div className="text-xs text-red-600 mt-1">{recipient.errorMessage}</div>
+                                        )}
+                                    </div>
+                                    <div className="flex flex-col items-end gap-1">
+                                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${getStatusColor(recipient.status)}`}>
+                                            {recipient.status}
+                                        </span>
+                                        <div className="text-[10px] text-slate-400">
+                                            {recipient.openedAt
+                                                ? new Date(recipient.openedAt).toLocaleTimeString()
+                                                : recipient.sentAt
+                                                    ? new Date(recipient.sentAt).toLocaleTimeString()
+                                                    : recipient.failedAt
+                                                        ? new Date(recipient.failedAt).toLocaleTimeString()
+                                                        : '-'}
+                                        </div>
+                                    </div>
+                                </div>
+                            )) : (
+                                <div className="text-center py-8 text-slate-500 text-sm">No recipients found in this category.</div>
+                            )}
+                        </div>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+};
 
 export default AdminMassEmail;
