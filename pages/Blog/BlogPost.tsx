@@ -148,25 +148,40 @@ const BlogPost: React.FC = () => {
         const fetchPost = async () => {
             setLoading(true);
             try {
-                // Determine which mock post to use - for design matching, we force the AI one if it looks similar
-                // or just use the slug normally
-                if (slug && (mockPosts[slug] || slug.includes('ai') || slug.includes('lesson'))) {
-                    // Prefer the detailed mock data for design showcase
-                    const key = Object.keys(mockPosts).find(k => k.includes(slug)) || 'how-ai-is-changing-lesson-planning';
-                    setPost(mockPosts[key] || mockPosts['how-ai-is-changing-lesson-planning']);
+                // First try to fetch real data from the API
+                const response = await fetch(`/api/blog/slug/${slug}`);
+                if (response.ok) {
+                    const data = await response.json();
+
+                    // Transform API data to match our UI requirements if needed
+                    // For example, if API doesn't return content with the {{CTA}} tag, we might want to inject it
+                    // But for now, let's just use the real content
+                    setPost({
+                        ...data,
+                        // Ensure we have at least defaults for new fields if API doesn't provide them yet
+                        readTime: data.readTime || '5 min read',
+                        tags: data.tags || (data.category ? [data.category] : ['Education'])
+                    });
                 } else {
-                    // Try fetch real data
-                    const response = await fetch(`/api/blog/slug/${slug}`);
-                    if (response.ok) {
-                        const data = await response.json();
-                        setPost(data);
-                    } else {
-                        // Fallback to our designed mock post if not found, to show the UI
+                    // Only fallback to mock if API returns error (e.g. 404)
+                    console.log('Blog post not found in API, checking mocks...');
+                    if (slug && mockPosts[slug]) {
+                        setPost(mockPosts[slug]);
+                    } else if (slug && (slug.includes('ai') || slug.includes('lesson'))) {
+                        // Keep the design showcase for specific keywords if direct match fails
                         setPost(mockPosts['how-ai-is-changing-lesson-planning']);
+                    } else {
+                        setPost(null);
                     }
                 }
             } catch (error) {
-                setPost(mockPosts['how-ai-is-changing-lesson-planning']);
+                console.error('Error fetching blog post:', error);
+                // Fallback on network error
+                if (slug && mockPosts[slug]) {
+                    setPost(mockPosts[slug]);
+                } else {
+                    setPost(null);
+                }
             } finally {
                 setLoading(false);
             }
