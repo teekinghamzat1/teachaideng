@@ -123,26 +123,58 @@ const BlogPost: React.FC = () => {
         }
     };
 
-    const relatedPosts = [
-        {
-            id: '1',
-            title: 'AI Lesson Planning Tools for Teachers',
-            date: 'Jan 15, 2026',
-            image: 'https://images.unsplash.com/photo-1488190211105-8b0e65b80b4e?auto=format&fit=crop&q=80&w=600'
-        },
-        {
-            id: '2',
-            title: 'How to Write Lesson Notes Easily (A Simple Guide for Teachers)',
-            date: 'Jan 7, 2026',
-            image: 'https://images.unsplash.com/photo-1571260899304-425eee4c7efc?auto=format&fit=crop&q=80&w=600'
-        },
-        {
-            id: '3',
-            title: 'Complete Scheme of Work: How to Plan Your Curriculum for Nigerian Schools',
-            date: 'Jan 1, 2026',
-            image: 'https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&q=80&w=600'
-        }
-    ];
+    const [relatedPosts, setRelatedPosts] = useState<any[]>([]);
+
+    useEffect(() => {
+        // Fetch related posts (latest posts excluding current one)
+        const fetchRelatedPosts = async () => {
+            try {
+                const response = await fetch('/api/blog');
+                if (response.ok) {
+                    const data = await response.json();
+                    // Filter out current post (by slug or ID if available) and take top 3
+                    const filtered = data
+                        .filter((p: any) => p.slug !== slug)
+                        .slice(0, 3)
+                        .map((p: any) => ({
+                            id: p.id,
+                            title: p.title,
+                            date: new Date(p.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+                            image: p.image || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&q=80&w=600',
+                            slug: p.slug // Ensure we have slug for the link
+                        }));
+
+                    if (filtered.length > 0) {
+                        setRelatedPosts(filtered);
+                    } else {
+                        // Fallback to dummies if no other posts exist
+                        setRelatedPosts([
+                            {
+                                id: '1',
+                                title: 'AI Lesson Planning Tools for Teachers',
+                                date: 'Jan 15, 2026',
+                                image: 'https://images.unsplash.com/photo-1488190211105-8b0e65b80b4e?auto=format&fit=crop&q=80&w=600',
+                                slug: '#'
+                            },
+                            {
+                                id: '2',
+                                title: 'How to Write Lesson Notes Easily',
+                                date: 'Jan 7, 2026',
+                                image: 'https://images.unsplash.com/photo-1571260899304-425eee4c7efc?auto=format&fit=crop&q=80&w=600',
+                                slug: '#'
+                            },
+                        ]);
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to fetch related posts', error);
+            }
+        };
+
+        fetchRelatedPosts();
+    }, [slug]);
+
+
 
     useEffect(() => {
         const fetchPost = async () => {
@@ -325,7 +357,7 @@ const BlogPost: React.FC = () => {
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         {relatedPosts.map(related => (
-                            <Link key={related.id} to={`/blog/${related.id}`} className="group block">
+                            <Link key={related.id} to={`/blog/${related.slug || related.id}`} className="group block">
                                 <div className="bg-white dark:bg-slate-800 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow border border-slate-100 dark:border-slate-800 h-full flex flex-col">
                                     <div className="aspect-[1.6/1] overflow-hidden">
                                         <img
