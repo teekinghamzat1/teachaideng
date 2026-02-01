@@ -20,35 +20,46 @@ const getDashboardStats = asyncHandler(async (req, res) => {
         studentWhere = { user: { schoolId: req.user.schoolId } };
     }
 
-    const totalUsers = await prisma.user.count({ where: userWhere });
-    // User requested "Generated Notes" count (100+) vs Saved Notes (30). 
-    // UsageLog tracks all generations.
-    const totalNotes = await prisma.usageLog.count({
-        where: {
-            ...((req.user.isSchoolAdmin && req.user.schoolId) ? { user: { schoolId: req.user.schoolId } } : {}),
-            action: { in: ['LESSON_GENERATION', 'ASSESSMENT_GENERATION'] }
-        }
-    });
-    const totalSavedNotes = await prisma.lessonNote.count({ where: noteWhere });
-    const totalStudents = await prisma.student.count({ where: studentWhere });
-    const premiumUsers = await prisma.user.count({
-        where: {
-            ...userWhere,
-            OR: [{ subscriptionPlan: 'Pro' }, { subscriptionPlan: 'School' }]
-        }
-    });
+    const [
+        totalUsers,
+        totalNotes,
+        totalSavedNotes,
+        totalStudents,
+        premiumUsers,
+        ordersCount,
+        productsCount,
+        salesAggregate
+    ] = await Promise.all([
+        prisma.user.count({ where: userWhere }),
+        prisma.usageLog.count({
+            where: {
+                ...((req.user.isSchoolAdmin && req.user.schoolId) ? { user: { schoolId: req.user.schoolId } } : {}),
+                action: { in: ['LESSON_GENERATION', 'ASSESSMENT_GENERATION'] }
+            }
+        }),
+        prisma.lessonNote.count({ where: noteWhere }),
+        prisma.student.count({ where: studentWhere }),
+        prisma.user.count({
+            where: {
+                ...userWhere,
+                OR: [{ subscriptionPlan: 'Pro' }, { subscriptionPlan: 'School' }]
+            }
+        }),
+        req.user.isSchoolAdmin ? Promise.resolve(0) : prisma.order.count(),
+        req.user.isSchoolAdmin ? Promise.resolve(0) : prisma.product.count(),
+        req.user.isSchoolAdmin ? Promise.resolve({ _sum: { totalPrice: 0 } }) : prisma.order.aggregate({ _sum: { totalPrice: true }, where: { isPaid: true } })
+    ]);
 
     const stats = {
         totalUsers,
-        totalNotes, // Now reflects total generations
-        totalSavedNotes, // Added for distinction if needed by frontend later
+        totalNotes,
+        totalSavedNotes,
         totalStudents,
         premiumUsers,
-        // Keeping original ones just in case
         users: totalUsers,
-        orders: req.user.isSchoolAdmin ? 0 : await prisma.order.count(),
-        products: req.user.isSchoolAdmin ? 0 : await prisma.product.count(),
-        totalSales: req.user.isSchoolAdmin ? 0 : (await prisma.order.aggregate({ _sum: { totalPrice: true }, where: { isPaid: true } }))._sum.totalPrice || 0,
+        orders: ordersCount,
+        products: productsCount,
+        totalSales: salesAggregate._sum.totalPrice || 0,
     };
 
     res.json(formatResponse(true, 'Dashboard stats retrieved', stats));
@@ -190,18 +201,31 @@ const getUsers = asyncHandler(async (req, res) => {
             }
         },
     });
-    const usersWithUsage = await Promise.all(users.map(async (user) => {
-        const usage = await usageService.getUserUsage(user.id);
-        const { teacherStatus, ...rest } = user;
-        // Map usage fields to match the frontend expectations (used, limit, remaining)
+    // OPTIMIZATION: Fetch settings once before the loop
+    const systemSettings = await prisma.systemSetting.findUnique({ where: { id: 1 } });
+    const defaults = {
+        'Free': { lessonLimit: systemSettings?.freePlanLessonLimit || 10 },
+        'Pro': { lessonLimit: systemSettings?.proPlanLessonLimit || 100 },
+        'School': { lessonLimit: systemSettings?.schoolPlanLessonLimit || 999999 }
+    };
+
+    const usersWithUsage = users.map((user) => {
+        // We skip live "reset usage" update in the list to avoid N+1 writes and 504 timeouts.
+        // Usage will be reset when the user logs in or a cron job runs.
+        const plan = user.subscriptionPlan ? user.subscriptionPlan.charAt(0).toUpperCase() + user.subscriptionPlan.slice(1).toLowerCase() : 'Free';
+        const planLimit = defaults[plan]?.lessonLimit || 10;
+        const effectiveLimit = Math.max(user.monthlyLessonLimit || 0, planLimit);
+        const used = user.lessonsUsedThisMonth || 0;
+
         const formattedUsage = {
-            used: usage.lessonsUsed,
-            limit: usage.monthlyLimit,
-            remaining: usage.lessonsRemaining,
-            resetDate: usage.resetDate
+            used,
+            limit: effectiveLimit,
+            remaining: Math.max(0, effectiveLimit - used),
+            resetDate: user.lastUsageReset
         };
+        const { teacherStatus, ...rest } = user;
         return { ...rest, status: teacherStatus, usage: formattedUsage };
-    }));
+    });
 
     res.json(formatResponse(true, 'Users retrieved', usersWithUsage));
 });

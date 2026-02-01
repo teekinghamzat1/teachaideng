@@ -86,6 +86,15 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const toggleMenu = () => setIsMobileMenuOpen(!isMobileMenuOpen);
   const isActive = (path: string) => location.pathname === path;
 
+  const handleMarkAsRead = async (id: string) => {
+    try {
+      await db.notifications.markAsRead(id);
+      setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
+    } catch (e) {
+      console.error('Failed to mark notification as read');
+    }
+  };
+
   const handleLogout = async () => {
     await db.auth.logout();
     navigate('/');
@@ -229,19 +238,31 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                         <span className="font-black text-sm text-slate-900 dark:text-white uppercase tracking-widest">Inbox</span>
                         <button onClick={() => setNotificationsOpen(false)} className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors"><X className="w-4 h-4" /></button>
                       </div>
-                      <div className="max-h-80 overflow-y-auto">
-                        {notifications.length === 0 ? (
-                          <div className="p-10 text-center space-y-3">
-                            <Bell className="w-10 h-10 text-slate-200 mx-auto" />
-                            <p className="text-xs font-bold text-slate-400">No new updates</p>
-                          </div>
-                        ) : (
+                      <div className="max-h-[400px] overflow-y-auto custom-scrollbar">
+                        {notifications.length > 0 ? (
                           notifications.map(n => (
-                            <div key={n.id} className={`p-5 border-b border-slate-50 dark:border-slate-800 last:border-0 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors ${!n.isRead ? 'bg-[#16A34A]/5' : ''}`}>
-                              <p className="text-sm font-bold text-slate-900 dark:text-white mb-1">{n.title}</p>
-                              <p className="text-xs text-slate-500 line-clamp-2">{n.message}</p>
+                            <div
+                              key={n.id}
+                              onClick={() => !n.isRead && handleMarkAsRead(n.id)}
+                              className={`p-5 border-b border-slate-50 dark:border-slate-800 last:border-0 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer relative group ${!n.isRead ? 'bg-brand-50/30 dark:bg-brand-500/5' : ''}`}
+                            >
+                              {!n.isRead && (
+                                <div className="absolute left-2 top-6 w-1 h-8 bg-brand-500 rounded-full"></div>
+                              )}
+                              <div className="pl-2">
+                                <p className={`text-sm mb-1 ${!n.isRead ? 'font-black text-slate-900 dark:text-white' : 'font-bold text-slate-600 dark:text-slate-400'}`}>{n.title}</p>
+                                <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">{n.message}</p>
+                                <p className="text-[10px] text-slate-400 mt-2 font-bold uppercase tracking-widest">
+                                  {new Date(n.createdAt).toLocaleDateString()}
+                                </p>
+                              </div>
                             </div>
                           ))
+                        ) : (
+                          <div className="p-10 text-center space-y-3">
+                            <Bell className="w-10 h-10 text-slate-200 dark:text-slate-800 mx-auto" />
+                            <p className="text-sm font-bold text-slate-400">No notifications yet</p>
+                          </div>
                         )}
                       </div>
                     </div>
@@ -308,15 +329,50 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
               {/* Right: Notification & Profile Pill */}
               <div className="flex items-center gap-2">
                 {user && (
-                  <button
-                    onClick={() => setNotificationsOpen(!notificationsOpen)}
-                    className="p-2 text-slate-400 relative"
-                  >
-                    <Bell className="w-6 h-6" />
-                    {notifications.filter(n => !n.isRead).length > 0 && (
-                      <span className="absolute top-1.5 right-1.5 h-2.5 w-2.5 rounded-full bg-red-500 border-2 border-white dark:border-slate-950"></span>
+                  <div className="relative">
+                    <button
+                      onClick={() => setNotificationsOpen(!notificationsOpen)}
+                      className={`p-2 rounded-xl transition-all relative ${notificationsOpen ? 'bg-brand-500 text-white' : 'text-slate-400'}`}
+                    >
+                      <Bell className="w-6 h-6" />
+                      {notifications.filter(n => !n.isRead).length > 0 && (
+                        <span className="absolute top-1.5 right-1.5 h-2.5 w-2.5 rounded-full bg-red-500 border-2 border-white dark:border-slate-950 animate-pulse"></span>
+                      )}
+                    </button>
+
+                    {/* Mobile Notification Popover */}
+                    {notificationsOpen && (
+                      <div className="fixed inset-x-4 top-20 z-50 bg-white dark:bg-slate-900 rounded-[2rem] shadow-2xl border border-slate-200/50 dark:border-slate-800 overflow-hidden animate-in fade-in slide-in-from-top-4 lg:hidden">
+                        <div className="p-5 border-b border-slate-50 dark:border-slate-800 flex items-center justify-between">
+                          <h3 className="font-black text-slate-900 dark:text-white tracking-tight">Notifications</h3>
+                          <button onClick={() => setNotificationsOpen(false)} className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
+                            <X className="w-5 h-5" />
+                          </button>
+                        </div>
+                        <div className="max-h-[60vh] overflow-y-auto custom-scrollbar">
+                          {notifications.length > 0 ? (
+                            notifications.map(n => (
+                              <div
+                                key={n.id}
+                                onClick={() => {
+                                  if (!n.isRead) handleMarkAsRead(n.id);
+                                  setNotificationsOpen(false);
+                                }}
+                                className={`p-5 border-b border-slate-50 dark:border-slate-800 last:border-0 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors relative ${!n.isRead ? 'bg-brand-50/30 dark:bg-brand-500/5' : ''}`}
+                              >
+                                <p className={`text-sm mb-1 ${!n.isRead ? 'font-black text-slate-900 dark:text-white' : 'font-bold text-slate-600 dark:text-slate-400'}`}>{n.title}</p>
+                                <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">{n.message}</p>
+                              </div>
+                            ))
+                          ) : (
+                            <div className="p-10 text-center">
+                              <p className="text-sm font-bold text-slate-400">No notifications yet</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     )}
-                  </button>
+                  </div>
                 )}
 
                 <button

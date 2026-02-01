@@ -57,6 +57,10 @@ model User {
   orders       Order[]
   transactions Transaction[]
 
+  @@index([subscriptionPlan])
+  @@index([schoolId])
+  @@index([role])
+
   // Shared generated content created by user
   sharedContents SharedContent[]
   // Token usage history
@@ -475,6 +479,10 @@ model UsageLog {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   schoolId String?
   school   School? @relation(fields: [schoolId], references: [id])
+
+  @@index([action, createdAt])
+  @@index([userId, action])
+  @@index([schoolId, action])
 }
 
 model BlogPost {

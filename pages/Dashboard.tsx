@@ -320,7 +320,11 @@ const Dashboard: React.FC = () => {
             <Link to="/history" className="glass-card rounded-2xl p-4 flex flex-col items-center justify-center text-center gap-3 active:scale-95 transition-all relative">
               <div className="relative">
                 <Save className="w-6 h-6 text-emerald-500" />
-                <span className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 text-white text-[8px] flex items-center justify-center rounded-full border-2 border-white dark:border-slate-800 font-bold">2</span>
+                {savedNotes.length > 0 && (
+                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 text-white text-[8px] flex items-center justify-center rounded-full border-2 border-white dark:border-slate-800 font-bold">
+                    {savedNotes.length}
+                  </span>
+                )}
               </div>
               <span className="text-xs font-black uppercase tracking-widest text-slate-600 dark:text-slate-300">Saved Notes</span>
             </Link>
@@ -347,7 +351,11 @@ const Dashboard: React.FC = () => {
                 <FileText className="w-4 h-4 text-brand-500" />
                 <div className="relative">
                   Saved Notes
-                  <span className="absolute -top-2 -right-4 w-4 h-4 bg-emerald-500 text-white text-[8px] flex items-center justify-center rounded-full border-2 border-white dark:border-slate-800">2</span>
+                  {savedNotes.length > 0 && (
+                    <span className="absolute -top-2 -right-4 w-4 h-4 bg-emerald-500 text-white text-[8px] flex items-center justify-center rounded-full border-2 border-white dark:border-slate-800">
+                      {savedNotes.length}
+                    </span>
+                  )}
                 </div>
               </Link>
             </div>
