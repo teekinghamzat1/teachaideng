@@ -17,6 +17,50 @@ const prisma = require('../config/db');
  * @param {string} userId 
  * @returns {Promise<{canGenerate: boolean, reason?: string}>}
  */
+async function canGenerateRemark(userId) {
+    const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: {
+            subscriptionPlan: true
+        }
+    });
+
+    if (!user) {
+        return { canGenerate: false, reason: 'User not found' };
+    }
+
+    // Define internal fair-use limits for remarks
+    const remarkLimits = {
+        'Free': 100,
+        'Pro': 500,
+        'School': 2000
+    };
+
+    const plan = user.subscriptionPlan ? user.subscriptionPlan.charAt(0).toUpperCase() + user.subscriptionPlan.slice(1).toLowerCase() : 'Free';
+    const limit = remarkLimits[plan] || remarkLimits['Free'];
+
+    // Count remarks generated this month using UsageLog
+    const now = new Date();
+    const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const count = await prisma.usageLog.count({
+        where: {
+            userId,
+            action: 'REMARK_GENERATION',
+            createdAt: { gte: firstOfMonth }
+        }
+    });
+
+    if (count >= limit) {
+        return {
+            canGenerate: false,
+            reason: 'Remark fair-use limit reached for this month. Please try again next month.'
+        };
+    }
+
+    return { canGenerate: true };
+}
+
 async function canGenerateAssessment(userId) {
     const user = await prisma.user.findUnique({
         where: { id: userId },
@@ -124,6 +168,48 @@ async function recordLessonGeneration(userId, inputTokens = 0, outputTokens = 0)
     });
 
     // Usage recorded
+}
+
+/**
+ * Record remark generation in usage log
+ * @param {string} userId
+ * @param {object} metadata
+ */
+async function recordRemarkGeneration(userId, metadata = {}) {
+    const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { schoolId: true }
+    });
+
+    await prisma.usageLog.create({
+        data: {
+            userId,
+            schoolId: user?.schoolId,
+            action: 'REMARK_GENERATION',
+            meta: metadata ? JSON.stringify(metadata) : null
+        }
+    });
+}
+
+/**
+ * Record assessment generation in usage log
+ * @param {string} userId
+ * @param {object} metadata
+ */
+async function recordAssessmentGeneration(userId, metadata = {}) {
+    const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { schoolId: true }
+    });
+
+    await prisma.usageLog.create({
+        data: {
+            userId,
+            schoolId: user?.schoolId,
+            action: 'ASSESSMENT_GENERATION',
+            meta: metadata ? JSON.stringify(metadata) : null
+        }
+    });
 }
 
 /**
@@ -328,8 +414,11 @@ async function getPlanLimits(plan) {
 
 module.exports = {
     canGenerateLesson,
+    canGenerateRemark,
     canGenerateAssessment,
     recordLessonGeneration,
+    recordRemarkGeneration,
+    recordAssessmentGeneration,
     getUserUsage,
     checkAndResetUsage,
     resetMonthlyUsage,

@@ -295,7 +295,7 @@ const generateAssessment = asyncHandler(async (req, res) => {
       inputLength: (topic + subject + classLevel).length,
       outputLength: genResult.text ? genResult.text.length : 0
     };
-    await createUsageLog(userId, 'ASSESSMENT_GENERATION', metrics);
+    await usageService.recordAssessmentGeneration(userId, metrics);
 
     // Save to Cache
     await prisma.sharedContent.create({
@@ -368,6 +368,13 @@ const generateRemark = asyncHandler(async (req, res) => {
     throw new Error('Subject, Topic, and Class Level are required');
   }
 
+  // Enforce dynamic generation limit
+  const canGen = await usageService.canGenerateRemark(userId);
+  if (!canGen.canGenerate) {
+    res.status(403);
+    return res.json(formatResponse(false, canGen.reason));
+  }
+
   let genResult;
   try {
     genResult = await genai.generateRemarkViaGenAI({
@@ -382,8 +389,8 @@ const generateRemark = asyncHandler(async (req, res) => {
 
     const parsed = JSON.parse(genResult.text);
 
-    // Log usage
-    createUsageLog(userId, 'REMARK_GENERATION', { subject, topic, studentCount: students?.length || 0 }).catch(() => { });
+    // Log usage via usageService to ensure it's tracked for fair-use limits
+    await usageService.recordRemarkGeneration(userId, { subject, topic, studentCount: students?.length || 0 });
 
     res.json(formatResponse(true, 'Remark generated', {
       remark: parsed.remark,
