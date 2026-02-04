@@ -17,6 +17,60 @@ const prisma = require('../config/db');
  * @param {string} userId 
  * @returns {Promise<{canGenerate: boolean, reason?: string}>}
  */
+async function canGenerateRemark(userId) {
+    const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: {
+            subscriptionPlan: true
+        }
+    });
+
+    if (!user) {
+        return { canGenerate: false, reason: 'User not found' };
+    }
+
+    // Define internal fair-use limits for remarks
+    const remarkLimits = {
+        'Free': 100,
+        'Pro': 500,
+        'School': 2000
+    };
+
+    const plan = user.subscriptionPlan ? user.subscriptionPlan.charAt(0).toUpperCase() + user.subscriptionPlan.slice(1).toLowerCase() : 'Free';
+    const limit = remarkLimits[plan] || remarkLimits['Free'];
+
+    // Count remarks generated this month using UsageLog
+    const now = new Date();
+    const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const count = await prisma.usageLog.count({
+        where: {
+            userId,
+            action: 'REMARK_GENERATION',
+            createdAt: { gte: firstOfMonth }
+        }
+    });
+
+    if (count >= limit) {
+        return {
+            canGenerate: false,
+            reason: 'Remark generation limit reached for this month. Upgrade or try again next month.'
+        };
+    }
+
+    return { canGenerate: true };
+}
+
+/**
+ * Record remark generation usage
+ * @param {string} userId
+ * @param {object} meta
+ */
+async function recordRemarkUsage(userId, meta = {}) {
+    const { createUsageLog } = require('../utils/usage');
+    return await createUsageLog(userId, 'REMARK_GENERATION', meta);
+}
+
 async function canGenerateAssessment(userId) {
     const user = await prisma.user.findUnique({
         where: { id: userId },
@@ -329,7 +383,9 @@ async function getPlanLimits(plan) {
 module.exports = {
     canGenerateLesson,
     canGenerateAssessment,
+    canGenerateRemark,
     recordLessonGeneration,
+    recordRemarkUsage,
     getUserUsage,
     checkAndResetUsage,
     resetMonthlyUsage,
