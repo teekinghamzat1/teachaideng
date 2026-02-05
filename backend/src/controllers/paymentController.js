@@ -46,64 +46,80 @@ const verifyPayment = asyncHandler(async (req, res) => {
         if (isValid) {
             const normalizedPlan = plan.charAt(0).toUpperCase() + plan.slice(1).toLowerCase();
 
-            // 1. Initial Update of the user's plan
-            let updatedUser = await prisma.user.update({
-                where: { id: userId },
-                data: {
-                    subscriptionPlan: normalizedPlan,
-                    isSchoolAdmin: normalizedPlan === 'School'
-                }
-            });
+            // Verify amountPaid against plan price in SystemSettings
+            const settings = await prisma.systemSetting.findUnique({ where: { id: 1 } });
+            let expectedPrice = 0;
+            if (normalizedPlan === 'Pro') expectedPrice = settings?.proPlanPrice ?? 2500;
+            if (normalizedPlan === 'School') expectedPrice = settings?.schoolPlanPrice ?? 20000;
 
-            // 2. School License Specific Logic
-            if (normalizedPlan === 'School') {
-                let existingSchool = await prisma.school.findFirst({
-                    where: { ownerId: userId }
+            if (amountPaid < expectedPrice) {
+                console.error(`Invalid payment amount: Expected ${expectedPrice}, got ${amountPaid}`);
+                res.status(400);
+                throw new Error(`Invalid payment amount for ${normalizedPlan} plan`);
+            }
+
+            const updatedUser = await prisma.$transaction(async (tx) => {
+                // 1. Initial Update of the user's plan
+                let user = await tx.user.update({
+                    where: { id: userId },
+                    data: {
+                        subscriptionPlan: normalizedPlan,
+                        isSchoolAdmin: normalizedPlan === 'School'
+                    }
                 });
 
-                if (!existingSchool) {
-                    const schoolName = updatedUser.schoolName || `${updatedUser.name}'s School`;
-                    const slug = schoolName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '') + '-' + Date.now();
+                // 2. School License Specific Logic
+                if (normalizedPlan === 'School') {
+                    let existingSchool = await tx.school.findFirst({
+                        where: { ownerId: userId }
+                    });
 
-                    existingSchool = await prisma.school.create({
+                    if (!existingSchool) {
+                        const schoolName = user.schoolName || `${user.name}'s School`;
+                        const slug = schoolName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '') + '-' + Date.now();
+
+                        existingSchool = await tx.school.create({
+                            data: {
+                                name: schoolName,
+                                slug,
+                                ownerId: userId,
+                                teacherLimit: 15
+                            }
+                        });
+                    }
+
+                    // IMPORTANT: Link User to School
+                    user = await tx.user.update({
+                        where: { id: userId },
                         data: {
-                            name: schoolName,
-                            slug,
-                            ownerId: userId,
-                            teacherLimit: 15
+                            schoolId: existingSchool.id,
+                            isSchoolAdmin: true
+                        }
+                    });
+
+                    // Notify User
+                    await tx.notification.create({
+                        data: {
+                            title: 'School Profile Setup Required',
+                            message: 'Welcome to the School Plan! Please complete your school profile in the School Management dashboard.',
+                            type: 'info',
+                            target: userId
                         }
                     });
                 }
 
-                // IMPORTANT: Link User to School
-                updatedUser = await prisma.user.update({
-                    where: { id: userId },
+                // 3. Log Transaction
+                await tx.transaction.create({
                     data: {
-                        schoolId: existingSchool.id,
-                        isSchoolAdmin: true
+                        userId,
+                        amount: amountPaid,
+                        type: 'credit',
+                        status: 'completed',
+                        reference
                     }
                 });
 
-                // Notify User
-                await prisma.notification.create({
-                    data: {
-                        title: 'School Profile Setup Required',
-                        message: 'Welcome to the School Plan! Please complete your school profile in the School Management dashboard.',
-                        type: 'info',
-                        target: userId
-                    }
-                });
-            }
-
-            // 3. Log Transaction
-            await prisma.transaction.create({
-                data: {
-                    userId,
-                    amount: amountPaid,
-                    type: 'credit',
-                    status: 'completed',
-                    reference
-                }
+                return user;
             });
 
             // 4. Send Receipt
