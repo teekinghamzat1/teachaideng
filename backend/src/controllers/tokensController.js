@@ -30,10 +30,6 @@ const estimate = asyncHandler(async (req, res) => {
 // Admin: add tokens to user
 // @route POST /api/tokens/admin/add
 const adminAddTokens = asyncHandler(async (req, res) => {
-  if (!req.user || !(req.user.role && req.user.role.toLowerCase().includes('admin'))) {
-    res.status(401);
-    throw new Error('Not authorized');
-  }
   const { userId, amount } = req.body;
   if (!userId || !amount) {
     res.status(400);
@@ -46,10 +42,6 @@ const adminAddTokens = asyncHandler(async (req, res) => {
 // Admin: view user token history
 // @route GET /api/tokens/admin/history/:userId
 const adminUserHistory = asyncHandler(async (req, res) => {
-  if (!req.user || !(req.user.role && req.user.role.toLowerCase().includes('admin'))) {
-    res.status(401);
-    throw new Error('Not authorized');
-  }
   const { userId } = req.params;
   const usages = await prisma.tokenUsage.findMany({ where: { userId }, orderBy: { createdAt: 'desc' } });
   res.json(formatResponse(true, 'User history', usages));

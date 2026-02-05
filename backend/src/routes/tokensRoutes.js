@@ -8,7 +8,7 @@ router.get('/usage', protect, tokens.getUsage);
 router.post('/estimate', protect, tokens.estimate);
 
 // Admin routes
-router.post('/admin/add', protect, tokens.adminAddTokens);
-router.get('/admin/history/:userId', protect, tokens.adminUserHistory);
+router.post('/admin/add', protect, admin, tokens.adminAddTokens);
+router.get('/admin/history/:userId', protect, admin, tokens.adminUserHistory);
 
 module.exports = router;
