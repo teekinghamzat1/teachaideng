@@ -5,7 +5,11 @@ const prisma = require('../config/db');
 // @route   GET /api/sitemap.xml
 // @access  Public
 const generateSitemap = asyncHandler(async (req, res) => {
-    const baseUrl = 'https://www.teachaide.ng';
+    const baseUrl =
+  process.env.NODE_ENV === 'production'
+    ? 'https://teachaide.ng'
+    : `http://${req.get('host')}`;
+
 
     // 1. Get all published blog posts
     const blogPosts = await prisma.blogPost.findMany({
@@ -26,6 +30,7 @@ const generateSitemap = asyncHandler(async (req, res) => {
     // 3. Build XML
     let xml = '<?xml version="1.0" encoding="UTF-8"?>\n';
     xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n';
+   
 
     // Add static pages
     staticPages.forEach(page => {
