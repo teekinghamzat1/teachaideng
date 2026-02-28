@@ -185,6 +185,7 @@ const Home: React.FC = () => {
 const TestimonialsBlock: React.FC = () => {
   const [items, setItems] = useState<Testimonial[] | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -199,15 +200,27 @@ const TestimonialsBlock: React.FC = () => {
     return () => { mounted = false; };
   }, []);
 
-  if (items === null) return <div className="flex justify-center"><Loader2 className="w-12 h-12 animate-spin text-white opacity-50" /></div>;
-
-  const displayItems = items.length > 0 ? items : [
+  const defaultItems = [
     { id: '1', name: 'John Doe', role: 'Language Teacher', organization: 'Lagos Grammar School', content: 'This is very amazing, I must confess. It has halved my prep time and allowed me to focus more on student engagement.', rating: 5, avatarUrl: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=facearea&facepad=2&w=256&h=256&q=80' },
     { id: '2', name: 'Ayo Johnson', role: 'Principal', organization: 'TeachAide Academy', content: 'Transformative tool for our rural school teachers. The quality of lesson notes generated is consistent and high-standard.', rating: 5, avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=facearea&facepad=2&w=256&h=256&q=80' },
     { id: '3', name: 'Sarah Ahmed', role: 'Mathematics Lead', organization: 'Smart Class Intl', content: 'The curriculum accuracy is top-notch. High quality results always. My teachers are now much more productive than ever before.', rating: 5, avatarUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=facearea&facepad=2&w=256&h=256&q=80' },
     { id: '4', name: 'Dr. Emeka Obi', role: 'Proprietor', organization: 'Grace Schools', content: 'We integrated TeachAide into our school system and saw an immediate improvement in teacher morale and classroom delivery.', rating: 5, avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=facearea&facepad=2&w=256&h=256&q=80' },
     { id: '5', name: 'Funke Adebayo', role: 'Senior Tutor', organization: 'Excellence College', content: 'Generating assessment questions used to take a whole weekend. Now I do it in five minutes. Simply revolutionary for Nigeria!', rating: 5, avatarUrl: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=facearea&facepad=2&w=256&h=256&q=80' }
   ];
+
+  const displayItems = items && items.length > 0 ? items : defaultItems;
+
+  useEffect(() => {
+    if (isPaused || displayItems.length <= 1) return;
+
+    const interval = setInterval(() => {
+      setActiveIndex((prev) => (prev + 1) % displayItems.length);
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [isPaused, displayItems.length]);
+
+  if (items === null) return <div className="flex justify-center"><Loader2 className="w-12 h-12 animate-spin text-white opacity-50" /></div>;
 
   const current = displayItems[activeIndex] || displayItems[0];
 
@@ -216,7 +229,9 @@ const TestimonialsBlock: React.FC = () => {
       {/* Testimonial Card */}
       <div
         key={activeIndex}
-        className="w-full bg-white dark:bg-slate-900 rounded-[2.5rem] lg:rounded-[4rem] p-10 lg:p-24 shadow-2xl shadow-black/20 mb-12 animate-in fade-in zoom-in duration-700 relative overflow-hidden group"
+        onMouseEnter={() => setIsPaused(true)}
+        onMouseLeave={() => setIsPaused(false)}
+        className="w-full bg-white dark:bg-slate-900 rounded-[2.5rem] lg:rounded-[4rem] p-10 lg:p-24 shadow-2xl shadow-black/20 mb-12 animate-in fade-in zoom-in duration-700 relative overflow-hidden group cursor-default"
       >
         <div className="absolute top-0 left-0 w-2 h-full bg-[#16A34A] opacity-20"></div>
 
@@ -251,6 +266,8 @@ const TestimonialsBlock: React.FC = () => {
           <button
             key={item.id}
             onClick={() => setActiveIndex(idx)}
+            onMouseEnter={() => setIsPaused(true)}
+            onMouseLeave={() => setIsPaused(false)}
             className={`relative transition-all duration-500 rounded-full overflow-hidden border-4 ${activeIndex === idx
               ? 'w-16 h-16 lg:w-24 lg:h-24 border-white shadow-xl shadow-black/20 scale-110'
               : 'w-12 h-12 lg:w-16 lg:h-16 border-white/20 hover:border-white/50 grayscale opacity-60 hover:opacity-100 hover:grayscale-0'
