@@ -499,7 +499,22 @@ model BlogPost {
   metaTitle       String?
   metaDescription String?
   keywords        String? // Comma separated
+  
+  category        String? // Category
 
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model TopicQueue {
+  id        String   @id @default(uuid())
+  topic     String
+  audience  String
+  category  String
+  priority  Int      @default(0)
+  status    String   @default("QUEUED") // 'QUEUED', 'IN_PROGRESS', 'USED', 'FAILED'
+  errorLog  String?  // JSON string or text
+  usedAt    DateTime?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }

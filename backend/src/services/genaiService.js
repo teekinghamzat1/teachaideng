@@ -433,9 +433,95 @@ async function generateSEOSummaryViaGenAI(options) {
   return response;
 }
 
+/**
+ * Generate Blog Draft
+ */
+async function generateBlogDraftViaGenAI(options) {
+  const { topic, audience, category, maxTokens } = options;
+  const apiKey = getApiKey();
+  const model = normalizeModel(process.env.GENAI_MODEL || 'gemini-2.5-flash');
+
+  const systemPrompt = `You are an educational content writer for Nigerian teachers.
+
+Write a detailed, original blog post.
+
+Audience: ${audience}
+Topic: ${topic}
+
+Requirements:
+* Nigerian curriculum context
+* Practical classroom examples
+* Clear structure using H2/H3 headings
+* Professional, simple language (no fluff)
+* No generic AI phrases
+* No plagiarism
+
+SEO:
+* Generate an SEO-optimized title
+* Generate a meta description (150–160 characters)
+* Generate 5–10 SEO keywords
+* Generate a URL-friendly slug
+
+Conversion (soft):
+* Mention TeachAide naturally as a tool that helps teachers
+* Do not oversell or sound like an ad
+* Include TeachAide link once: <a href="https://teachaide.ng">TeachAide</a>
+
+Output format (STRICT, JSON only):
+{
+  "title": "...",
+  "slug": "...",
+  "meta_description": "...",
+  "keywords": ["...","..."],
+  "category": "${category}",
+  "audience": "${audience}",
+  "body_html": "..."
+}
+
+Important: Please enforce JSON-only output.`;
+
+  const contents = [{
+    role: 'user',
+    parts: [{ text: systemPrompt }]
+  }];
+
+  const response = await withRetry(async () => {
+    try {
+      const res = await axios.post(`${API_BASE}/models/${model}:generateContent?key=${apiKey}`, {
+        contents,
+        generationConfig: {
+          responseMimeType: 'application/json',
+          maxOutputTokens: maxTokens || 8192
+        }
+      }, { timeout: 60000 });
+
+      const candidate = res.data.candidates?.[0];
+      const text = candidate?.content?.parts?.[0]?.text;
+      return JSON.parse(text);
+    } catch (err) {
+      if (err.response?.status === 429 && model === 'gemini-2.5-flash') {
+        const res = await axios.post(`${API_BASE}/models/gemini-2.5-flash-lite:generateContent?key=${apiKey}`, {
+          contents,
+          generationConfig: {
+            responseMimeType: 'application/json',
+            maxOutputTokens: maxTokens || 8192
+          }
+        }, { timeout: 60000 });
+        const candidate = res.data.candidates?.[0];
+        const text = candidate?.content?.parts?.[0]?.text;
+        return JSON.parse(text);
+      }
+      throw err;
+    }
+  });
+
+  return response;
+}
+
 module.exports = {
   generateLessonNoteViaGenAI,
   generateAssessmentViaGenAI,
   generateRemarkViaGenAI,
-  generateSEOSummaryViaGenAI
+  generateSEOSummaryViaGenAI,
+  generateBlogDraftViaGenAI
 };

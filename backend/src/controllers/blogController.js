@@ -43,7 +43,7 @@ const getPostBySlug = asyncHandler(async (req, res) => {
 // @route   POST /api/blog
 // @access  Private/Admin
 const createPost = asyncHandler(async (req, res) => {
-    const { title, content, summary, image, author, published, slug, metaTitle, metaDescription, keywords } = req.body;
+    const { title, content, summary, image, author, published, slug, metaTitle, metaDescription, keywords, category } = req.body;
 
     // Simple slug generation if not provided
     let finalSlug = slug;
@@ -53,7 +53,7 @@ const createPost = asyncHandler(async (req, res) => {
 
     // Process automated SEO (Meta, Keywords, Internal Links)
     const rawPostData = {
-        title, content, summary, image, author: author || 'TeachAide Team', published: published || false, slug: finalSlug, metaTitle, metaDescription, keywords
+        title, content, summary, image, author: author || 'TeachAide Team', published: published || false, slug: finalSlug, metaTitle, metaDescription, keywords, category
     };
     const seoOptimizedData = await processPostSEO(rawPostData);
 
@@ -78,7 +78,7 @@ const getAllPosts = asyncHandler(async (req, res) => {
 // @route   PUT /api/blog/:id
 // @access  Private/Admin
 const updatePost = asyncHandler(async (req, res) => {
-    const { title, content, summary, image, author, published, slug, metaTitle, metaDescription, keywords } = req.body;
+    const { title, content, summary, image, author, published, slug, metaTitle, metaDescription, keywords, category } = req.body;
 
     const post = await prisma.blogPost.findUnique({
         where: { id: req.params.id }
@@ -95,7 +95,8 @@ const updatePost = asyncHandler(async (req, res) => {
             slug: slug || post.slug,
             metaTitle: metaTitle || post.metaTitle,
             metaDescription: metaDescription || post.metaDescription,
-            keywords: keywords || post.keywords
+            keywords: keywords || post.keywords,
+            category: category !== undefined ? category : post.category
         };
 
         const seoOptimizedData = await processPostSEO(rawPostData, req.params.id);

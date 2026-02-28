@@ -24,6 +24,18 @@ interface BlogPost {
     metaTitle?: string;
     metaDescription?: string;
     keywords?: string;
+    category?: string;
+    createdAt: string;
+}
+
+interface TopicQueueItem {
+    id: string;
+    topic: string;
+    audience: string;
+    category: string;
+    priority: number;
+    status: string;
+    errorLog?: string;
     createdAt: string;
 }
 
@@ -34,7 +46,10 @@ const AdminBlog: React.FC = () => {
     const [isEditing, setIsEditing] = useState(false);
     const [currentPost, setCurrentPost] = useState<Partial<BlogPost>>({});
     const [showModal, setShowModal] = useState(false);
-    const [activeTab, setActiveTab] = useState<'all' | 'published' | 'drafts'>('all');
+    const [activeTab, setActiveTab] = useState<'all' | 'published' | 'drafts' | 'queue'>('all');
+    const [topics, setTopics] = useState<TopicQueueItem[]>([]);
+    const [newTopic, setNewTopic] = useState({ topic: '', audience: 'Teachers', category: 'General', priority: 0 });
+    const [isAddingTopic, setIsAddingTopic] = useState(false);
 
     // Autosave State
     const [isSaving, setIsSaving] = useState(false);
@@ -48,6 +63,7 @@ const AdminBlog: React.FC = () => {
 
     useEffect(() => {
         fetchPosts();
+        fetchTopics();
     }, []);
 
     // Autosave logic
@@ -105,6 +121,70 @@ const AdminBlog: React.FC = () => {
             console.error(error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const fetchTopics = async () => {
+        try {
+            const res = await fetch('/api/topics', { headers: getAnyAuthHeader() });
+            if (res.ok) {
+                const data = await res.json();
+                setTopics(data);
+            }
+        } catch (error) {
+            console.error(error);
+        }
+    };
+
+    const handleAddTopic = async (e: React.FormEvent) => {
+        e.preventDefault();
+        try {
+            setIsAddingTopic(true);
+            const res = await fetch('/api/topics', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', ...getAnyAuthHeader() },
+                body: JSON.stringify(newTopic)
+            });
+            if (res.ok) {
+                showAlert.success('Topic queued!');
+                setNewTopic({ topic: '', audience: 'Teachers', category: 'General', priority: 0 });
+                fetchTopics();
+            } else {
+                showAlert.error('Failed to queue topic');
+            }
+        } catch (error) {
+            showAlert.error('An error occurred');
+        } finally {
+            setIsAddingTopic(false);
+        }
+    };
+
+    const handleDeleteTopic = async (id: string) => {
+        try {
+            const confirmed = await showAlert.confirm('Delete Topic?', 'Remove this topic from the queue?', 'Delete');
+            if (confirmed) {
+                const res = await fetch(`/api/topics/${id}`, {
+                    method: 'DELETE',
+                    headers: getAnyAuthHeader()
+                });
+                if (res.ok) {
+                    showAlert.success('Topic removed');
+                    fetchTopics();
+                }
+            }
+        } catch (error) {
+            showAlert.error('An error occurred');
+        }
+    };
+
+    const triggerWorker = async () => {
+        try {
+            const res = await fetch('/api/topics/trigger', { method: 'POST', headers: getAnyAuthHeader() });
+            if (res.ok) {
+                showAlert.success('Worker triggered manually. Check back in a few minutes.');
+            }
+        } catch (error) {
+            showAlert.error('Failed to trigger worker');
         }
     };
 
@@ -227,22 +307,22 @@ const AdminBlog: React.FC = () => {
 
                 <div className="flex flex-col sm:flex-row items-center gap-4 w-full lg:w-auto">
                     {/* Premium segmented control */}
-                    <div className="flex bg-slate-100 dark:bg-slate-900/50 p-1.5 rounded-xl shadow-inner w-full sm:w-auto">
-                        {['all', 'published', 'drafts'].map((tab) => (
+                    <div className="flex bg-slate-100 dark:bg-slate-900/50 p-1.5 rounded-xl shadow-inner w-full sm:w-auto overflow-x-auto">
+                        {['all', 'published', 'drafts', 'queue'].map((tab) => (
                             <button
                                 key={tab}
                                 onClick={() => setActiveTab(tab as any)}
                                 className={`flex-1 sm:flex-none px-5 py-2.5 rounded-lg text-sm font-semibold capitalize transition-all duration-300 ease-out ${activeTab === tab
-                                        ? 'bg-white dark:bg-slate-800 text-brand-600 dark:text-brand-400 shadow-sm ring-1 ring-black/5 dark:ring-white/10'
-                                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5'
+                                    ? 'bg-white dark:bg-slate-800 text-brand-600 dark:text-brand-400 shadow-sm ring-1 ring-black/5 dark:ring-white/10'
+                                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5'
                                     }`}
                             >
                                 {tab}
                                 <span className={`ml-2 px-2 py-0.5 rounded-full text-xs font-bold ${activeTab === tab
-                                        ? 'bg-brand-100 text-brand-700 dark:bg-brand-900/30 dark:text-brand-300'
-                                        : 'bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+                                    ? 'bg-brand-100 text-brand-700 dark:bg-brand-900/30 dark:text-brand-300'
+                                    : 'bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
                                     }`}>
-                                    {tab === 'all' ? posts.length : tab === 'published' ? posts.filter(p => p.published).length : posts.filter(p => !p.published).length}
+                                    {tab === 'all' ? posts.length : tab === 'published' ? posts.filter(p => p.published).length : tab === 'drafts' ? posts.filter(p => !p.published).length : topics.length}
                                 </span>
                             </button>
                         ))}
@@ -260,83 +340,141 @@ const AdminBlog: React.FC = () => {
 
             {/* List Section */}
             <div className="space-y-6">
-                {/* Search Bar */}
-                <div className="relative group">
-                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                        <Search className="h-5 w-5 text-slate-400 group-focus-within:text-brand-500 transition-colors" />
-                    </div>
-                    <input
-                        type="text"
-                        placeholder="Search posts by title or slug..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="block w-full pl-11 pr-4 py-4 rounded-2xl border-0 ring-1 ring-slate-200 dark:ring-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm focus:ring-2 focus:ring-brand-500 transition-all text-sm font-medium placeholder:font-normal"
-                    />
-                </div>
 
-                {/* Posts Grid / List */}
-                {loading ? (
-                    <div className="flex flex-col items-center justify-center py-24 bg-white dark:bg-slate-800 rounded-3xl border border-dashed border-slate-300 dark:border-slate-700">
-                        <LoadingSpinner />
-                        <p className="mt-4 text-slate-500 font-medium">Loading your masterpieces...</p>
-                    </div>
-                ) : filteredPosts.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-24 bg-white dark:bg-slate-800 rounded-3xl border border-dashed border-slate-300 dark:border-slate-700">
-                        <div className="w-16 h-16 bg-slate-100 dark:bg-slate-900 rounded-2xl flex items-center justify-center mb-4">
-                            <FileText className="w-8 h-8 text-slate-400" />
+                {activeTab === 'queue' ? (
+                    <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 border border-slate-100 dark:border-slate-700 shadow-sm">
+                        <div className="flex justify-between items-center mb-6">
+                            <div>
+                                <h2 className="text-xl font-bold text-slate-900 dark:text-white">AI Topic Queue</h2>
+                                <p className="text-sm text-slate-500">Add topics for the AI worker to generate automatically.</p>
+                            </div>
+                            <button onClick={triggerWorker} className="px-4 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-lg text-sm font-bold shadow-sm hover:opacity-90 transition">
+                                Trigger Auto-Draft Now
+                            </button>
                         </div>
-                        <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">No posts found</h3>
-                        <p className="text-slate-500 text-sm mb-6 max-w-sm text-center">We couldn't find anything matching your current filters. Try adjusting your search term.</p>
-                        <button onClick={openNew} className="text-brand-600 font-semibold hover:text-brand-700 transition-colors">Start writing now &rarr;</button>
+
+                        <form onSubmit={handleAddTopic} className="mb-8 grid grid-cols-1 md:grid-cols-4 gap-4 bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl items-end">
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Topic</label>
+                                <input required placeholder="E.g. Classroom Management" value={newTopic.topic} onChange={e => setNewTopic({ ...newTopic, topic: e.target.value })} className="w-full bg-white dark:bg-slate-800 border-none rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500" />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Audience</label>
+                                <input placeholder="E.g. Primary Teachers" value={newTopic.audience} onChange={e => setNewTopic({ ...newTopic, audience: e.target.value })} className="w-full bg-white dark:bg-slate-800 border-none rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500" />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Category</label>
+                                <input placeholder="E.g. Teaching Practice" value={newTopic.category} onChange={e => setNewTopic({ ...newTopic, category: e.target.value })} className="w-full bg-white dark:bg-slate-800 border-none rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500" />
+                            </div>
+                            <button type="submit" disabled={isAddingTopic} className="w-full bg-brand-600 text-white rounded-lg px-4 py-2 text-sm font-bold hover:bg-brand-700 disabled:opacity-50 transition">
+                                {isAddingTopic ? 'Adding...' : 'Add to Queue'}
+                            </button>
+                        </form>
+
+                        <div className="space-y-3">
+                            {topics.length === 0 && <p className="text-center text-slate-500 py-8">No topics in queue. Add some above!</p>}
+                            {topics.map(t => (
+                                <div key={t.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-white dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-800">
+                                    <div className="flex-1">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <h4 className="font-bold text-slate-900 dark:text-white">{t.topic}</h4>
+                                            <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full ${t.status === 'QUEUED' ? 'bg-blue-100 text-blue-700' : t.status === 'IN_PROGRESS' ? 'bg-yellow-100 text-yellow-700' : t.status === 'USED' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                                {t.status}
+                                            </span>
+                                        </div>
+                                        <p className="text-xs text-slate-500 dark:text-slate-400">Audience: {t.audience} &bull; Category: {t.category}</p>
+                                        {t.errorLog && <p className="text-xs text-red-500 mt-1 line-clamp-1">{t.errorLog}</p>}
+                                    </div>
+                                    <div className="mt-3 sm:mt-0 flex items-center gap-2">
+                                        <button onClick={() => handleDeleteTopic(t.id)} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition">
+                                            <Trash className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                        {filteredPosts.map((post) => (
-                            <div key={post.id} className="group bg-white dark:bg-slate-800 rounded-3xl p-5 border border-slate-100 dark:border-slate-700/60 shadow-sm hover:shadow-xl hover:shadow-slate-200/50 dark:hover:shadow-black/20 transition-all duration-300 flex flex-col h-full hover:-translate-y-1">
-                                <div className="relative w-full h-48 mb-5 rounded-2xl overflow-hidden bg-slate-100 dark:bg-slate-900">
-                                    {post.image ? (
-                                        <img src={post.image} alt={post.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
-                                    ) : (
-                                        <div className="flex items-center justify-center w-full h-full opacity-50">
-                                            <FileText className="w-12 h-12 text-slate-300 dark:text-slate-700" />
-                                        </div>
-                                    )}
-                                    <div className="absolute top-3 right-3 flex gap-2">
-                                        <span className={`px-2.5 py-1 rounded-lg text-xs font-bold backdrop-blur-md ${post.published ? 'bg-green-500/90 text-white shadow-sm' : 'bg-yellow-500/90 text-white shadow-sm'
-                                            }`}>
-                                            {post.published ? 'Published' : 'Draft'}
-                                        </span>
-                                    </div>
-                                </div>
-
-                                <div className="flex-1 flex flex-col justify-between">
-                                    <div>
-                                        <h3 className="text-lg font-bold text-slate-900 dark:text-white line-clamp-2 leading-tight mb-2 group-hover:text-brand-600 transition-colors">{post.title}</h3>
-                                        <p className="text-sm font-medium text-brand-600 dark:text-brand-400 mb-1">{post.slug}</p>
-                                        <p className="text-xs font-medium text-slate-500 dark:text-slate-400 line-clamp-2">{post.summary || 'No summary provided.'}</p>
-                                    </div>
-
-                                    <div className="mt-5 pt-5 border-t border-slate-100 dark:border-slate-700/60 flex items-center justify-between">
-                                        <div className="flex flex-col">
-                                            <span className="text-xs font-semibold text-slate-900 dark:text-slate-300">{post.author}</span>
-                                            <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider mt-0.5">{new Date(post.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</span>
-                                        </div>
-                                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity translate-x-2 group-hover:translate-x-0 duration-300">
-                                            <button onClick={() => window.open(`/blog/${post.slug}`, '_blank')} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors" title="View Live">
-                                                <Eye className="w-4 h-4" />
-                                            </button>
-                                            <button onClick={() => openEdit(post)} className="p-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors" title="Edit">
-                                                <Edit className="w-4 h-4" />
-                                            </button>
-                                            <button onClick={() => handleDelete(post.id)} className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg text-slate-400 hover:text-red-600 dark:hover:text-red-400 transition-colors" title="Delete">
-                                                <Trash className="w-4 h-4" />
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
+                    <>
+                        {/* Search Bar */}
+                        <div className="relative group">
+                            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                <Search className="h-5 w-5 text-slate-400 group-focus-within:text-brand-500 transition-colors" />
                             </div>
-                        ))}
-                    </div>
+                            <input
+                                type="text"
+                                placeholder="Search posts by title or slug..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="block w-full pl-11 pr-4 py-4 rounded-2xl border-0 ring-1 ring-slate-200 dark:ring-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm focus:ring-2 focus:ring-brand-500 transition-all text-sm font-medium placeholder:font-normal"
+                            />
+                        </div>
+
+                        {/* Posts Grid / List */}
+                        {loading ? (
+                            <div className="flex flex-col items-center justify-center py-24 bg-white dark:bg-slate-800 rounded-3xl border border-dashed border-slate-300 dark:border-slate-700">
+                                <LoadingSpinner />
+                                <p className="mt-4 text-slate-500 font-medium">Loading your masterpieces...</p>
+                            </div>
+                        ) : filteredPosts.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center py-24 bg-white dark:bg-slate-800 rounded-3xl border border-dashed border-slate-300 dark:border-slate-700">
+                                <div className="w-16 h-16 bg-slate-100 dark:bg-slate-900 rounded-2xl flex items-center justify-center mb-4">
+                                    <FileText className="w-8 h-8 text-slate-400" />
+                                </div>
+                                <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">No posts found</h3>
+                                <p className="text-slate-500 text-sm mb-6 max-w-sm text-center">We couldn't find anything matching your current filters. Try adjusting your search term.</p>
+                                <button onClick={openNew} className="text-brand-600 font-semibold hover:text-brand-700 transition-colors">Start writing now &rarr;</button>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                                {filteredPosts.map((post) => (
+                                    <div key={post.id} className="group bg-white dark:bg-slate-800 rounded-3xl p-5 border border-slate-100 dark:border-slate-700/60 shadow-sm hover:shadow-xl hover:shadow-slate-200/50 dark:hover:shadow-black/20 transition-all duration-300 flex flex-col h-full hover:-translate-y-1">
+                                        <div className="relative w-full h-48 mb-5 rounded-2xl overflow-hidden bg-slate-100 dark:bg-slate-900">
+                                            {post.image ? (
+                                                <img src={post.image} alt={post.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                                            ) : (
+                                                <div className="flex items-center justify-center w-full h-full opacity-50">
+                                                    <FileText className="w-12 h-12 text-slate-300 dark:text-slate-700" />
+                                                </div>
+                                            )}
+                                            <div className="absolute top-3 right-3 flex gap-2">
+                                                <span className={`px-2.5 py-1 rounded-lg text-xs font-bold backdrop-blur-md ${post.published ? 'bg-green-500/90 text-white shadow-sm' : 'bg-yellow-500/90 text-white shadow-sm'
+                                                    }`}>
+                                                    {post.published ? 'Published' : 'Draft'}
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex-1 flex flex-col justify-between">
+                                            <div>
+                                                <h3 className="text-lg font-bold text-slate-900 dark:text-white line-clamp-2 leading-tight mb-2 group-hover:text-brand-600 transition-colors">{post.title}</h3>
+                                                <p className="text-sm font-medium text-brand-600 dark:text-brand-400 mb-1">{post.slug}</p>
+                                                <p className="text-xs font-medium text-slate-500 dark:text-slate-400 line-clamp-2">{post.summary || 'No summary provided.'}</p>
+                                            </div>
+
+                                            <div className="mt-5 pt-5 border-t border-slate-100 dark:border-slate-700/60 flex items-center justify-between">
+                                                <div className="flex flex-col">
+                                                    <span className="text-xs font-semibold text-slate-900 dark:text-slate-300">{post.author}</span>
+                                                    <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider mt-0.5">{new Date(post.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                                                </div>
+                                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity translate-x-2 group-hover:translate-x-0 duration-300">
+                                                    <button onClick={() => window.open(`/blog/${post.slug}`, '_blank')} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors" title="View Live">
+                                                        <Eye className="w-4 h-4" />
+                                                    </button>
+                                                    <button onClick={() => openEdit(post)} className="p-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors" title="Edit">
+                                                        <Edit className="w-4 h-4" />
+                                                    </button>
+                                                    <button onClick={() => handleDelete(post.id)} className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg text-slate-400 hover:text-red-600 dark:hover:text-red-400 transition-colors" title="Delete">
+                                                        <Trash className="w-4 h-4" />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </>
                 )}
             </div>
 
@@ -409,7 +547,7 @@ const AdminBlog: React.FC = () => {
                                     <div className="group">
                                         <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 group-focus-within:text-brand-500 transition-colors">Friendly URL Slug</label>
                                         <div className="flex items-center">
-                                            <span className="text-slate-400 font-medium mr-2">teachaide.com/blog/</span>
+                                            <span className="text-slate-400 font-medium mr-2">teachaide.ng/blog/</span>
                                             <input
                                                 type="text"
                                                 placeholder="my-awesome-post"
@@ -421,6 +559,20 @@ const AdminBlog: React.FC = () => {
                                                 className="flex-1 bg-transparent border-0 border-b-2 border-slate-200 dark:border-slate-700 px-0 py-2 text-brand-600 dark:text-brand-400 font-semibold focus:ring-0 focus:border-brand-500 transition-colors"
                                             />
                                         </div>
+                                    </div>
+
+                                    <div className="group">
+                                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 group-focus-within:text-brand-500 transition-colors">Category</label>
+                                        <input
+                                            type="text"
+                                            placeholder="E.g. Teaching Practice"
+                                            value={currentPost.category || ''}
+                                            onChange={e => {
+                                                setCurrentPost({ ...currentPost, category: e.target.value });
+                                                setHasUnsavedChanges(true);
+                                            }}
+                                            className="w-full bg-transparent border-0 border-b-2 border-slate-200 dark:border-slate-700 px-0 py-2 text-slate-900 dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-700 focus:ring-0 focus:border-brand-500 transition-colors font-medium"
+                                        />
                                     </div>
                                 </div>
 

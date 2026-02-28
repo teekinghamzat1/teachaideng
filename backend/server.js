@@ -110,6 +110,7 @@ app.use('/api/testimonials', require('./src/routes/testimonialRoutes'));
 app.use('/api/branding', require('./src/routes/branding'));
 app.use('/api/usage', require('./src/routes/usage'));
 app.use('/api/blog', require('./src/routes/blogRoutes'));
+app.use('/api/topics', require('./src/routes/topicQueueRoutes'));
 app.use('/api/sitemap.xml', require('./src/routes/sitemapRoutes'));
 app.use('/api/support', require('./src/routes/supportRoutes'));
 app.use('/api/smart-class', require('./src/routes/smartClassRoutes'));
@@ -123,6 +124,12 @@ const PORT = process.env.PORT || 5000;
 
 
 const { seedDefaultCurriculum } = require('./src/controllers/curriculumController');
+const { initBlogCron } = require('./src/cron/blogAutoDraft');
+
+// Initialize Cron Jobs
+if (process.env.NODE_ENV !== 'test' && (!process.env.VERCEL || process.env.ENABLE_CRON === 'true')) {
+    initBlogCron();
+}
 
 // For local development
 if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
