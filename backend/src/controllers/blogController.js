@@ -1,6 +1,7 @@
 const asyncHandler = require('express-async-handler');
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
+const { processPostSEO } = require('../utils/seoHelper');
 
 // @desc    Get all published blog posts
 // @route   GET /api/blog
@@ -50,19 +51,14 @@ const createPost = asyncHandler(async (req, res) => {
         finalSlug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
     }
 
+    // Process automated SEO (Meta, Keywords, Internal Links)
+    const rawPostData = {
+        title, content, summary, image, author: author || 'TeachAide Team', published: published || false, slug: finalSlug, metaTitle, metaDescription, keywords
+    };
+    const seoOptimizedData = await processPostSEO(rawPostData);
+
     const post = await prisma.blogPost.create({
-        data: {
-            title,
-            content,
-            summary,
-            image,
-            author: author || 'TeachAide Team',
-            published: published || false,
-            slug: finalSlug,
-            metaTitle,
-            metaDescription,
-            keywords
-        }
+        data: seoOptimizedData
     });
 
     res.status(201).json(post);
@@ -89,20 +85,24 @@ const updatePost = asyncHandler(async (req, res) => {
     });
 
     if (post) {
+        const rawPostData = {
+            title: title || post.title,
+            content: content || post.content,
+            summary: summary || post.summary,
+            image: image || post.image,
+            author: author || post.author,
+            published: published !== undefined ? published : post.published,
+            slug: slug || post.slug,
+            metaTitle: metaTitle || post.metaTitle,
+            metaDescription: metaDescription || post.metaDescription,
+            keywords: keywords || post.keywords
+        };
+
+        const seoOptimizedData = await processPostSEO(rawPostData, req.params.id);
+
         const updatedPost = await prisma.blogPost.update({
             where: { id: req.params.id },
-            data: {
-                title: title || post.title,
-                content: content || post.content,
-                summary: summary || post.summary,
-                image: image || post.image,
-                author: author || post.author,
-                published: published !== undefined ? published : post.published,
-                slug: slug || post.slug,
-                metaTitle: metaTitle || post.metaTitle,
-                metaDescription: metaDescription || post.metaDescription,
-                keywords: keywords || post.keywords
-            }
+            data: seoOptimizedData
         });
         res.json(updatedPost);
     } else {

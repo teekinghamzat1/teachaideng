@@ -369,7 +369,65 @@ async function generateRemarkViaGenAI(options) {
     const text = candidate?.content?.parts?.[0]?.text;
     const usage = res.data.usageMetadata || {};
 
-    return { text, usage };
+  });
+
+  return response;
+}
+
+/**
+ * Generate Catchy SEO Meta Description / Card Summary
+ */
+async function generateSEOSummaryViaGenAI(options) {
+  const { title, textContent, maxTokens } = options;
+  const apiKey = getApiKey();
+  const model = normalizeModel(process.env.GENAI_MODEL || 'gemini-2.5-flash');
+
+  const systemPrompt = `You are an expert SEO copywriter and marketer for an educational technology platform.
+  Your task is to generate a highly catchy, convertible, and click-worthy SEO Meta Description (Card Summary) for a blog post.
+  
+  CONTEXT:
+  - Post Title: ${title}
+  
+  RULES:
+  1. It must be between 130 and 155 characters long.
+  2. It must be engaging and end with a slight hook or CTA (e.g., "Discover how..." or "Read more to find out.") if appropriate.
+  3. Incorporate strong action verbs.
+  4. Make pedagogical or educational topics sound exciting and transformative for teachers.
+  5. DO NOT use markdown. Return raw JSON ONLY.
+  
+  The JSON object must have ONLY one field:
+  - summary: string`;
+
+  // Truncate text content to save tokens
+  const slicedContext = textContent ? textContent.slice(0, 1500) : 'No content available.';
+
+  const contents = [{
+    role: 'user',
+    parts: [{ text: `${systemPrompt}\n\nHere is an excerpt of the post content for context: ${slicedContext}` }]
+  }];
+
+  const response = await withRetry(async () => {
+    const res = await axios.post(`${API_BASE}/models/${model}:generateContent?key=${apiKey}`, {
+      contents,
+      generationConfig: {
+        responseMimeType: 'application/json',
+        maxOutputTokens: maxTokens || 200
+      }
+    }, { timeout: 30000 });
+
+    const candidate = res.data.candidates?.[0];
+    const text = candidate?.content?.parts?.[0]?.text;
+
+    // Parse the JSON returned
+    let finalSummary = '';
+    try {
+      const parsed = JSON.parse(text);
+      finalSummary = parsed.summary || '';
+    } catch (e) {
+      finalSummary = text;
+    }
+
+    return finalSummary;
   });
 
   return response;
@@ -378,5 +436,6 @@ async function generateRemarkViaGenAI(options) {
 module.exports = {
   generateLessonNoteViaGenAI,
   generateAssessmentViaGenAI,
-  generateRemarkViaGenAI
+  generateRemarkViaGenAI,
+  generateSEOSummaryViaGenAI
 };
