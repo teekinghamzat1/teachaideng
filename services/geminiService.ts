@@ -61,18 +61,41 @@ export const generateLessonNote = async (
 
     const resultData = data.data || data;
 
-    // Helper to clean JSON string from Markdown code blocks
-    const cleanJson = (str: string) => {
+    // Helper to robustly extract JSON from a string
+    const extractJson = (str: string) => {
       if (typeof str !== 'string') return str;
-      return str.replace(/```json\s*|\s*```/g, '').trim();
+
+      // 1. Try to find JSON block in markdown
+      const markdownMatch = str.match(/```json\s*([\s\S]*?)\s*```/);
+      if (markdownMatch && markdownMatch[1]) {
+        return markdownMatch[1].trim();
+      }
+
+      // 2. Try to find the first '{' or '[' and the last '}' or ']'
+      const firstCurly = str.indexOf('{');
+      const firstBracket = str.indexOf('[');
+      const first = (firstCurly !== -1 && (firstBracket === -1 || firstCurly < firstBracket)) ? firstCurly : firstBracket;
+
+      if (first !== -1) {
+        const lastCurly = str.lastIndexOf('}');
+        const lastBracket = str.lastIndexOf(']');
+        const last = Math.max(lastCurly, lastBracket);
+
+        if (last > first) {
+          return str.substring(first, last + 1);
+        }
+      }
+
+      return str.trim();
     };
 
     let parsedNote: any;
     if (resultData.text && typeof resultData.text === 'string') {
+      const cleaned = extractJson(resultData.text);
       try {
-        parsedNote = JSON.parse(cleanJson(resultData.text));
+        parsedNote = JSON.parse(cleaned);
       } catch (e) {
-        console.error("JSON parse error from GenAI");
+        console.error("JSON parse error from GenAI. Content was:", cleaned);
         throw new Error("Failed to parse AI response. Please try again.");
       }
     } else {
@@ -202,8 +225,23 @@ export const generateAssessment = async (
     let assessmentData;
     if (resultData.text && typeof resultData.text === 'string') {
       try {
-        const cleanJson = (str: string) => str.replace(/```json\s*|\s*```/g, '').trim();
-        assessmentData = JSON.parse(cleanJson(resultData.text));
+        const extractJson = (str: string) => {
+          const markdownMatch = str.match(/```json\s*([\s\S]*?)\s*```/);
+          if (markdownMatch && markdownMatch[1]) return markdownMatch[1].trim();
+
+          const first = Math.min(
+            str.indexOf('{') === -1 ? Infinity : str.indexOf('{'),
+            str.indexOf('[') === -1 ? Infinity : str.indexOf('[')
+          );
+          const last = Math.max(str.lastIndexOf('}'), str.lastIndexOf(']'));
+
+          if (first !== Infinity && last !== -1 && last > first) {
+            return str.substring(first, last + 1);
+          }
+          return str.replace(/```json\s*|\s*```/g, '').trim();
+        };
+
+        assessmentData = JSON.parse(extractJson(resultData.text));
       } catch (e) {
         console.error("JSON parse error in assessment", e);
         // Fallback or attempt to extract JSON if needed

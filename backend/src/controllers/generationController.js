@@ -182,9 +182,27 @@ const generateLesson = asyncHandler(async (req, res) => {
   }
 
   const { sanitizeObjectMarkdown } = require('../utils/markdownUtils');
+
+  // Robust JSON Extraction Helper
+  const extractJson = (str) => {
+    if (!str || typeof str !== 'string') return str;
+    const markdownMatch = str.match(/```json\s*([\s\S]*?)\s*```/);
+    if (markdownMatch && markdownMatch[1]) return markdownMatch[1].trim();
+    const first = Math.min(
+      str.indexOf('{') === -1 ? Infinity : str.indexOf('{'),
+      str.indexOf('[') === -1 ? Infinity : str.indexOf('[')
+    );
+    const last = Math.max(str.lastIndexOf('}'), str.lastIndexOf(']'));
+    if (first !== Infinity && last !== -1 && last > first) {
+      return str.substring(first, last + 1);
+    }
+    return str.replace(/```json\s*|\s*```/g, '').trim();
+  };
+
   let finalJson;
   try {
-    finalJson = JSON.parse(genResult.text);
+    const cleanedText = extractJson(genResult.text);
+    finalJson = JSON.parse(cleanedText);
     finalJson = sanitizeObjectMarkdown(finalJson);
   } catch (pErr) {
     console.error('Failed to parse or sanitize AI response', pErr);
@@ -343,9 +361,27 @@ const generateAssessment = asyncHandler(async (req, res) => {
   }
 
   const { sanitizeObjectMarkdown } = require('../utils/markdownUtils');
+
+  // Robust JSON Extraction Helper (defined locally for simplicity or could be in utils)
+  const extractJson = (str) => {
+    if (!str || typeof str !== 'string') return str;
+    const markdownMatch = str.match(/```json\s*([\s\S]*?)\s*```/);
+    if (markdownMatch && markdownMatch[1]) return markdownMatch[1].trim();
+    const first = Math.min(
+      str.indexOf('{') === -1 ? Infinity : str.indexOf('{'),
+      str.indexOf('[') === -1 ? Infinity : str.indexOf('[')
+    );
+    const last = Math.max(str.lastIndexOf('}'), str.lastIndexOf(']'));
+    if (first !== Infinity && last !== -1 && last > first) {
+      return str.substring(first, last + 1);
+    }
+    return str.replace(/```json\s*|\s*```/g, '').trim();
+  };
+
   let finalJson;
   try {
-    finalJson = JSON.parse(genResult.text);
+    const cleanedText = extractJson(genResult.text);
+    finalJson = JSON.parse(cleanedText);
     finalJson = sanitizeObjectMarkdown(finalJson);
   } catch (pErr) {
     console.error('Failed to parse or sanitize AI assessment response', pErr);
@@ -380,7 +416,23 @@ const generateRemark = asyncHandler(async (req, res) => {
       maxTokens: 1024
     });
 
-    const parsed = JSON.parse(genResult.text);
+    // Robust JSON Extraction Helper
+    const extractJson = (str) => {
+      if (!str || typeof str !== 'string') return str;
+      const markdownMatch = str.match(/```json\s*([\s\S]*?)\s*```/);
+      if (markdownMatch && markdownMatch[1]) return markdownMatch[1].trim();
+      const first = Math.min(
+        str.indexOf('{') === -1 ? Infinity : str.indexOf('{'),
+        str.indexOf('[') === -1 ? Infinity : str.indexOf('[')
+      );
+      const last = Math.max(str.lastIndexOf('}'), str.lastIndexOf(']'));
+      if (first !== Infinity && last !== -1 && last > first) {
+        return str.substring(first, last + 1);
+      }
+      return str.replace(/```json\s*|\s*```/g, '').trim();
+    };
+
+    const parsed = JSON.parse(extractJson(genResult.text));
 
     // Log usage
     createUsageLog(userId, 'REMARK_GENERATION', { subject, topic, studentCount: students?.length || 0 }).catch(() => { });

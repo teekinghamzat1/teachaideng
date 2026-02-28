@@ -321,7 +321,7 @@ model SystemSetting {
   id              Int     @id @default(1)
   maintenanceMode Boolean @default(false)
   allowSignup     Boolean @default(true)
-  defaultModel    String  @default("gemini-2.5-flash")
+  defaultModel    String  @default("gemini-1.5-flash")
   maxTokens       Int     @default(4096)
 
   // SMTP Configuration

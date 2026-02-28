@@ -13,8 +13,8 @@ const getApiKey = () => {
 };
 
 const normalizeModel = (model) => {
-  // Use gemini-2.5-flash - faster and more stable
-  if (!model || model.includes('1.5-flash') || model.includes('2.0-flash')) return 'gemini-2.5-flash';
+  // Use gemini-1.5-flash - faster and more stable
+  if (!model || model.includes('1.5-flash') || model.includes('2.0-flash')) return 'gemini-1.5-flash';
   return model.replace('models/', '');
 };
 
@@ -56,7 +56,7 @@ async function generateLessonNoteViaGenAI(options) {
     smartHint, includeEvaluation, includeTeachingAids, nigerianCurriculum, maxTokens
   } = options;
   const apiKey = getApiKey();
-  const model = normalizeModel(process.env.GENAI_MODEL || 'gemini-2.5-flash');
+  const model = normalizeModel(process.env.GENAI_MODEL || 'gemini-1.5-flash');
 
   const today = new Date().toISOString().split('T')[0];
   const systemPrompt = `You are TeachAide, an AI assistant designed specifically for Nigerian schools.
@@ -244,9 +244,9 @@ ${options.smartHint}` : ''}
 
       return { text, usage };
     } catch (err) {
-      if (err.response?.status === 429 && model === 'gemini-2.5-flash') {
+      if (err.response?.status === 429 && model === 'gemini-1.5-flash') {
         console.warn('Primary model 429. Falling back to Lite...');
-        const res = await axios.post(`${API_BASE}/models/gemini-2.5-flash-lite:generateContent?key=${apiKey}`, {
+        const res = await axios.post(`${API_BASE}/models/gemini-1.5-flash-lite:generateContent?key=${apiKey}`, {
           contents,
           generationConfig: {
             responseMimeType: 'application/json',
@@ -303,8 +303,8 @@ async function generateAssessmentViaGenAI(options) {
 
       return { text, usage };
     } catch (err) {
-      if (err.response?.status === 429 && model === 'gemini-2.5-flash') {
-        const res = await axios.post(`${API_BASE}/models/gemini-2.5-flash-lite:generateContent?key=${apiKey}`, {
+      if (err.response?.status === 429 && model === 'gemini-1.5-flash') {
+        const res = await axios.post(`${API_BASE}/models/gemini-1.5-flash-lite:generateContent?key=${apiKey}`, {
           contents,
           generationConfig: {
             responseMimeType: 'application/json',
@@ -328,7 +328,7 @@ async function generateAssessmentViaGenAI(options) {
 async function generateRemarkViaGenAI(options) {
   const { classLevel, subject, topic, lessonOutcome, students, style, maxTokens } = options;
   const apiKey = getApiKey();
-  const model = normalizeModel(process.env.GENAI_MODEL || 'gemini-2.5-flash');
+  const model = normalizeModel(process.env.GENAI_MODEL || 'gemini-1.5-flash');
 
   const systemPrompt = `You are an expert teacher writing a lesson reflection/remark for your records.
   
@@ -380,7 +380,7 @@ async function generateRemarkViaGenAI(options) {
 async function generateSEOSummaryViaGenAI(options) {
   const { title, textContent, maxTokens } = options;
   const apiKey = getApiKey();
-  const model = normalizeModel(process.env.GENAI_MODEL || 'gemini-2.5-flash');
+  const model = normalizeModel(process.env.GENAI_MODEL || 'gemini-1.5-flash');
 
   const systemPrompt = `You are an expert SEO copywriter and marketer for an educational technology platform.
   Your task is to generate a highly catchy, convertible, and click-worthy SEO Meta Description (Card Summary) for a blog post.
@@ -439,7 +439,7 @@ async function generateSEOSummaryViaGenAI(options) {
 async function generateBlogDraftViaGenAI(options) {
   const { topic, audience, category, maxTokens } = options;
   const apiKey = getApiKey();
-  const model = normalizeModel(process.env.GENAI_MODEL || 'gemini-2.5-flash');
+  const model = normalizeModel(process.env.GENAI_MODEL || 'gemini-1.5-flash');
 
   const systemPrompt = `You are an educational content writer for Nigerian teachers.
 
@@ -499,8 +499,8 @@ Important: Please enforce JSON-only output.`;
       const text = candidate?.content?.parts?.[0]?.text;
       return JSON.parse(text);
     } catch (err) {
-      if (err.response?.status === 429 && model === 'gemini-2.5-flash') {
-        const res = await axios.post(`${API_BASE}/models/gemini-2.5-flash-lite:generateContent?key=${apiKey}`, {
+      if (err.response?.status === 429 && model === 'gemini-1.5-flash') {
+        const res = await axios.post(`${API_BASE}/models/gemini-1.5-flash-lite:generateContent?key=${apiKey}`, {
           contents,
           generationConfig: {
             responseMimeType: 'application/json',
