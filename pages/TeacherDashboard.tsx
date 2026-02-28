@@ -1,10 +1,14 @@
-import React, { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { BookOpen, Sparkles, Trash, FileText, Loader2, Edit, Users, BarChart, Calendar, CheckCircle, Clock, ChevronRight, Eye, Plus } from '../components/Icons';
-import { LessonNote } from '../types';
+import React, { useEffect, useState, useMemo } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
+import {
+    BookOpen, Sparkles, Trash, FileText, Loader2, Edit,
+    ChevronRight, Zap, Save, BarChart, TrendingUp, Clock,
+    Plus, Users, Calendar, CheckCircle, Eye, Clipboard
+} from '../components/Icons';
+import { LessonNote, Assessment } from '../types';
 import { db } from '../database';
 import { showAlert } from '../utils/alerts';
-import SupportChat from '../components/SupportChat';
+import UpgradeCard from '../components/UpgradeCard';
 
 interface SchoolInfo {
     id: string;
@@ -14,516 +18,378 @@ interface SchoolInfo {
     email?: string;
 }
 
-interface TeacherStats {
-    totalLessons: number;
-    thisWeekLessons: number;
-    thisMonthLessons: number;
-    averagePerWeek: number;
-}
-
 const TeacherDashboard: React.FC = () => {
     const [savedNotes, setSavedNotes] = useState<LessonNote[]>([]);
+    const [assessments, setAssessments] = useState<Assessment[]>([]);
     const [loading, setLoading] = useState(true);
-    const navigate = useNavigate();
     const [user, setUser] = useState<any | null>(null);
-    const [usage, setUsage] = useState<{ used: number; limit: number; remaining: number; duration?: string } | null>(null);
+    const [usage, setUsage] = useState<{ used: number; limit: number; remaining: number } | null>(null);
     const [schoolInfo, setSchoolInfo] = useState<SchoolInfo | null>(null);
-    const [teacherStats, setTeacherStats] = useState<TeacherStats | null>(null);
-    const [showChat, setShowChat] = useState(false);
+    const [forecastFilter, setForecastFilter] = useState<'This Week' | 'Last Week'>('This Week');
+    const navigate = useNavigate();
 
     useEffect(() => {
-        const currentUser = db.auth.getCurrentUser();
-        setUser(currentUser);
+        loadDashboardData();
+    }, []);
 
+    const loadDashboardData = async () => {
+        const currentUser = db.auth.getCurrentUser();
         if (!currentUser) {
             navigate('/login');
             return;
         }
+        setUser(currentUser);
 
         if (currentUser.subscriptionPlan !== 'School' || !currentUser.schoolId) {
             navigate('/dashboard');
             return;
         }
 
-        const loadData = async () => {
-            try {
-                const notes = await db.notes.getUserNotes();
-                setSavedNotes(notes);
+        try {
+            const [notes, assessmentsData, usageData] = await Promise.all([
+                db.notes.getUserNotes(),
+                db.assessments.getUserAssessments(),
+                db.auth.getUsage(currentUser.schoolId)
+            ]);
+            setSavedNotes(notes);
+            setAssessments(assessmentsData);
+            setUsage(usageData);
 
-                const now = new Date();
-                const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-                const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-
-                setTeacherStats({
-                    totalLessons: notes.length,
-                    thisWeekLessons: notes.filter(n => new Date(n.createdAt || '') >= weekAgo).length,
-                    thisMonthLessons: notes.filter(n => new Date(n.createdAt || '') >= monthAgo).length,
-                    averagePerWeek: (notes.filter(n => new Date(n.createdAt || '') >= monthAgo).length / 4.3)
-                });
-
-                if (currentUser.schoolId) {
-                    const response = await fetch(`/api/school-admin/details`, {
-                        headers: { 'Authorization': `Bearer ${currentUser.token}` }
-                    });
-                    if (response.ok) {
-                        const data = await response.json();
-                        if (data.success && data.data.school) setSchoolInfo(data.data.school);
-                    }
-                }
-
-                setUsage(await db.auth.getUsage(currentUser.schoolId));
-
-            } catch (error) {
-                console.error("Failed to load dashboard data", error);
-            } finally {
-                setLoading(false);
+            // School info
+            const response = await fetch(`/api/school-admin/details`, {
+                headers: { 'Authorization': `Bearer ${currentUser.token}` }
+            });
+            if (response.ok) {
+                const data = await response.json();
+                if (data.success && data.data.school) setSchoolInfo(data.data.school);
             }
-        };
 
-        loadData();
-    }, [navigate]);
+        } catch (err) {
+            console.error('Failed to load dashboard data', err);
+        } finally {
+            setLoading(false);
+        }
+    };
 
-    const handleDelete = async (id: string, e: React.MouseEvent) => {
+    const handleDelete = async (id: string, type: 'note' | 'assessment', e: React.MouseEvent) => {
         e.preventDefault();
-        if (await showAlert.confirm('Delete Note', 'Are you sure you want to delete this lesson note?')) {
+        const title = type === 'note' ? 'Delete Note' : 'Delete Assessment';
+        if (await showAlert.confirm(title, 'Permanently remove this item?')) {
             try {
-                await db.notes.delete(id);
-                setSavedNotes(prev => prev.filter(note => note.id !== id));
-                showAlert.success('Deleted', 'Lesson note removed successfully.');
+                if (type === 'note') {
+                    await db.notes.delete(id);
+                    setSavedNotes(prev => prev.filter(n => n.id !== id));
+                } else {
+                    await db.assessments.delete(id);
+                    setAssessments(prev => prev.filter(a => a.id !== id));
+                }
+                showAlert.success('Deleted', 'Item removed.');
             } catch (err) {
-                showAlert.error('Delete Failed', 'Failed to delete note.');
+                showAlert.error('Error', 'Failed to delete note.');
             }
         }
     };
 
+    // --- Dynamic Stats ---
+    const stats = useMemo(() => {
+        const timeSaved = (savedNotes.length * 2) + (assessments.length * 1.5);
+        const today = new Date().toLocaleDateString();
+        const todayCount = savedNotes.filter(n => new Date(n.createdAt || '').toLocaleDateString() === today).length +
+            assessments.filter(a => new Date(a.createdAt || '').toLocaleDateString() === today).length;
+
+        return [
+            { label: 'Time Saved', value: `${timeSaved}h`, icon: Clock, color: 'text-brand-500 bg-brand-500/10' },
+            {
+                label: 'Weekly Activity', value: savedNotes.filter(n => {
+                    const d = new Date(n.createdAt || '');
+                    const weekAgo = new Date();
+                    weekAgo.setDate(weekAgo.getDate() - 7);
+                    return d >= weekAgo;
+                }).length, icon: TrendingUp, color: 'text-teal-500 bg-teal-500/10'
+            },
+            { label: 'Daily Pulse', value: `${todayCount}/5`, icon: Zap, color: 'text-amber-500 bg-amber-500/10' }
+        ];
+    }, [savedNotes, assessments]);
+
+    // --- Dynamic Forecast Chart Data ---
+    const forecastChartData = useMemo(() => {
+        const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        const now = new Date();
+        const startOfCurrentWeek = new Date(now.setDate(now.getDate() - now.getDay()));
+        startOfCurrentWeek.setHours(0, 0, 0, 0);
+
+        const targetWeekStart = new Date(startOfCurrentWeek);
+        if (forecastFilter === 'Last Week') {
+            targetWeekStart.setDate(targetWeekStart.getDate() - 7);
+        }
+
+        const dailyCounts = days.map((day, index) => {
+            const targetDate = new Date(targetWeekStart);
+            targetDate.setDate(targetDate.getDate() + index);
+            const dateStr = targetDate.toLocaleDateString();
+
+            const noteCount = savedNotes.filter(n => new Date(n.createdAt || '').toLocaleDateString() === dateStr).length;
+            const quizCount = assessments.filter(a => new Date(a.createdAt || '').toLocaleDateString() === dateStr).length;
+
+            return {
+                label: day,
+                primary: noteCount,
+                secondary: quizCount,
+                total: noteCount + quizCount
+            };
+        });
+
+        const maxCount = Math.max(...dailyCounts.map(d => d.total + 1), 5);
+
+        return dailyCounts.map(d => ({
+            ...d,
+            primaryHeight: (d.primary / maxCount) * 100,
+            secondaryHeight: (d.secondary / maxCount) * 100
+        }));
+    }, [savedNotes, assessments, forecastFilter]);
+
+    // Combined history for the table
+    const recentContent = useMemo(() => {
+        const combined = [
+            ...savedNotes.map(n => ({ ...n, contentType: 'Lesson Note' })),
+            ...assessments.map(a => ({ ...a, contentType: 'Assessment' }))
+        ];
+        return combined.sort((a, b) => new Date(b.createdAt || '').getTime() - new Date(a.createdAt || '').getTime()).slice(0, 5);
+    }, [savedNotes, assessments]);
+
     if (loading) {
         return (
-            <div className="min-h-screen dashboard-bg flex items-center justify-center">
-                <Loader2 className="w-12 h-12 text-brand-500 animate-spin" />
+            <div className="h-[60vh] flex items-center justify-center">
+                <Loader2 className="w-10 h-10 text-brand-500 animate-spin" />
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen dashboard-bg text-slate-900 dark:text-slate-100 transition-colors duration-300">
-            <div className="max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500">
-
-                {/* Desktop/Tablet Layout */}
-                <div className="hidden lg:block p-4 lg:p-10 space-y-8">
-                    {/* Welcome Header */}
-                    <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-                        <div className="space-y-2">
-                            <h1 className="text-3xl lg:text-4xl font-black tracking-tight text-slate-900 dark:text-white">
-                                Welcome back, {user?.name?.split(' ')[0]}! 👋
-                            </h1>
-                            <p className="text-slate-500 dark:text-slate-400 font-semibold text-lg">
-                                {schoolInfo?.name || 'Kings College'} <span className="mx-2 text-slate-300 dark:text-slate-600">•</span> Active Teacher
-                            </p>
-                        </div>
-                        <Link
-                            to="/generator"
-                            className="inline-flex items-center px-6 py-3.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 text-white font-bold shadow-xl shadow-emerald-500/20 transition-all transform hover:-translate-y-1 active:scale-95"
-                        >
-                            <Sparkles className="w-5 h-5 mr-3" />
-                            Create New Note
-                        </Link>
-                    </div>
-
-                    {/* School Profile Card (Gradient) */}
-                    <div className="relative overflow-hidden bg-gradient-to-br from-[#6366f1] via-[#a855f7] to-[#ec4899] rounded-[3rem] p-8 lg:p-12 shadow-2xl shadow-indigo-500/20 text-white group transition-all duration-500 hover:shadow-indigo-500/30">
-                        <div className="relative z-10 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-10">
-                            <div className="flex items-center gap-8">
-                                <div className="w-20 h-20 bg-white/20 backdrop-blur-md rounded-3xl flex items-center justify-center border border-white/30 shadow-inner group-hover:scale-110 transition-transform">
-                                    <Users className="w-10 h-10 text-white" />
-                                </div>
-                                <div className="space-y-1">
-                                    <h2 className="text-3xl lg:text-4xl font-extrabold tracking-tight">{schoolInfo?.name || 'Kings College'}</h2>
-                                    <p className="text-xl text-white/90 font-medium opacity-80">{schoolInfo?.address || 'Ijebu Ode'}</p>
-                                </div>
-                            </div>
-                            {user?.isSchoolAdmin ? (
-                                <Link
-                                    to="/school"
-                                    className="px-8 py-4 bg-white/20 backdrop-blur-md border border-white/30 rounded-2xl font-bold text-white hover:bg-white/30 transition-all text-lg shadow-lg"
-                                >
-                                    Manage School
-                                </Link>
-                            ) : (
-                                <div className="px-8 py-4 bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl font-bold text-white/70 italic text-lg">
-                                    Managed by Admin
-                                </div>
-                            )}
-                        </div>
-                        <div className="mt-10 grid grid-cols-1 md:grid-cols-2 gap-6 opacity-90">
-                            <div className="flex items-center gap-3 text-base font-bold bg-black/10 w-fit px-5 py-3 rounded-2xl border border-white/5">
-                                <span className="text-xl">📧</span>
-                                {schoolInfo?.email || 'adetunjitaoheedolanrewaju@gmail.com'}
-                            </div>
-                            <div className="flex items-center gap-3 text-base font-bold bg-black/10 w-fit px-5 py-3 rounded-2xl border border-white/5">
-                                <span className="text-xl">📞</span>
-                                {schoolInfo?.phone || '+2348158087663'}
-                            </div>
-                        </div>
-                        <div className="absolute top-0 right-0 w-80 h-80 bg-white/10 blur-[120px] rounded-full -mr-20 -mt-20 group-hover:bg-white/20 transition-all"></div>
-                    </div>
-
-                    {/* Grid Layout */}
-                    <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-
-                        {/* Primary Content (Stats & Table) */}
-                        <div className="lg:col-span-3 space-y-8">
-
-                            {/* 3 Stats Grid */}
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                <div className="glass-card rounded-[2.5rem] p-8 glow-edge-emerald group hover:-translate-y-1 transition-all">
-                                    <div className="flex justify-between items-start mb-6">
-                                        <p className="text-slate-400 dark:text-slate-500 text-sm font-bold uppercase tracking-widest">Total Lessons</p>
-                                        <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-emerald-500 border border-emerald-500/20 group-hover:bg-emerald-500 group-hover:text-white transition-all">
-                                            <BookOpen className="w-6 h-6" />
-                                        </div>
-                                    </div>
-                                    <p className="text-5xl font-black text-slate-900 dark:text-white tracking-tight">
-                                        {teacherStats?.totalLessons || 3}
-                                    </p>
-                                </div>
-
-                                <div className="glass-card rounded-[2.5rem] p-8 glow-edge-indigo group hover:-translate-y-1 transition-all">
-                                    <div className="flex justify-between items-start mb-6">
-                                        <p className="text-slate-400 dark:text-slate-500 text-sm font-bold uppercase tracking-widest">This Week</p>
-                                        <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 flex items-center justify-center text-indigo-500 border border-indigo-500/20 group-hover:bg-indigo-500 group-hover:text-white transition-all">
-                                            <Calendar className="w-6 h-6" />
-                                        </div>
-                                    </div>
-                                    <p className="text-5xl font-black text-slate-900 dark:text-white tracking-tight">
-                                        {teacherStats?.thisWeekLessons || 3}
-                                    </p>
-                                </div>
-
-                                <div className="glass-card rounded-[2.5rem] p-8 glow-edge-indigo group hover:-translate-y-1 transition-all">
-                                    <div className="flex justify-between items-start mb-6">
-                                        <p className="text-slate-400 dark:text-slate-500 text-sm font-bold uppercase tracking-widest">Avg / Week</p>
-                                        <div className="w-12 h-12 rounded-2xl bg-orange-500/10 flex items-center justify-center text-orange-500 border border-orange-500/20 group-hover:bg-orange-500 group-hover:text-white transition-all">
-                                            <BarChart className="w-6 h-6" />
-                                        </div>
-                                    </div>
-                                    <p className="text-5xl font-black text-slate-900 dark:text-white tracking-tight">
-                                        {teacherStats?.averagePerWeek.toFixed(1) || '0.7'}
-                                    </p>
-                                    <p className="text-xs font-bold text-slate-400 mt-2 uppercase tracking-wide">Resets in 12 days</p>
-                                </div>
-                            </div>
-
-                            {/* Recent Lesson Notes Table */}
-                            <div className="glass-card rounded-[3rem] overflow-hidden">
-                                <div className="px-10 py-8 border-b border-slate-200/50 dark:border-white/5 flex items-center justify-between bg-slate-50/50 dark:bg-white/[0.02]">
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-10 h-10 rounded-xl bg-brand-500/10 flex items-center justify-center">
-                                            <BookOpen className="w-5 h-5 text-brand-500" />
-                                        </div>
-                                        <h3 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">Recent Lesson Notes</h3>
-                                    </div>
-                                    <Link to="/history" className="text-sm font-black text-brand-600 dark:text-slate-400 hover:text-brand-700 transition-colors flex items-center gap-1 group">
-                                        View All <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                                    </Link>
-                                </div>
-                                <div className="overflow-x-auto">
-                                    <table className="w-full text-left">
-                                        <thead>
-                                            <tr className="text-slate-400 text-xs font-black uppercase tracking-[0.2em] border-b border-slate-200/50 dark:border-white/5">
-                                                <th className="px-10 py-6">Lesson</th>
-                                                <th className="px-10 py-6">Subject</th>
-                                                <th className="px-10 py-6">Class</th>
-                                                <th className="px-10 py-6">Date</th>
-                                                <th className="px-10 py-6 min-w-[120px]">Actions</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-slate-100 dark:divide-white/5">
-                                            {savedNotes.length > 0 ? (
-                                                savedNotes.slice(0, 5).map((note) => (
-                                                    <tr key={note.id} className="hover:bg-slate-50 dark:hover:bg-white/[0.01] transition-all group">
-                                                        <td className="px-10 py-6 font-black text-slate-800 dark:text-slate-200 truncate max-w-[240px] group-hover:text-brand-600 transition-colors">{note.topic}</td>
-                                                        <td className="px-10 py-6 text-sm text-slate-500 font-bold">{note.subject}</td>
-                                                        <td className="px-10 py-6 text-sm text-slate-500 font-bold">{note.classLevel}</td>
-                                                        <td className="px-10 py-6 text-sm text-slate-400 font-bold">{new Date(note.createdAt || '').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</td>
-                                                        <td className="px-10 py-6">
-                                                            <div className="flex items-center gap-3">
-                                                                <div className="flex p-1.5 bg-slate-100/50 dark:bg-white/5 rounded-xl border border-slate-200/50 dark:border-white/10">
-                                                                    <Link to="/result" state={{ lessonNote: note }} className="p-2 text-emerald-500 hover:bg-emerald-500/10 rounded-lg transition-all" title="View"><Eye className="w-4 h-4" /></Link>
-                                                                    <button onClick={() => navigate('/generator', { state: { editData: note } })} className="p-2 text-blue-500 hover:bg-blue-500/10 rounded-lg transition-all" title="Edit"><Edit className="w-4 h-4" /></button>
-                                                                    <button onClick={(e) => handleDelete(note.id!, e)} className="p-2 text-red-500 hover:bg-red-500/10 rounded-lg transition-all" title="Delete"><Trash className="w-4 h-4" /></button>
-                                                                </div>
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                ))
-                                            ) : (
-                                                <tr>
-                                                    <td colSpan={5} className="px-10 py-20 text-center text-slate-400 font-bold italic">No notes created yet. Let's create one!</td>
-                                                </tr>
-                                            )}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-
-                            {/* Bottom Tagline */}
-                            <div className="flex items-center justify-center py-6 text-center">
-                                <p className="text-sm text-slate-400 font-bold tracking-widest uppercase opacity-60">Empowering Nigerian teachers with AI tools to save time and improve education quality.</p>
-                            </div>
-                        </div>
-
-                        {/* Sidebar Area (Usage & Actions) */}
-                        <div className="space-y-8">
-
-                            {/* Circular Usage Progress */}
-                            <div className="glass-card rounded-[3rem] p-10 flex flex-col items-center">
-                                <h3 className="text-slate-400 dark:text-slate-500 text-sm font-black uppercase tracking-widest mb-10">Monthly Usage</h3>
-                                <div className="relative w-48 h-48 group">
-                                    <svg className="w-full h-full transform -rotate-90">
-                                        <circle
-                                            cx="96"
-                                            cy="96"
-                                            r="84"
-                                            className="stroke-slate-100 dark:stroke-white/5"
-                                            strokeWidth="16"
-                                            fill="transparent"
-                                        />
-                                        <circle
-                                            cx="96"
-                                            cy="96"
-                                            r="84"
-                                            stroke="url(#usage-grad)"
-                                            strokeWidth="16"
-                                            strokeDasharray={528}
-                                            strokeDashoffset={528 - (528 * (usage?.used || 3)) / (usage?.limit || 10)}
-                                            strokeLinecap="round"
-                                            fill="transparent"
-                                            className="transition-all duration-1000 ease-in-out"
-                                        />
-                                        <defs>
-                                            <linearGradient id="usage-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-                                                <stop offset="0%" stopColor="#10b981" />
-                                                <stop offset="100%" stopColor="#34d399" />
-                                            </linearGradient>
-                                        </defs>
-                                    </svg>
-                                    <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                        <div className="text-5xl font-black text-slate-900 dark:text-white group-hover:scale-110 transition-transform">
-                                            {usage?.used || 3}
-                                        </div>
-                                        <div className="text-base font-black text-slate-400 border-t border-slate-200 dark:border-white/10 mt-1 pt-1">
-                                            / {usage?.limit || 10}
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="mt-10 text-center space-y-2">
-                                    <p className="text-sm font-black text-slate-500 uppercase tracking-widest">Resets in 12 days</p>
-                                    <Link to="/pricing" className="inline-block text-emerald-600 dark:text-emerald-500 font-extrabold hover:underline">Upgrade Plan</Link>
-                                </div>
-                            </div>
-
-                            {/* Quick Mini Action Cards */}
-                            <div className="glass-card rounded-[2.5rem] p-8 glow-edge-emerald group">
-                                <div className="flex items-center gap-4 mb-5">
-                                    <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-emerald-500 group-hover:bg-emerald-500 group-hover:text-white transition-all shadow-inner">
-                                        <Sparkles className="w-6 h-6" />
-                                    </div>
-                                    <h3 className="font-extrabold text-xl tracking-tight text-slate-900 dark:text-white">Generate Lesson Note</h3>
-                                </div>
-                                <p className="text-sm text-slate-500 dark:text-slate-400 font-medium leading-relaxed mb-8">
-                                    Quickly create detailed lesson notes tailored to your class and subject.
-                                </p>
-                                <Link to="/generator" className="w-full py-4 bg-gradient-to-r from-emerald-600 to-emerald-500 rounded-2xl flex items-center justify-center gap-3 text-white font-bold shadow-lg shadow-emerald-500/20 group-hover:scale-[1.02] active:scale-95 transition-all">
-                                    <Sparkles className="w-5 h-5" /> Generate Note
-                                </Link>
-                            </div>
-
-                            <div className="glass-card rounded-[2.5rem] p-8 glow-edge-indigo group">
-                                <div className="flex items-center gap-4 mb-5">
-                                    <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 flex items-center justify-center text-indigo-500 group-hover:bg-indigo-500 group-hover:text-white transition-all shadow-inner">
-                                        <CheckCircle className="w-6 h-6" />
-                                    </div>
-                                    <h3 className="font-extrabold text-xl tracking-tight text-slate-900 dark:text-white">Create Assessment</h3>
-                                </div>
-                                <p className="text-sm text-slate-500 dark:text-slate-400 font-medium leading-relaxed mb-8">
-                                    Easily create formative and summative assessments for your students.
-                                </p>
-                                <Link to="/assessment" className="w-full py-4 bg-indigo-500/10 border-2 border-indigo-500/20 rounded-2xl flex items-center justify-center gap-3 text-indigo-600 dark:text-indigo-400 font-bold group-hover:bg-indigo-500 group-hover:text-white transition-all">
-                                    <Plus className="w-5 h-5" /> New Assessment
-                                </Link>
-                            </div>
-
-                            <div className="relative glass-card rounded-[2.5rem] p-8 overflow-hidden min-h-[180px] group">
-                                <div className="relative z-10 space-y-4">
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-7 h-7 bg-brand-500 rounded-lg flex items-center justify-center text-white shadow-lg">
-                                            <BookOpen className="w-4 h-4" />
-                                        </div>
-                                        <span className="font-bold text-sm tracking-tight text-brand-600">TeachAide <span className="text-slate-400">AI</span></span>
-                                    </div>
-                                    <h4 className="font-black text-lg text-slate-800 dark:text-slate-200">Recent Lesson Notes</h4>
-                                    <p className="text-xs text-slate-400 font-bold uppercase tracking-widest leading-relaxed max-w-[200px]">
-                                        Empowering Nigerian teachers with AI tools.
-                                    </p>
-                                </div>
-                                <div className="absolute top-0 right-0 w-40 h-40 bg-brand-500/5 blur-[80px] group-hover:bg-brand-500/10 transition-all"></div>
-                            </div>
-                        </div>
-                    </div>
+        <div className="space-y-8 pb-12">
+            {/* Header Info */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                    <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Teacher Dashboard</h1>
+                    <p className="text-slate-500 font-bold">{schoolInfo?.name || 'Institutional Account'} • Active Teacher</p>
                 </div>
-
-                {/* Mobile Layout */}
-                <div className="lg:hidden p-4 space-y-6 pb-24">
-                    {/* Welcome Header */}
-                    <div className="space-y-2">
-                        <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white">
-                            Welcome back, {user?.name?.split(' ')[0]}! 👋
-                        </h1>
-                        <p className="text-slate-500 dark:text-slate-400 font-semibold">
-                            {schoolInfo?.name || 'Kings College'} <span className="mx-1 text-slate-300 dark:text-slate-600">•</span> Active Teacher
-                        </p>
-                    </div>
-
-                    {/* School Profile Card */}
-                    <div className="relative overflow-hidden bg-gradient-to-br from-[#6366f1] via-[#a855f7] to-[#ec4899] rounded-3xl p-6 shadow-2xl text-white">
-                        <div className="relative z-10 space-y-6">
-                            <div className="flex items-center gap-4">
-                                <div className="w-16 h-16 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center border border-white/30">
-                                    <Users className="w-8 h-8 text-white" />
-                                </div>
-                                <div className="flex-1">
-                                    <h2 className="text-xl font-extrabold">{schoolInfo?.name || 'Kings College'}</h2>
-                                    <p className="text-sm text-white/80">{schoolInfo?.address || 'Ijebu Ode'}</p>
-                                </div>
-                                {user?.isSchoolAdmin && (
-                                    <Link to="/school" className="px-4 py-2 bg-white/20 backdrop-blur-md border border-white/30 rounded-xl text-xs font-bold">
-                                        Manage School
-                                    </Link>
-                                )}
-                            </div>
-                            <div className="space-y-2 text-sm">
-                                <div className="flex items-center gap-2 bg-black/10 w-fit px-3 py-2 rounded-xl">
-                                    <span>📧</span>
-                                    <span className="truncate text-xs">{schoolInfo?.email || 'adetunjitaoheedolanrewaju@gmail.com'}</span>
-                                </div>
-                                <div className="flex items-center gap-2 bg-black/10 w-fit px-3 py-2 rounded-xl">
-                                    <span>📞</span>
-                                    <span className="text-xs">{schoolInfo?.phone || '+2348158087663'}</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 blur-[80px] rounded-full -mr-10 -mt-10"></div>
-                    </div>
-
-                    {/* Stats Grid - 2x2 */}
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="glass-card rounded-2xl p-5 glow-edge-emerald">
-                            <div className="flex items-center justify-between mb-3">
-                                <Sparkles className="w-5 h-5 text-emerald-500" />
-                                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500 border border-emerald-500/20">
-                                    <BookOpen className="w-5 h-5" />
-                                </div>
-                            </div>
-                            <p className="text-xs text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider mb-2">Total Lessons</p>
-                            <p className="text-4xl font-black text-slate-900 dark:text-white">{teacherStats?.totalLessons || 3}</p>
-                        </div>
-
-                        <div className="glass-card rounded-2xl p-5 glow-edge-indigo">
-                            <div className="flex items-center justify-between mb-3">
-                                <Calendar className="w-5 h-5 text-indigo-500" />
-                                <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-500 border border-indigo-500/20">
-                                    <Calendar className="w-5 h-5" />
-                                </div>
-                            </div>
-                            <p className="text-xs text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider mb-2">This Week</p>
-                            <p className="text-4xl font-black text-slate-900 dark:text-white">{teacherStats?.thisWeekLessons || 3}</p>
-                        </div>
-
-                        <div className="glass-card rounded-2xl p-5 glow-edge-indigo">
-                            <div className="flex items-center justify-between mb-3">
-                                <BarChart className="w-5 h-5 text-purple-500" />
-                                <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-500 border border-purple-500/20">
-                                    <BarChart className="w-5 h-5" />
-                                </div>
-                            </div>
-                            <p className="text-xs text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider mb-2">This Month</p>
-                            <p className="text-4xl font-black text-slate-900 dark:text-white">{teacherStats?.thisMonthLessons || 3}</p>
-                        </div>
-
-                        <div className="glass-card rounded-2xl p-5 glow-edge-indigo">
-                            <div className="flex items-center justify-between mb-3">
-                                <Calendar className="w-5 h-5 text-orange-500" />
-                                <div className="w-10 h-10 rounded-xl bg-orange-500/10 flex items-center justify-center text-orange-500 border border-orange-500/20">
-                                    <Calendar className="w-5 h-5" />
-                                </div>
-                            </div>
-                            <p className="text-xs text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider mb-2">Avg / Week</p>
-                            <p className="text-3xl font-black text-slate-900 dark:text-white">{teacherStats?.averagePerWeek.toFixed(1) || '0.7'}</p>
-                            <p className="text-[10px] text-slate-400 mt-1 uppercase tracking-wide">Resets in 12 days</p>
-                        </div>
-                    </div>
-
-                    {/* Action Cards */}
-                    <div className="grid grid-cols-1 gap-4">
-                        <div className="glass-card rounded-2xl p-6 glow-edge-emerald">
-                            <div className="flex items-center gap-3 mb-4">
-                                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500">
-                                    <Sparkles className="w-5 h-5" />
-                                </div>
-                                <h3 className="font-extrabold text-lg text-slate-900 dark:text-white">Generate Lesson Note</h3>
-                            </div>
-                            <p className="text-xs text-slate-500 dark:text-slate-400 mb-4 leading-relaxed">
-                                Quickly create detailed lesson notes tailored to your class and subject.
-                            </p>
-                            <Link to="/generator" className="w-full py-3 bg-gradient-to-r from-emerald-600 to-emerald-500 rounded-xl flex items-center justify-center gap-2 text-white font-bold shadow-lg">
-                                <Sparkles className="w-4 h-4" /> Generate
-                            </Link>
-                        </div>
-
-                        <div className="glass-card rounded-2xl p-6 glow-edge-indigo">
-                            <div className="flex items-center gap-3 mb-4">
-                                <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-500">
-                                    <CheckCircle className="w-5 h-5" />
-                                </div>
-                                <h3 className="font-extrabold text-lg text-slate-900 dark:text-white">Create Assessment</h3>
-                            </div>
-                            <p className="text-xs text-slate-500 dark:text-slate-400 mb-4 leading-relaxed">
-                                Easily create formative and summative assessments for your students.
-                            </p>
-                            <Link to="/assessment" className="w-full py-3 bg-indigo-500/10 border-2 border-indigo-500/20 rounded-xl flex items-center justify-center gap-2 text-indigo-600 dark:text-indigo-400 font-bold">
-                                New Assessment
-                            </Link>
-                        </div>
-                    </div>
-
-                    {/* Recent Notes Section */}
-                    <div className="glass-card rounded-2xl p-6">
-                        <div className="flex items-center gap-2 mb-4">
-                            <div className="w-6 h-6 bg-brand-500 rounded-lg flex items-center justify-center text-white">
-                                <BookOpen className="w-3 h-3" />
-                            </div>
-                            <span className="font-bold text-sm">TeachAide <span className="text-slate-400">AI</span></span>
-                        </div>
-                        <h3 className="text-xl font-black text-slate-900 dark:text-white mb-2">Recent Lesson Notes</h3>
-                        <p className="text-xs text-slate-400 leading-relaxed">
-                            Empowering Nigerian teachers with AI tools to save time and improve education quality.
-                        </p>
-                    </div>
+                <div className="flex items-center gap-3">
+                    <Link
+                        to="/generator"
+                        className="px-6 py-3 bg-white dark:bg-slate-950 border border-brand-500/20 text-brand-600 dark:text-brand-400 font-black rounded-2xl flex items-center gap-2 hover:bg-brand-50 dark:hover:bg-brand-500/5 transition-all shadow-sm"
+                    >
+                        <Sparkles className="w-4 h-4" />
+                        New Lesson
+                    </Link>
+                    <Link
+                        to="/assessment"
+                        className="px-6 py-3 bg-brand-500 text-white font-black rounded-2xl flex items-center gap-2 hover:bg-brand-600 transition-all shadow-lg shadow-brand-500/20"
+                    >
+                        <Plus className="w-4 h-4" />
+                        New Quiz
+                    </Link>
                 </div>
             </div>
 
-            {/* Floating Action Button */}
-            <button
-                onClick={() => setShowChat(!showChat)}
-                className="fixed bottom-10 right-10 w-16 h-16 bg-emerald-500 rounded-full flex items-center justify-center shadow-[0_20px_40px_rgba(16,185,129,0.3)] hover:scale-110 active:scale-95 transition-all z-50"
-            >
-                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path>
-                </svg>
-            </button>
+            <UpgradeCard />
 
-            {/* Support Chat */}
-            {user && <SupportChat hideToggle={true} defaultOpen={showChat} />}
+            {/* School Banner Card */}
+            <div className="relative overflow-hidden bg-gradient-to-br from-brand-600 via-brand-500 to-teal-500 rounded-[2.5rem] p-8 lg:p-12 text-white shadow-2xl shadow-brand-500/20 group transition-all duration-500">
+                <div className="relative z-10 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-10">
+                    <div className="flex items-center gap-8">
+                        <div className="w-20 h-20 bg-white/20 backdrop-blur-md rounded-3xl flex items-center justify-center border border-white/30 shadow-inner group-hover:scale-110 transition-transform">
+                            <Users className="w-10 h-10 text-white" />
+                        </div>
+                        <div className="space-y-1">
+                            <h2 className="text-3xl lg:text-4xl font-black tracking-tight">{schoolInfo?.name || 'Institutional Hub'}</h2>
+                            <p className="text-xl text-white/80 font-bold opacity-80">{schoolInfo?.address || 'Teacher Control Center'}</p>
+                        </div>
+                    </div>
+                    {user?.isSchoolAdmin && (
+                        <Link
+                            to="/school"
+                            className="px-8 py-4 bg-white/20 backdrop-blur-md border border-white/30 rounded-2xl font-black text-white hover:bg-white/30 transition-all text-lg shadow-lg"
+                        >
+                            Manage School
+                        </Link>
+                    )}
+                </div>
+                <div className="mt-10 flex flex-wrap gap-4 opacity-90">
+                    <div className="flex items-center gap-3 text-sm font-black bg-black/10 px-5 py-3 rounded-2xl border border-white/5 backdrop-blur-sm">
+                        <span>📧</span> {schoolInfo?.email || 'Registered via Institution'}
+                    </div>
+                </div>
+                <div className="absolute top-0 right-0 w-80 h-80 bg-white/10 blur-[120px] rounded-full -mr-20 -mt-20 group-hover:bg-white/20 transition-all"></div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                {/* Left 2/3 Column */}
+                <div className="lg:col-span-2 space-y-8">
+
+                    {/* Dynamic Stats Grid */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        {stats.map((stat, i) => (
+                            <div key={i} className="bg-white dark:bg-slate-950 rounded-[2.5rem] p-6 border border-slate-200/60 dark:border-slate-800/60 shadow-sm group hover:-translate-y-1 transition-all">
+                                <div className="flex justify-between items-start mb-6">
+                                    <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.2em]">{stat.label}</p>
+                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${stat.color} group-hover:scale-110 transition-transform`}>
+                                        <stat.icon className="w-5 h-5" />
+                                    </div>
+                                </div>
+                                <p className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter">{stat.value}</p>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Forecast Chart (New to Teacher Dashboard) */}
+                    <div className="bg-white dark:bg-slate-950 rounded-[2.5rem] p-8 border border-slate-200/60 dark:border-slate-800/60 shadow-sm relative overflow-hidden group">
+                        <div className="flex items-center justify-between mb-8">
+                            <div>
+                                <h3 className="text-xl font-black text-slate-900 dark:text-white mb-1">Instructional Forecast</h3>
+                                <p className="text-slate-400 text-sm font-bold">Your activity {forecastFilter.toLowerCase()}</p>
+                            </div>
+                            <select
+                                value={forecastFilter}
+                                onChange={(e) => setForecastFilter(e.target.value as any)}
+                                className="bg-slate-50 dark:bg-slate-900 border-none rounded-xl px-4 py-2 text-xs font-black text-slate-500 focus:ring-0 cursor-pointer"
+                            >
+                                <option>This Week</option>
+                                <option>Last Week</option>
+                            </select>
+                        </div>
+                        <div className="h-64 mt-4 relative w-full flex items-end justify-between gap-4 pb-12">
+                            {[0, 1, 2, 3].map(i => (
+                                <div key={i} className="absolute w-full h-px bg-slate-100 dark:bg-slate-800" style={{ bottom: `${i * 25 + 25}%` }} />
+                            ))}
+                            {forecastChartData.map((day, i) => (
+                                <div key={i} className="flex-1 flex flex-col items-center gap-3 relative z-10 group/bar">
+                                    <div className="relative w-full flex flex-col justify-end h-48">
+                                        <div className="w-2 md:w-3 mx-auto rounded-full bg-brand-500/80 group-hover:bg-brand-500 transition-all duration-500" style={{ height: `${day.primaryHeight}%` }} />
+                                        <div className="w-2 md:w-3 mx-auto rounded-full bg-teal-500/40 group-hover:bg-teal-500/60 transition-all duration-500 mt-1" style={{ height: `${day.secondaryHeight}%` }} />
+                                    </div>
+                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{day.label}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                </div>
+
+                {/* Right 1/3 Column */}
+                <div className="space-y-8">
+
+                    {/* Circular Usage Progress */}
+                    <div className="bg-white dark:bg-slate-950 rounded-[2.5rem] p-10 border border-slate-200/60 dark:border-slate-800/60 shadow-sm flex flex-col items-center group">
+                        <h3 className="text-slate-400 dark:text-slate-500 text-[10px] font-black uppercase tracking-[0.2em] mb-10 text-center">School Quota Used</h3>
+                        <div className="relative w-48 h-48 group/meter">
+                            <svg className="w-full h-full transform -rotate-90">
+                                <circle cx="96" cy="96" r="80" className="stroke-slate-100 dark:stroke-slate-900" strokeWidth="12" fill="transparent" />
+                                <circle
+                                    cx="96" cy="96" r="80" stroke="currentColor"
+                                    className="text-brand-500 transition-all duration-1000 ease-in-out"
+                                    strokeWidth="12"
+                                    strokeDasharray={502}
+                                    strokeDashoffset={502 - (502 * (usage?.used || 0)) / (usage?.limit || 1)}
+                                    strokeLinecap="round" fill="transparent"
+                                />
+                            </svg>
+                            <div className="absolute inset-0 flex flex-col items-center justify-center">
+                                <div className="text-5xl font-black text-slate-900 dark:text-white group-meter:scale-110 transition-transform">
+                                    {usage?.used || 0}
+                                </div>
+                                <div className="text-xs font-black text-slate-400 border-t border-slate-200 dark:border-white/10 mt-1 pt-1 uppercase tracking-widest">
+                                    / {usage?.limit || 0} units
+                                </div>
+                            </div>
+                        </div>
+                        <div className="mt-10 text-center space-y-2">
+                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Institutional Quota</p>
+                        </div>
+                    </div>
+
+                    {/* Recent Pulse Timeline */}
+                    <div className="bg-white dark:bg-slate-950 rounded-[2.5rem] p-8 border border-slate-200/60 dark:border-slate-800/60 shadow-sm relative overflow-hidden">
+                        <h3 className="text-lg font-black text-slate-900 dark:text-white mb-8 tracking-tight">Recent Pulse</h3>
+                        <div className="space-y-6 relative before:absolute before:inset-y-0 before:left-2 before:w-px before:bg-slate-100 dark:before:bg-slate-800/50 before:ml-1.5 pt-2">
+                            {recentContent.length > 0 ? recentContent.slice(0, 4).map((item: any, i) => (
+                                <div key={i} className="flex gap-6 relative z-10">
+                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest min-w-[35px] pt-1">
+                                        {new Date(item.createdAt || '').toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    </span>
+                                    <div className="relative">
+                                        <div className={`w-3.5 h-3.5 rounded-full ${item.contentType === 'Assessment' ? 'bg-teal-500' : 'bg-brand-500'} ring-4 ring-white dark:ring-slate-950`} />
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className="text-xs font-bold text-slate-600 dark:text-slate-400 leading-tight line-clamp-2">
+                                            {item.contentType === 'Assessment' ? 'Quiz' : 'Lesson'} for <span className="text-slate-900 dark:text-white font-black">{item.topic}</span>
+                                        </p>
+                                    </div>
+                                </div>
+                            )) : (
+                                <p className="text-center py-4 text-xs font-bold text-slate-400">No recent pulse</p>
+                            )}
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            {/* Recent Generations Table */}
+            <div className="bg-white dark:bg-slate-950 rounded-[2.5rem] p-8 border border-slate-200/60 dark:border-slate-800/60 shadow-sm">
+                <div className="flex items-center justify-between mb-8">
+                    <h3 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">Recent Generations</h3>
+                    <Link to="/history" className="text-xs font-black text-brand-500 uppercase tracking-widest hover:underline">View History</Link>
+                </div>
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left">
+                        <thead>
+                            <tr className="border-b border-slate-50 dark:border-slate-900">
+                                <th className="pb-4 text-[11px] font-black text-slate-400 uppercase tracking-widest">Topic</th>
+                                <th className="pb-4 text-[11px] font-black text-slate-400 uppercase tracking-widest text-center">Type</th>
+                                <th className="pb-4 text-[11px] font-black text-slate-400 uppercase tracking-widest text-right">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-50 dark:divide-slate-900">
+                            {recentContent.map((item: any) => (
+                                <tr key={item.id} className="group transition-colors">
+                                    <td className="py-5">
+                                        <div className="flex items-center gap-4">
+                                            <div className={`w-10 h-10 ${item.contentType === 'Assessment' ? 'bg-teal-500/10 text-teal-600' : 'bg-brand-500/10 text-brand-500'} rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform`}>
+                                                {item.contentType === 'Assessment' ? <Clipboard className="w-5 h-5" /> : <BookOpen className="w-5 h-5" />}
+                                            </div>
+                                            <div>
+                                                <p className="font-black text-slate-900 dark:text-white line-clamp-1">{item.topic}</p>
+                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{item.subject} • {item.classLevel}</p>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td className="py-5 text-center">
+                                        <span className={`px-3 py-1 ${item.contentType === 'Assessment' ? 'bg-teal-50 text-teal-600' : 'bg-brand-50 text-brand-600'} text-[10px] font-black rounded-full uppercase tracking-widest border border-current opacity-70`}>
+                                            {item.contentType}
+                                        </span>
+                                    </td>
+                                    <td className="py-5 text-right">
+                                        <div className="flex items-center justify-end gap-1">
+                                            <button
+                                                onClick={() => navigate(item.contentType === 'Assessment' ? '/assessment' : '/generator', { state: { editData: item } })}
+                                                className="p-2 hover:bg-brand-50 dark:hover:bg-brand-500/10 rounded-xl text-brand-600 dark:text-brand-400 transition-all"
+                                            >
+                                                <Edit className="w-4 h-4" />
+                                            </button>
+                                            <button
+                                                onClick={(e) => handleDelete(item.id!, item.contentType === 'Assessment' ? 'assessment' : 'note', e)}
+                                                className="p-2 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl text-red-500 transition-all font-black"
+                                            >
+                                                <Trash className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
     );
 };

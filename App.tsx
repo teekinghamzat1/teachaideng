@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Layout from './components/Layout';
+import DashboardLayout from './components/DashboardLayout';
 import AdminLayout from './components/AdminLayout';
 import Home from './pages/Home';
 import Generator from './pages/Generator';
@@ -69,52 +70,52 @@ const App: React.FC = () => {
           {/* Protected User Routes */}
           <Route path="/generator" element={
             <ProtectedRoute>
-              <Layout><Generator /></Layout>
+              <DashboardLayout><Generator /></DashboardLayout>
             </ProtectedRoute>
           } />
           <Route path="/result" element={
             <ProtectedRoute>
-              <Layout><Result /></Layout>
+              <DashboardLayout><Result /></DashboardLayout>
             </ProtectedRoute>
           } />
           <Route path="/dashboard" element={
             <ProtectedRoute>
-              <Layout><Dashboard /></Layout>
+              <DashboardLayout><Dashboard /></DashboardLayout>
             </ProtectedRoute>
           } />
           <Route path="/teacher-dashboard" element={
             <ProtectedRoute>
-              <Layout><TeacherDashboard /></Layout>
+              <DashboardLayout><TeacherDashboard /></DashboardLayout>
             </ProtectedRoute>
           } />
           <Route path="/history" element={
             <ProtectedRoute>
-              <Layout><History /></Layout>
+              <DashboardLayout><History /></DashboardLayout>
             </ProtectedRoute>
           } />
           <Route path="/assessment" element={
             <ProtectedRoute>
-              <Layout><AssessmentGenerator /></Layout>
+              <DashboardLayout><AssessmentGenerator /></DashboardLayout>
             </ProtectedRoute>
           } />
           <Route path="/classes" element={
             <ProtectedRoute>
-              <Layout><ClassManager /></Layout>
+              <DashboardLayout><ClassManager /></DashboardLayout>
             </ProtectedRoute>
           } />
           <Route path="/timetable" element={
             <ProtectedRoute>
-              <Layout><Timetable /></Layout>
+              <DashboardLayout><Timetable /></DashboardLayout>
             </ProtectedRoute>
           } />
           <Route path="/settings" element={
             <ProtectedRoute>
-              <Layout><Settings /></Layout>
+              <DashboardLayout><Settings /></DashboardLayout>
             </ProtectedRoute>
           } />
           <Route path="/school" element={
             <ProtectedRoute>
-              <Layout><SchoolManagement /></Layout>
+              <DashboardLayout><SchoolManagement /></DashboardLayout>
             </ProtectedRoute>
           } />
           <Route path="/payment/success" element={

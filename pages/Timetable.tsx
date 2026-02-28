@@ -120,15 +120,15 @@ const Timetable: React.FC = () => {
     };
 
     return (
-        <div className="max-w-7xl mx-auto px-4 py-8 print:p-0 print:max-w-none">
+        <div className="space-y-8 print:p-0">
             {/* Header / Controls */}
             <div className="flex justify-between items-center mb-8 print:hidden">
                 <div>
-                    <h1 className="text-3xl font-extrabold text-slate-900 flex items-center">
-                        <Calendar className="w-10 h-10 mr-4 text-brand-600" />
+                    <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight flex items-center">
+                        <Calendar className="w-8 h-8 mr-4 text-brand-600" />
                         Interactive Timetable
                     </h1>
-                    <p className="text-slate-500 mt-2">Design your weekly schedule to match your school's specific requirements.</p>
+                    <p className="text-slate-500 font-bold mt-1">Design your weekly schedule to match your school's specific requirements.</p>
                 </div>
                 <div className="flex gap-4">
                     <button

@@ -183,8 +183,8 @@ const AssessmentGenerator: React.FC = () => {
     };
 
     return (
-        <div className="min-h-screen bg-[#F9FAFB] dark:bg-slate-950 transition-colors duration-300 pb-20 overflow-x-hidden">
-            <main className="max-w-4xl mx-auto px-4 pt-10 sm:px-6 lg:px-8 space-y-8">
+        <div className="space-y-8">
+            <div className="max-w-4xl mx-auto space-y-8 pt-4">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 animate-in fade-in slide-in-from-top-4 duration-700">
                     <div className="space-y-2">
                         <h1 className="text-3xl lg:text-4xl font-black text-slate-900 dark:text-white tracking-tight">Quiz Generator</h1>
@@ -411,7 +411,7 @@ const AssessmentGenerator: React.FC = () => {
                         </div>
                     )}
                 </div>
-            </main>
+            </div>
             <FeedbackModal isOpen={showFeedback} onClose={() => setShowFeedback(false)} />
         </div>
     );

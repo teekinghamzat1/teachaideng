@@ -393,7 +393,7 @@ ${stripMarkdown(lessonNote.assignment)}
     };
 
     return (
-        <div className="max-w-4xl mx-auto px-4 py-8 sm:px-6 lg:px-8 print:max-w-none print:p-0 print:m-0 print:w-full">
+        <div className="space-y-8 py-4">
 
             {/* Action Bar */}
             <div className="flex flex-col sm:flex-row justify-between items-center mb-8 gap-4 print:hidden">
@@ -799,13 +799,10 @@ ${stripMarkdown(lessonNote.assignment)}
                         )}
                     </div>
                 </div>
-            </div >
+            </div>
 
-            <FeedbackModal
-                isOpen={showFeedback}
-                onClose={() => setShowFeedback(false)}
-            />
-        </div >
+            <FeedbackModal isOpen={showFeedback} onClose={() => setShowFeedback(false)} />
+        </div>
     );
 };
 
