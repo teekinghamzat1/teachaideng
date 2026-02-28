@@ -75,7 +75,8 @@ async function processNextDraft() {
                 metaDescription: output.meta_description,
                 keywords: keywordsStr,
                 published: false,
-                author: 'System Auto-Draft'
+                author: 'System Auto-Draft',
+                image: 'https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&q=80&w=1200'
             }
         });
 

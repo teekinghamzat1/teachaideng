@@ -230,8 +230,9 @@ const BlogPost: React.FC = () => {
 
     if (!post) return null;
 
-    // Split content to insert CTA
-    const contentParts = post.content.split('{{CTA}}');
+    // Split content to insert CTA (ensure content is a string)
+    const safeContent = post.content || '';
+    const contentParts = safeContent.split('{{CTA}}');
 
     return (
         <div className="bg-[#F8F9FA] dark:bg-slate-900 min-h-screen font-sans">
@@ -267,7 +268,7 @@ const BlogPost: React.FC = () => {
                 {/* Hero Image */}
                 <div className="w-full aspect-[2/1] md:aspect-[2.4/1] bg-slate-200 rounded-[32px] overflow-hidden shadow-sm mb-10">
                     <img
-                        src={post.image.startsWith('http') ? post.image : 'https://images.unsplash.com/photo-1571260899304-425eee4c7efc?auto=format&fit=crop&q=80&w=2400'}
+                        src={(post.image && post.image.startsWith('http')) ? post.image : 'https://images.unsplash.com/photo-1571260899304-425eee4c7efc?auto=format&fit=crop&q=80&w=2400'}
                         alt={post.title}
                         className="w-full h-full object-cover"
                     />
