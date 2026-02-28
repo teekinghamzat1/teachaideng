@@ -113,7 +113,7 @@ const AdminBlog: React.FC = () => {
             });
             if (response.ok) {
                 const data = await response.json();
-                setPosts(data);
+                setPosts(Array.isArray(data) ? data : (data.data && Array.isArray(data.data) ? data.data : []));
             } else {
                 console.error('Failed to fetch posts');
             }
@@ -129,7 +129,7 @@ const AdminBlog: React.FC = () => {
             const res = await fetch('/api/topics', { headers: getAnyAuthHeader() });
             if (res.ok) {
                 const data = await res.json();
-                setTopics(data);
+                setTopics(Array.isArray(data) ? data : (data.data && Array.isArray(data.data) ? data.data : []));
             }
         } catch (error) {
             console.error(error);
@@ -287,9 +287,12 @@ const AdminBlog: React.FC = () => {
         setShowModal(true);
     };
 
-    const filteredPosts = posts.filter(post => {
-        const matchesSearch = post.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            post.slug.toLowerCase().includes(searchTerm.toLowerCase());
+    const filteredPosts = (posts || []).filter(post => {
+        if (!post) return false;
+        const title = post.title || '';
+        const slug = post.slug || '';
+        const matchesSearch = title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            slug.toLowerCase().includes(searchTerm.toLowerCase());
 
         if (activeTab === 'published') return matchesSearch && post.published;
         if (activeTab === 'drafts') return matchesSearch && !post.published;

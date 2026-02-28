@@ -38,9 +38,10 @@ const handleResponse = async (response: Response) => {
     const isLoginPage = pathname === '/login' || pathname === '/admin/login';
 
     // Unified 401 logic
-    const isAdminPath = window.location.pathname.startsWith('/admin');
+    const currentPath = window.location.pathname || '';
+    const isAdminPath = currentPath.startsWith('/admin');
 
-    if (url.includes('/api/admin') || isAdminPath) {
+    if ((url && url.includes('/api/admin')) || isAdminPath) {
       console.error(`401 Unauthorized from Admin API or Admin Path: ${url}`);
       localStorage.removeItem('teachaide_admin_session');
       if (!isLoginPage) {

@@ -368,7 +368,7 @@ async function generateRemarkViaGenAI(options) {
     const candidate = res.data.candidates?.[0];
     const text = candidate?.content?.parts?.[0]?.text;
     const usage = res.data.usageMetadata || {};
-
+    return { text, usage };
   });
 
   return response;
