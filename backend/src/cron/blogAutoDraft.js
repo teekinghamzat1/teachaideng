@@ -95,18 +95,38 @@ async function processNextDraft() {
     }
 }
 
-function initBlogCron() {
-    // Schedule for 07:00, 13:00, 19:00 system time
-    // cron string: '0 7,13,19 * * *'
-    cron.schedule('0 7,13,19 * * *', async () => {
-        console.log(`[Blog Auto-Draft] Running scheduled text generation at ${new Date().toISOString()}`);
-        await processNextDraft();
-    });
+let blogTask = null;
 
-    console.log('[Blog Auto-Draft] Cron scheduled for 07:00, 13:00, 19:00 locally.');
+async function initBlogCron() {
+    try {
+        const settings = await prisma.systemSetting.findUnique({
+            where: { id: 1 },
+            select: { blogAutoDraftSchedule: true }
+        });
+
+        const schedule = settings?.blogAutoDraftSchedule || '0 7,22 * * *';
+
+        if (blogTask) {
+            blogTask.stop();
+        }
+
+        blogTask = cron.schedule(schedule, async () => {
+            console.log(`[Blog Auto-Draft] Running scheduled text generation at ${new Date().toISOString()}`);
+            await processNextDraft();
+        });
+
+        console.log(`[Blog Auto-Draft] Cron scheduled for: "${schedule}"`);
+    } catch (err) {
+        console.error('[Blog Auto-Draft] Failed to init cron:', err.message);
+        // Fallback
+        blogTask = cron.schedule('0 7,22 * * *', async () => {
+            await processNextDraft();
+        });
+    }
 }
 
 module.exports = {
     initBlogCron,
-    processNextDraft
+    processNextDraft,
+    rescheduleBlogDrafts: initBlogCron
 };

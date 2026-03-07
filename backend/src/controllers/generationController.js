@@ -449,8 +449,30 @@ const generateRemark = asyncHandler(async (req, res) => {
   }
 });
 
+// @route POST /api/generate/seo-summary
+const generateSEOSummary = asyncHandler(async (req, res) => {
+  const { title, textContent } = req.body;
+  if (!title || !textContent) {
+    res.status(400);
+    throw new Error('Title and content are required');
+  }
+
+  try {
+    const summary = await genai.generateSEOSummaryViaGenAI({
+      title,
+      textContent
+    });
+    res.json(formatResponse(true, 'SEO Summary generated', { summary }));
+  } catch (err) {
+    console.error('generateSEOSummary ERROR:', err);
+    res.status(err.status || 500);
+    throw new Error('Failed to generate SEO summary: ' + err.message);
+  }
+});
+
 module.exports = {
   generateLesson,
   generateAssessment,
-  generateRemark
+  generateRemark,
+  generateSEOSummary
 };

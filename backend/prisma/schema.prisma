@@ -388,6 +388,9 @@ model SystemSetting {
   schoolPlanPrice       Int    @default(20000)
   schoolPlanDuration    String @default("term")
   
+  // Blog Auto-Draft Configuration
+  blogAutoDraftSchedule String @default("0 7,22 * * *")
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }

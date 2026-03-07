@@ -8,6 +8,10 @@ export const stripFormatting = (text: string | null | undefined): string => {
     return text
         // Strip HTML tags
         .replace(/<[^>]*>?/gm, '')
+        // Strip blockquote markers
+        .replace(/^\s*>\s*/gm, '')
+        // Strip vertical bars (often used weirdly by AI in lists)
+        .replace(/^\s*\|\s*/gm, '')
         // Strip bold markers **text** or __text__
         .replace(/\*\*(.*?)\*\*/g, '$1')
         .replace(/__(.*?)__/g, '$1')
@@ -17,9 +21,10 @@ export const stripFormatting = (text: string | null | undefined): string => {
         // Strip header markers # Header
         .replace(/^#+\s+/gm, '')
         // Strip list markers * Item or - Item (only at start of line)
-        .replace(/^\s*[\*\-]\s+/gm, '• ')
+        .replace(/^\s*[\*\-]\s+/gm, '')
         // Strip horizontal rules
-        .replace(/^\s*[\*\-_]{3,}\s*$/gm, '');
+        .replace(/^\s*[\*\-_]{3,}\s*$/gm, '')
+        .trim();
 };
 
 export const parseMarkdown = (text: string | null | undefined): string => {

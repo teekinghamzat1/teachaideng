@@ -18,6 +18,37 @@ const normalizeModel = (model) => {
   return model.replace('models/', '');
 };
 
+/**
+ * Robustly extract JSON from a string that might contain conversational markers
+ */
+const extractJson = (str) => {
+  if (!str || typeof str !== 'string') return str;
+
+  // 1. Clean up potential invisible characters that break JSON
+  str = str.replace(/[\u0000-\u001F\u007F-\u009F]/g, "");
+
+  // 2. Try to find JSON block in markdown
+  const markdownMatch = str.match(/```json\s*([\s\S]*?)\s*```/);
+  if (markdownMatch && markdownMatch[1]) return markdownMatch[1].trim();
+
+  // 3. Find the first occurrence of { or [ and the last occurrence of } or ]
+  const firstCurly = str.indexOf('{');
+  const firstBracket = str.indexOf('[');
+  const first = (firstCurly !== -1 && (firstBracket === -1 || firstCurly < firstBracket)) ? firstCurly : firstBracket;
+
+  if (first !== -1) {
+    const lastCurly = str.lastIndexOf('}');
+    const lastBracket = str.lastIndexOf(']');
+    const last = Math.max(lastCurly, lastBracket);
+
+    if (last > first) {
+      return str.substring(first, last + 1);
+    }
+  }
+
+  return str.trim();
+};
+
 const withRetry = async (fn, maxRetries = 5, initialDelay = 2000) => {
   let lastError;
   for (let i = 0; i < maxRetries; i++) {
@@ -188,7 +219,8 @@ Date Context: Today is ${today}.
 
 FORMATTING RULES:
 - DO NOT use markdown formatting. Return raw JSON ONLY.
-- ALL fields must contain actual content. NO empty strings or missing sections.
+- ALL fields must contain actual content. NO empty strings, placeholder lines (like |, >, -, •), or empty sections.
+- For lists in "evaluation", "objectives", etc., do not include headings like "Examples:" or "Instructions:" as array items; only include the actual content items.
 
 SPECIAL FORMATTING FOR VOCABULARY / COMPREHENSION LESSONS:
 When Lesson Type is "Vocabulary / New Words" or "Comprehension":
@@ -420,11 +452,14 @@ async function generateSEOSummaryViaGenAI(options) {
 
     // Parse the JSON returned
     let finalSummary = '';
+    const cleaned = extractJson(text);
     try {
-      const parsed = JSON.parse(text);
+      const parsed = JSON.parse(cleaned);
       finalSummary = parsed.summary || '';
     } catch (e) {
-      finalSummary = text;
+      // If parsing fails even after extraction, use the cleaned text as fallback
+      // but only if it doesn't look like corrupted JSON
+      finalSummary = cleaned.length < 200 ? cleaned : cleaned.substring(0, 155) + '...';
     }
 
     return finalSummary;
@@ -466,6 +501,8 @@ Conversion (soft):
 * Mention TeachAide naturally as a tool that helps teachers
 * Do not oversell or sound like an ad
 * Include TeachAide link once: <a href="https://teachaide.ng">TeachAide</a>
+* HTML quality: Use clean HTML. Do not use empty tags (e.g., <p></p>, <div></div>), multiple consecutive <br> tags, or empty <blockquote> tags for spacing. 
+* Do not use leading symbols like |, >, -, • for decoration.
 
 Output format (STRICT, JSON only):
 {
@@ -497,7 +534,25 @@ Important: Please enforce JSON-only output.`;
 
       const candidate = res.data.candidates?.[0];
       const text = candidate?.content?.parts?.[0]?.text;
-      return JSON.parse(text);
+
+      const cleaned = extractJson(text);
+      try {
+        return JSON.parse(cleaned);
+      } catch (parseErr) {
+        console.error('[GenAI] Failed to parse blog draft JSON. Error:', parseErr.message);
+        console.error('[GenAI] Raw extracted text (first 500 chars):', cleaned.substring(0, 500));
+        console.error('[GenAI] Text around error position:', cleaned.substring(Math.max(0, 3745 - 100), Math.min(cleaned.length, 3745 + 100)));
+
+        // Final attempt: maybe the AI used single quotes? (unlikely with application/json but possible if it ignored it)
+        try {
+          // This is a dangerous fix, only use if first fails
+          // return JSON.parse(cleaned.replace(/'/g, '"')); 
+          // Actually, let's just throw and let the crawler retry
+          throw parseErr;
+        } catch (e) {
+          throw parseErr;
+        }
+      }
     } catch (err) {
       if (err.response?.status === 429 && model === 'gemini-1.5-flash') {
         const res = await axios.post(`${API_BASE}/models/gemini-1.5-flash-lite:generateContent?key=${apiKey}`, {
@@ -509,7 +564,7 @@ Important: Please enforce JSON-only output.`;
         }, { timeout: 60000 });
         const candidate = res.data.candidates?.[0];
         const text = candidate?.content?.parts?.[0]?.text;
-        return JSON.parse(text);
+        return JSON.parse(extractJson(text));
       }
       throw err;
     }

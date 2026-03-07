@@ -96,11 +96,24 @@ export const generateLessonNote = async (
         parsedNote = JSON.parse(cleaned);
       } catch (e) {
         console.error("JSON parse error from GenAI. Content was:", cleaned);
-        throw new Error("Failed to parse AI response. Please try again.");
+        const parseError = new Error("Failed to parse AI response. Please try again.");
+        (parseError as any).rawResponse = cleaned;
+        throw parseError;
       }
     } else {
       parsedNote = resultData;
     }
+
+    const cleanArray = (arr: any) => {
+      if (!Array.isArray(arr)) return [];
+      return arr
+        .map(item => (typeof item === 'string' ? item.trim() : item))
+        .filter(item => {
+          if (typeof item !== 'string') return true;
+          // Filter out empty strings or strings that are just | or > or - or *
+          return item.length > 0 && !/^[\s|>•\-\*]+$/.test(item);
+        });
+    };
 
     // Ensure metadata from the request is preserved (AI might omit it)
     const normalizedNote: LessonNote = {
@@ -110,12 +123,15 @@ export const generateLessonNote = async (
       classLevel: parsedNote.classLevel || classLevel,
       subtopic: parsedNote.subtopic || subtopic || "",
       duration: parsedNote.duration || duration || "40 minutes",
-      // Normalize array fields in case AI returns strings instead of arrays
-      objectives: Array.isArray(parsedNote.objectives) ? parsedNote.objectives : [],
-      references: Array.isArray(parsedNote.references) ? parsedNote.references : [],
-      evaluation: Array.isArray(parsedNote.evaluation) ? parsedNote.evaluation : [],
-      instructionalMaterials: Array.isArray(parsedNote.instructionalMaterials) ? parsedNote.instructionalMaterials : [],
-      presentation: Array.isArray(parsedNote.presentation) ? parsedNote.presentation : [],
+      // Normalize array fields
+      objectives: cleanArray(parsedNote.objectives),
+      references: cleanArray(parsedNote.references),
+      evaluation: cleanArray(parsedNote.evaluation),
+      instructionalMaterials: cleanArray(parsedNote.instructionalMaterials),
+      presentation: Array.isArray(parsedNote.presentation) ? parsedNote.presentation.map(step => ({
+        ...step,
+        teacherActivity: typeof step.teacherActivity === 'string' ? step.teacherActivity.trim() : step.teacherActivity
+      })) : [],
       // Normalize string fields in case AI returns them as arrays
       lessonContent: Array.isArray(parsedNote.lessonContent)
         ? parsedNote.lessonContent.join('\n\n')
@@ -146,7 +162,14 @@ export const generateLessonNote = async (
       message: error.message || 'Frontend Lesson Generation Error',
       stack: error.stack,
       severity: 'high',
-      metadata: { topic, subject, classLevel, duration, subtopic }
+      metadata: {
+        topic,
+        subject,
+        classLevel,
+        duration,
+        subtopic,
+        rawResponse: error.rawResponse // We'll attach this to the error object if available
+      }
     });
 
     throw error;
@@ -285,6 +308,32 @@ export const generateAssessment = async (
       metadata: { topic, classLevel, subject, questionCount }
     });
 
+    throw error;
+  }
+};
+
+export const generateSEOSummary = async (title: string, textContent: string): Promise<string> => {
+  try {
+    const token = db.auth.getToken();
+    if (!token) throw new Error("Authentication required");
+
+    const response = await fetch(`${API_URL}/generate/seo-summary`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      },
+      body: JSON.stringify({ title, textContent }),
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message || "Failed to generate SEO summary");
+    }
+
+    return (data.data && data.data.summary) || data.summary || "";
+  } catch (error: any) {
+    console.error("Error generating SEO summary:", error);
     throw error;
   }
 };

@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { getTopics, addTopic, updateTopic, deleteTopic, triggerWorker } = require('../controllers/topicQueueController');
+const { getTopics, addTopic, updateTopic, deleteTopic, triggerWorker, getSchedule, updateSchedule } = require('../controllers/topicQueueController');
 const { protect, admin } = require('../middlewares/authMiddleware');
 
 router.route('/')
@@ -8,6 +8,8 @@ router.route('/')
     .post(protect, admin, addTopic);
 
 router.post('/trigger', protect, admin, triggerWorker);
+router.get('/schedule', protect, admin, getSchedule);
+router.put('/schedule', protect, admin, updateSchedule);
 
 router.route('/:id')
     .put(protect, admin, updateTopic)

@@ -7,6 +7,8 @@ import { showAlert } from '../utils/alerts';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 import { useDebounce } from '../hooks/useDebounce';
+import { generateSEOSummary } from '../services/geminiService';
+import { Sparkles } from '../components/Icons';
 
 const LoadingSpinner = () => (
     <div className="w-5 h-5 border-2 border-brand-500 border-t-transparent rounded-full animate-spin"></div>
@@ -55,15 +57,17 @@ const AdminBlog: React.FC = () => {
     const [isSaving, setIsSaving] = useState(false);
     const [lastSaved, setLastSaved] = useState<Date | null>(null);
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+    const [uploadingImage, setUploadingImage] = useState(false);
+    const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
+    const [schedule, setSchedule] = useState('0 7,13,19 * * *');
+    const [isSavingSchedule, setIsSavingSchedule] = useState(false);
 
     const debouncedPost = useDebounce(currentPost, 2000);
-
-    // Image Upload State
-    const [uploadingImage, setUploadingImage] = useState(false);
 
     useEffect(() => {
         fetchPosts();
         fetchTopics();
+        fetchSchedule();
     }, []);
 
     // Autosave logic
@@ -136,6 +140,49 @@ const AdminBlog: React.FC = () => {
         }
     };
 
+    const fetchSchedule = async () => {
+        try {
+            const res = await fetch('/api/topics/schedule', { headers: getAnyAuthHeader() });
+            if (res.ok) {
+                const data = await res.json();
+                setSchedule(data.schedule);
+            }
+        } catch (error) { console.error(error); }
+    };
+
+    const handleSaveSchedule = async () => {
+        if (!schedule || schedule.split(' ').length < 5) {
+            showAlert.error('Invalid Format', 'Please use a valid cron string.');
+            return;
+        }
+
+        try {
+            setIsSavingSchedule(true);
+            const res = await fetch('/api/topics/schedule', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', ...getAnyAuthHeader() },
+                body: JSON.stringify({ schedule })
+            });
+            if (res.ok) {
+                showAlert.success('Schedule updated!');
+            }
+        } catch (error) { showAlert.error('An error occurred'); }
+        finally { setIsSavingSchedule(false); }
+    };
+
+    const triggerWorker = async () => {
+        try {
+            const res = await fetch('/api/topics/trigger', {
+                method: 'POST',
+                headers: getAnyAuthHeader()
+            });
+            if (res.ok) {
+                showAlert.success('Draft generation started!', 'Check drafts in a minute.');
+                setTimeout(fetchPosts, 10000); // refresh after some time
+            }
+        } catch (error) { showAlert.error('An error occurred'); }
+    }
+
     const handleAddTopic = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
@@ -174,17 +221,6 @@ const AdminBlog: React.FC = () => {
             }
         } catch (error) {
             showAlert.error('An error occurred');
-        }
-    };
-
-    const triggerWorker = async () => {
-        try {
-            const res = await fetch('/api/topics/trigger', { method: 'POST', headers: getAnyAuthHeader() });
-            if (res.ok) {
-                showAlert.success('Worker triggered manually. Check back in a few minutes.');
-            }
-        } catch (error) {
-            showAlert.error('Failed to trigger worker');
         }
     };
 
@@ -269,10 +305,35 @@ const AdminBlog: React.FC = () => {
     };
 
     const openEdit = (post: BlogPost) => {
-        setCurrentPost(post);
-        setHasUnsavedChanges(false);
+        setCurrentPost({ ...post });
         setIsEditing(true);
         setShowModal(true);
+        setHasUnsavedChanges(false);
+        setLastSaved(null);
+    };
+
+    const handleGenerateSummary = async () => {
+        if (!currentPost.title || !currentPost.content) {
+            showAlert.error('Draft Required', 'Please provide a title and some content first.');
+            return;
+        }
+
+        setIsGeneratingSummary(true);
+        try {
+            // Strip HTML tags for context
+            const div = document.createElement('div');
+            div.innerHTML = currentPost.content;
+            const plainText = div.textContent || div.innerText || '';
+
+            const summary = await generateSEOSummary(currentPost.title, plainText);
+            setCurrentPost({ ...currentPost, summary });
+            setHasUnsavedChanges(true);
+            showAlert.success('Generated', 'Catchy summary is ready!');
+        } catch (err) {
+            showAlert.error('AI Error', 'Failed to generate summary. Please try again.');
+        } finally {
+            setIsGeneratingSummary(false);
+        }
     };
 
     const openNew = () => {
@@ -351,12 +412,43 @@ const AdminBlog: React.FC = () => {
                                 <h2 className="text-xl font-bold text-slate-900 dark:text-white">AI Topic Queue</h2>
                                 <p className="text-sm text-slate-500">Add topics for the AI worker to generate automatically.</p>
                             </div>
-                            <button onClick={triggerWorker} className="px-4 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-lg text-sm font-bold shadow-sm hover:opacity-90 transition">
-                                Trigger Auto-Draft Now
+                            <button onClick={triggerWorker} className="px-5 py-2.5 bg-brand-600 dark:bg-brand-500 text-white rounded-xl text-sm font-black shadow-lg shadow-brand-500/20 hover:scale-105 transition-all">
+                                <Sparkles className="w-4 h-4 inline mr-2" />
+                                Trigger Worker
                             </button>
                         </div>
 
-                        <form onSubmit={handleAddTopic} className="mb-8 grid grid-cols-1 md:grid-cols-4 gap-4 bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl items-end">
+                        {/* Schedule Settings */}
+                        <div className="bg-slate-50 dark:bg-slate-900/50 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 mb-8">
+                            <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Automation Schedule</h3>
+                            <div className="flex flex-col md:flex-row items-end gap-4">
+                                <div className="flex-1 space-y-2">
+                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Cron Schedule (Min Hour Day Month DayOfWeek)</label>
+                                    <div className="flex items-center gap-3">
+                                        <input
+                                            value={schedule}
+                                            onChange={e => setSchedule(e.target.value)}
+                                            placeholder="0 7,13,19 * * *"
+                                            className="flex-1 bg-white dark:bg-slate-800 border-none rounded-xl px-4 py-3 text-sm font-bold shadow-inner focus:ring-2 focus:ring-brand-500"
+                                        />
+                                        <button
+                                            onClick={handleSaveSchedule}
+                                            disabled={isSavingSchedule}
+                                            className="px-6 py-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl text-sm font-bold shadow-sm hover:opacity-90 transition disabled:opacity-50"
+                                        >
+                                            {isSavingSchedule ? '...' : 'Update'}
+                                        </button>
+                                    </div>
+                                </div>
+                                <div className="bg-white dark:bg-slate-800 p-4 rounded-xl text-[10px] text-slate-400 font-bold border border-slate-100 dark:border-slate-700">
+                                    <p className="mb-1">TIPS:</p>
+                                    <p>• 0 7,19 * * * (7AM & 7PM)</p>
+                                    <p>• 0 9 * * 1 (Every Monday at 9AM)</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <form onSubmit={handleAddTopic} className="mb-8 grid grid-cols-1 md:grid-cols-4 gap-4 bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm items-end">
                             <div>
                                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Topic</label>
                                 <input required placeholder="E.g. Classroom Management" value={newTopic.topic} onChange={e => setNewTopic({ ...newTopic, topic: e.target.value })} className="w-full bg-white dark:bg-slate-800 border-none rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500" />
@@ -686,7 +778,27 @@ const AdminBlog: React.FC = () => {
 
                                     <div className="space-y-4">
                                         <div className="space-y-1 group">
-                                            <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 group-focus-within:text-brand-500 transition-colors">Excerpt / Card Summary</label>
+                                            <div className="flex justify-between items-center mb-1">
+                                                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 group-focus-within:text-brand-500 transition-colors">Excerpt / Card Summary</label>
+                                                <button
+                                                    type="button"
+                                                    onClick={handleGenerateSummary}
+                                                    disabled={isGeneratingSummary}
+                                                    className="flex items-center gap-1.5 text-[11px] font-black text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300 transition-colors uppercase tracking-wider"
+                                                >
+                                                    {isGeneratingSummary ? (
+                                                        <>
+                                                            <div className="w-3 h-3 border-2 border-brand-500 border-t-transparent rounded-full animate-spin"></div>
+                                                            Writing...
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <Sparkles className="w-3.5 h-3.5" />
+                                                            Auto-generate
+                                                        </>
+                                                    )}
+                                                </button>
+                                            </div>
                                             <textarea
                                                 rows={2}
                                                 value={currentPost.summary || ''}
@@ -695,7 +807,7 @@ const AdminBlog: React.FC = () => {
                                                     setHasUnsavedChanges(true);
                                                 }}
                                                 placeholder="A brief catchy description for the blog list..."
-                                                className="w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-brand-500 focus:bg-white dark:focus:bg-slate-800 transition-all"
+                                                className="w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-brand-500 focus:bg-white dark:focus:bg-slate-800 transition-all font-medium"
                                             />
                                         </div>
 

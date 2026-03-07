@@ -420,6 +420,29 @@ const Dashboard: React.FC = () => {
             <div className="absolute bottom-0 left-0 w-32 h-32 bg-teal-500/5 blur-[60px] rounded-full -ml-16 -mb-16"></div>
           </div>
 
+          {/* Pedagogical Insight (New) */}
+          <div className="bg-gradient-to-br from-slate-900 to-slate-800 dark:from-brand-900/40 dark:to-brand-950/40 rounded-[2.5rem] p-8 border border-white/5 shadow-2xl relative overflow-hidden group">
+            <div className="relative z-10">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 bg-brand-500 rounded-xl flex items-center justify-center shadow-lg shadow-brand-500/20 group-hover:rotate-12 transition-transform">
+                  <Sparkles className="w-5 h-5 text-white" />
+                </div>
+                <h3 className="text-white font-black uppercase tracking-[0.2em] text-[10px]">Expert Corner</h3>
+              </div>
+              <p className="text-slate-300 text-sm font-medium leading-relaxed italic">
+                "For every dedicated Nursery 1 teacher in Nigeria, a well-structured lesson note is more than just a document; it's a roadmap to effective learning. In the ECCDE framework, clarity and consistency are paramount. A structured lesson note transforms potential classroom chaos into an organised, joyful learning experience."
+              </p>
+              <div className="mt-6 flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-slate-700 border border-slate-600 flex items-center justify-center text-[10px] font-black text-white">TA</div>
+                <div>
+                  <p className="text-white text-xs font-black">TeachAide Insights</p>
+                  <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest">Educational Standards</p>
+                </div>
+              </div>
+            </div>
+            <div className="absolute top-0 right-0 w-32 h-32 bg-brand-500/10 blur-[60px] rounded-full -mr-16 -mt-16 group-hover:bg-brand-500/20 transition-all"></div>
+          </div>
+
         </div>
       </div>
     </div>

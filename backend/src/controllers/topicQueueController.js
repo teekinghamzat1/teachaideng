@@ -82,9 +82,6 @@ const deleteTopic = asyncHandler(async (req, res) => {
     }
 });
 
-// @desc    Trigger auto draft worker manually
-// @route   POST /api/topics/trigger
-// @access  Private/Admin
 const triggerWorker = asyncHandler(async (req, res) => {
     // Process the next draft manually asynchronously
     // Don't await it so we can close request quickly
@@ -92,10 +89,46 @@ const triggerWorker = asyncHandler(async (req, res) => {
     res.json({ message: 'Worker triggered' });
 });
 
+// @desc    Get current draft schedule
+// @route   GET /api/topics/schedule
+// @access  Private/Admin
+const getSchedule = asyncHandler(async (req, res) => {
+    const settings = await prisma.systemSetting.findUnique({
+        where: { id: 1 },
+        select: { blogAutoDraftSchedule: true }
+    });
+    res.json({ schedule: settings?.blogAutoDraftSchedule || '0 7,13,19 * * *' });
+});
+
+// @desc    Update draft schedule
+// @route   PUT /api/topics/schedule
+// @access  Private/Admin
+const updateSchedule = asyncHandler(async (req, res) => {
+    const { schedule } = req.body;
+
+    // validate cron string roughly
+    if (!schedule || schedule.split(' ').length < 5) {
+        res.status(400);
+        throw new Error('Invalid cron schedule format');
+    }
+
+    await prisma.systemSetting.update({
+        where: { id: 1 },
+        data: { blogAutoDraftSchedule: schedule }
+    });
+
+    const { rescheduleBlogDrafts } = require('../cron/blogAutoDraft');
+    await rescheduleBlogDrafts();
+
+    res.json({ message: 'Schedule updated', schedule });
+});
+
 module.exports = {
     getTopics,
     addTopic,
     updateTopic,
     deleteTopic,
-    triggerWorker
+    triggerWorker,
+    getSchedule,
+    updateSchedule
 };
