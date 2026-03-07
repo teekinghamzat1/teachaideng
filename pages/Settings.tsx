@@ -153,7 +153,7 @@ const Settings: React.FC = () => {
                                             <span className="w-1.5 h-1.5 rounded-full bg-slate-200"></span>
                                             <span className="text-slate-400 font-bold text-xs">Production Build</span>
                                         </div>
-                                        <p className="text-slate-500 dark:text-slate-400 font-bold max-w-xs mx-auto leading-relaxed text-sm">Empowering Nigerian educators with Advanced Pedagogy AI tools to transform teaching and learning outcomes.</p>
+                                        <p className="text-slate-500 dark:text-slate-400 font-bold max-w-xs mx-auto leading-relaxed text-sm">Empowering Nigerian educators with AI tools to transform teaching and learning outcomes.</p>
                                     </div>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
                                         <div className="p-6 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800/50 flex items-center gap-4">

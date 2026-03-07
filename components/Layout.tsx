@@ -525,7 +525,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
             {/* Menu Footer */}
             <div className="mt-auto pt-6 text-center">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] italic">Powered by Advanced Pedagogy AI</p>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] italic">Powered by Cognovia Technologies</p>
             </div>
           </div>
         </div>
@@ -651,13 +651,23 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             </div>
           </div>
 
-          <div className="pt-12 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-6">
-            <p className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-500">
-              &copy; {new Date().getFullYear()} {branding.siteName} . All rights reserved.
-            </p>
-            <div className="flex items-center gap-2">
-              <span className="h-1 w-1 rounded-full bg-[#16A34A]"></span>
-              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Advanced Pedagogy AI</p>
+          <div className="pt-12 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-6 text-center md:text-left">
+            <div className="space-y-1">
+              <p className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-500">
+                &copy; {new Date().getFullYear()} {branding.siteName} . All rights reserved.
+              </p>
+              <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-600">
+                A product of Cognovia Technologies Ltd · RC: 9394151
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-center gap-6">
+              <Link to="/terms" className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 hover:text-white transition-colors">Terms of Service</Link>
+              <Link to="/privacy" className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 hover:text-white transition-colors">Privacy Policy</Link>
+              <div className="flex items-center gap-2">
+                <span className="h-1 w-1 rounded-full bg-[#16A34A]"></span>
+                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Cognovia Technologies</p>
+              </div>
             </div>
           </div>
         </div>

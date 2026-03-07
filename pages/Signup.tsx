@@ -343,7 +343,7 @@ const Signup: React.FC = () => {
 
         {/* Footer Credit */}
         <div className="text-center">
-          <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Advanced Pedagogy AI · Nigeria</p>
+          <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Cognovia Technologies · Nigeria</p>
         </div>
       </div>
     </div>

@@ -16,9 +16,9 @@ export const PrivacyPolicy: React.FC = () => {
                     <section className="mb-8">
                         <h2>1. Introduction</h2>
                         <p>
-                            {branding.siteName} ("we," "our," or "us") respects your privacy and is committed to protecting your personal data.
-                            This privacy policy will inform you as to how we look after your personal data when you visit our website
-                            and tell you about your privacy rights and how the law protects you.
+                            This platform (TeachAide) is operated by <strong>Cognovia Technologies Ltd</strong> ("we," "our," or "us"),
+                            a company registered in Nigeria (RC: 9394151). We are the data controller responsible for your personal data and we
+                            are committed to protecting your privacy.
                         </p>
                     </section>
 

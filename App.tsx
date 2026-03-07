@@ -25,6 +25,7 @@ import { sessionManager } from './utils/sessionManager';
 import { HelpCenter } from './pages/HelpCenter';
 import { ContactUs } from './pages/ContactUs';
 import { PrivacyPolicy } from './pages/PrivacyPolicy';
+import TermsOfService from './pages/TermsOfService';
 import BlogHome from './pages/Blog/BlogHome';
 import BlogPost from './pages/Blog/BlogPost';
 import PublicNote from './pages/PublicNote';
@@ -142,6 +143,7 @@ const App: React.FC = () => {
           <Route path="/help" element={<Layout><HelpCenter /></Layout>} />
           <Route path="/contact" element={<Layout><ContactUs /></Layout>} />
           <Route path="/privacy" element={<Layout><PrivacyPolicy /></Layout>} />
+          <Route path="/terms" element={<Layout><TermsOfService /></Layout>} />
 
           {/* Admin Routes */}
           <Route path="/admin" element={<AdminLayout />}>
