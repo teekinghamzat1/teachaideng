@@ -16,8 +16,13 @@ echo "Resetting to origin/$BRANCH..."
 git reset --hard origin/$BRANCH
 git clean -fd
 
-echo "Installing npm dependencies..."
+echo "Installing frontend dependencies..."
 npm install
+
+echo "Installing backend dependencies..."
+cd backend
+npm install
+cd ..
 
 if [ -f package.json ] && npm run | grep -q "build"; then
   echo "Fixing script permissions..."
