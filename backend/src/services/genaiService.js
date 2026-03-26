@@ -426,7 +426,8 @@ async function generateSEOSummaryViaGenAI(options) {
   2. It must be engaging and end with a slight hook or CTA (e.g., "Discover how..." or "Read more to find out.") if appropriate.
   3. Incorporate strong action verbs.
   4. Make pedagogical or educational topics sound exciting and transformative for teachers.
-  5. DO NOT use markdown. Return raw JSON ONLY.
+  5. DO NOT use markdown. Return raw JSON ONLY without any markdown code blocks.
+  6. CRITICAL: DO NOT include any conversational filler, greetings, or introductory/concluding text (e.g. "Here is the JSON requested:", "This is what Card Summary brings"). The value of the summary field MUST only be the actual summary itself.
   
   The JSON object must have ONLY one field:
   - summary: string`;
