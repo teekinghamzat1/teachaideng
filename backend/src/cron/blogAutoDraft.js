@@ -70,6 +70,7 @@ async function processNextDraft() {
                 title: output.title,
                 slug: finalSlug,
                 content: output.body_html || output.body_markdown || "",
+                summary: output.meta_description || "",
                 category: topicRecord.category || output.category,
                 metaTitle: output.title, // Keep same as title
                 metaDescription: output.meta_description,

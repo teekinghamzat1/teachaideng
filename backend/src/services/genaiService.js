@@ -1,4 +1,5 @@
 const axios = require('axios');
+const { jsonrepair } = require('jsonrepair');
 
 /**
  * REST-based Gemini Client
@@ -457,9 +458,13 @@ async function generateSEOSummaryViaGenAI(options) {
       const parsed = JSON.parse(cleaned);
       finalSummary = parsed.summary || '';
     } catch (e) {
-      // If parsing fails even after extraction, use the cleaned text as fallback
-      // but only if it doesn't look like corrupted JSON
-      finalSummary = cleaned.length < 200 ? cleaned : cleaned.substring(0, 155) + '...';
+      try {
+        const repaired = jsonrepair(cleaned);
+        const parsed = JSON.parse(repaired);
+        finalSummary = parsed.summary || '';
+      } catch (repairErr) {
+        finalSummary = cleaned.length < 200 ? cleaned : cleaned.substring(0, 155) + '...';
+      }
     }
 
     return finalSummary;
@@ -515,7 +520,7 @@ Output format (STRICT, JSON only):
   "body_html": "..."
 }
 
-Important: Please enforce JSON-only output.`;
+Important: Please enforce JSON-only output. ENSURE ALL DOUBLE QUOTES INSIDE THE body_html STRING ARE PROPERLY ESCAPED (use \") SO THE JSON IS VALID. DO NOT USE UNESCAPED QUOTES.`;
 
   const contents = [{
     role: 'user',
@@ -539,17 +544,11 @@ Important: Please enforce JSON-only output.`;
       try {
         return JSON.parse(cleaned);
       } catch (parseErr) {
-        console.error('[GenAI] Failed to parse blog draft JSON. Error:', parseErr.message);
-        console.error('[GenAI] Raw extracted text (first 500 chars):', cleaned.substring(0, 500));
-        console.error('[GenAI] Text around error position:', cleaned.substring(Math.max(0, 3745 - 100), Math.min(cleaned.length, 3745 + 100)));
-
-        // Final attempt: maybe the AI used single quotes? (unlikely with application/json but possible if it ignored it)
         try {
-          // This is a dangerous fix, only use if first fails
-          // return JSON.parse(cleaned.replace(/'/g, '"')); 
-          // Actually, let's just throw and let the crawler retry
-          throw parseErr;
-        } catch (e) {
+          const repaired = jsonrepair(cleaned);
+          return JSON.parse(repaired);
+        } catch (repairErr) {
+          console.error('[GenAI] Failed to parse blog draft JSON. Error:', repairErr.message);
           throw parseErr;
         }
       }
@@ -564,7 +563,12 @@ Important: Please enforce JSON-only output.`;
         }, { timeout: 60000 });
         const candidate = res.data.candidates?.[0];
         const text = candidate?.content?.parts?.[0]?.text;
-        return JSON.parse(extractJson(text));
+        const cleaned = extractJson(text);
+        try {
+          return JSON.parse(cleaned);
+        } catch (e) {
+          return JSON.parse(jsonrepair(cleaned));
+        }
       }
       throw err;
     }
