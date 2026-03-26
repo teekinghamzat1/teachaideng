@@ -445,6 +445,13 @@ async function generateSEOSummaryViaGenAI(options) {
       contents,
       generationConfig: {
         responseMimeType: 'application/json',
+        responseSchema: {
+          type: "OBJECT",
+          properties: {
+            summary: { type: "STRING" }
+          },
+          required: ["summary"]
+        },
         maxOutputTokens: maxTokens || 200
       }
     }, { timeout: 30000 });
@@ -468,7 +475,15 @@ async function generateSEOSummaryViaGenAI(options) {
       }
     }
 
-    return finalSummary;
+    // Strip conversational filler if the AI is extremely stubborn
+    finalSummary = finalSummary.replace(/Here is the JSON requested:?[\s`\n]*([{\[])?/ig, '');
+    finalSummary = finalSummary.replace(/This is what Card Summary brings[\s`\n]*/ig, '');
+    finalSummary = finalSummary.replace(/Here is the (SEO )?summary:?[\s`\n]*/ig, '');
+    finalSummary = finalSummary.replace(/^```\w*\s*/, '').replace(/\s*```$/, '');
+    finalSummary = finalSummary.replace(/^{?\s*"summary":\s*"/i, '');
+    finalSummary = finalSummary.replace(/"\s*}?\s*$/i, '');
+    
+    return finalSummary.trim();
   });
 
   return response;
