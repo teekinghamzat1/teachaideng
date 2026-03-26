@@ -416,18 +416,16 @@ async function generateSEOSummaryViaGenAI(options) {
   const model = normalizeModel(process.env.GENAI_MODEL || 'gemini-1.5-flash');
 
   const systemPrompt = `You are an expert SEO copywriter and marketer for an educational technology platform.
-Your task is to generate ONLY the raw JSON containing a catchy SEO Meta Description (130 to 155 characters) for the given blog post.
+Your task is to generate a catchy SEO Meta Description (130 to 155 characters) for the given blog post.
 
 RULES:
-1. Return ONLY valid JSON with exactly one key: "summary"
-2. The value MUST be the actual SEO text (engaging, using action verbs, ending with a hook if possible).
-3. DO NOT output any other text, greetings, code block formatting, or conversational filler.
-4. "summary" value must NOT contain phrases like "Here is the summary" or "This is what it brings".
+1. Return ONLY the raw summary text paragraph.
+2. The value MUST be engaging, use action verbs, and end with a hook if possible.
+3. DO NOT output any JSON, markdown, code blocks (\`\`\`), greetings, or conversational filler.
+4. If you output phrases like "Here is the summary" or "This is what it brings", the system will crash. Return JUST the final text!
 
 EXAMPLE OUTPUT:
-{
-  "summary": "Discover the 5 top classroom management techniques for Nigerian schools. Read more to transform your teaching journey!"
-}`;
+Discover the 5 top classroom management techniques for Nigerian schools. Read more to transform your teaching journey!`;
 
   // Truncate text content to save tokens
   const slicedContext = textContent ? textContent.slice(0, 1500) : 'No content available.';
@@ -441,29 +439,23 @@ EXAMPLE OUTPUT:
     const res = await axios.post(`${API_BASE}/models/${model}:generateContent?key=${apiKey}`, {
       contents,
       generationConfig: {
-        responseMimeType: 'application/json',
         maxOutputTokens: maxTokens || 200
       }
     }, { timeout: 30000 });
 
     const candidate = res.data.candidates?.[0];
-    const text = candidate?.content?.parts?.[0]?.text;
+    let finalSummary = candidate?.content?.parts?.[0]?.text || '';
 
-    // Parse the JSON returned
-    let finalSummary = '';
-    const cleaned = extractJson(text);
-    try {
-      const parsed = JSON.parse(cleaned);
-      finalSummary = parsed.summary || '';
-    } catch (e) {
-      try {
-        const repaired = jsonrepair(cleaned);
-        const parsed = JSON.parse(repaired);
-        finalSummary = parsed.summary || '';
-      } catch (repairErr) {
-        finalSummary = cleaned.length < 200 ? cleaned : cleaned.substring(0, 155) + '...';
-      }
-    }
+    // Strip conversational filler if the AI is extremely stubborn
+    finalSummary = finalSummary.replace(/Here is the JSON requested:?[\s`\n]*([{\[])?/ig, '');
+    finalSummary = finalSummary.replace(/This is what Card Summary brings[\s`\n]*/ig, '');
+    finalSummary = finalSummary.replace(/Here is the (SEO )?summary:?[\s`\n]*/ig, '');
+    
+    // Strip markdown wrappers if they sneaked in
+    finalSummary = finalSummary.replace(/^```\w*[\s\n]*/i, '').replace(/[\s\n]*```$/i, '');
+    
+    // Strip random quotes around the string if present
+    finalSummary = finalSummary.replace(/^["']/g, '').replace(/["']$/g, '');
 
     return finalSummary.trim();
   });
