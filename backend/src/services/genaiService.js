@@ -416,21 +416,18 @@ async function generateSEOSummaryViaGenAI(options) {
   const model = normalizeModel(process.env.GENAI_MODEL || 'gemini-1.5-flash');
 
   const systemPrompt = `You are an expert SEO copywriter and marketer for an educational technology platform.
-  Your task is to generate a highly catchy, convertible, and click-worthy SEO Meta Description (Card Summary) for a blog post.
-  
-  CONTEXT:
-  - Post Title: ${title}
-  
-  RULES:
-  1. It must be between 130 and 155 characters long.
-  2. It must be engaging and end with a slight hook or CTA (e.g., "Discover how..." or "Read more to find out.") if appropriate.
-  3. Incorporate strong action verbs.
-  4. Make pedagogical or educational topics sound exciting and transformative for teachers.
-  5. DO NOT use markdown. Return raw JSON ONLY without any markdown code blocks.
-  6. CRITICAL: DO NOT include any conversational filler, greetings, or introductory/concluding text (e.g. "Here is the JSON requested:", "This is what Card Summary brings"). The value of the summary field MUST only be the actual summary itself.
-  
-  The JSON object must have ONLY one field:
-  - summary: string`;
+Your task is to generate ONLY the raw JSON containing a catchy SEO Meta Description (130 to 155 characters) for the given blog post.
+
+RULES:
+1. Return ONLY valid JSON with exactly one key: "summary"
+2. The value MUST be the actual SEO text (engaging, using action verbs, ending with a hook if possible).
+3. DO NOT output any other text, greetings, code block formatting, or conversational filler.
+4. "summary" value must NOT contain phrases like "Here is the summary" or "This is what it brings".
+
+EXAMPLE OUTPUT:
+{
+  "summary": "Discover the 5 top classroom management techniques for Nigerian schools. Read more to transform your teaching journey!"
+}`;
 
   // Truncate text content to save tokens
   const slicedContext = textContent ? textContent.slice(0, 1500) : 'No content available.';
@@ -445,13 +442,6 @@ async function generateSEOSummaryViaGenAI(options) {
       contents,
       generationConfig: {
         responseMimeType: 'application/json',
-        responseSchema: {
-          type: "OBJECT",
-          properties: {
-            summary: { type: "STRING" }
-          },
-          required: ["summary"]
-        },
         maxOutputTokens: maxTokens || 200
       }
     }, { timeout: 30000 });
@@ -475,14 +465,6 @@ async function generateSEOSummaryViaGenAI(options) {
       }
     }
 
-    // Strip conversational filler if the AI is extremely stubborn
-    finalSummary = finalSummary.replace(/Here is the JSON requested:?[\s`\n]*([{\[])?/ig, '');
-    finalSummary = finalSummary.replace(/This is what Card Summary brings[\s`\n]*/ig, '');
-    finalSummary = finalSummary.replace(/Here is the (SEO )?summary:?[\s`\n]*/ig, '');
-    finalSummary = finalSummary.replace(/^```\w*\s*/, '').replace(/\s*```$/, '');
-    finalSummary = finalSummary.replace(/^{?\s*"summary":\s*"/i, '');
-    finalSummary = finalSummary.replace(/"\s*}?\s*$/i, '');
-    
     return finalSummary.trim();
   });
 
