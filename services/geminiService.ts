@@ -314,7 +314,11 @@ export const generateAssessment = async (
 
 export const generateSEOSummary = async (title: string, textContent: string): Promise<string> => {
   try {
-    const token = db.auth.getToken();
+    let token = db.auth.getToken();
+    if (!token) {
+      const adminSession = localStorage.getItem('teachaide_admin_session');
+      if (adminSession) token = JSON.parse(adminSession).token;
+    }
     if (!token) throw new Error("Authentication required");
 
     const response = await fetch(`${API_URL}/generate/seo-summary`, {

@@ -3,6 +3,17 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const { generateBlogDraftViaGenAI } = require('../services/genaiService');
 
+const DEFAULT_IMAGES = [
+    'https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&q=80&w=1200',
+    'https://images.unsplash.com/photo-1577896851231-70ef18881754?auto=format&fit=crop&q=80&w=1200',
+    'https://images.unsplash.com/photo-1503676260728-1c00da094a0b?auto=format&fit=crop&q=80&w=1200',
+    'https://images.unsplash.com/photo-1497633762265-9d179a990aa6?auto=format&fit=crop&q=80&w=1200',
+    'https://images.unsplash.com/photo-1427504494785-319ce83d21df?auto=format&fit=crop&q=80&w=1200',
+    'https://images.unsplash.com/photo-1524178232363-1fb2b075b655?auto=format&fit=crop&q=80&w=1200',
+    'https://images.unsplash.com/photo-1580582932707-520aed937b7b?auto=format&fit=crop&q=80&w=1200',
+    'https://images.unsplash.com/photo-1532012197267-da84d127e765?auto=format&fit=crop&q=80&w=1200'
+];
+
 // Function to process a single draft
 async function processNextDraft() {
     try {
@@ -77,7 +88,7 @@ async function processNextDraft() {
                 keywords: keywordsStr,
                 published: false,
                 author: 'System Auto-Draft',
-                image: 'https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&q=80&w=1200'
+                image: DEFAULT_IMAGES[Math.floor(Math.random() * DEFAULT_IMAGES.length)]
             }
         });
 

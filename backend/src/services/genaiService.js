@@ -497,7 +497,7 @@ Requirements:
 * No plagiarism
 
 SEO:
-* Generate an SEO-optimized title
+* Generate an SEO-optimized title. CRITICAL: Do NOT use cliché phrases like "Crafting Effective", "Unlocking", "The Ultimate", or "A Comprehensive Guide". Create a unique, catchy, and highly specific title.
 * Generate a meta description (150–160 characters)
 * Generate 5–10 SEO keywords
 * Generate a URL-friendly slug
