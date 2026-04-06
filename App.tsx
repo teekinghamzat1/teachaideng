@@ -34,6 +34,7 @@ import NotFound from './pages/NotFound';
 // Admin Pages
 import AdminOverview from './pages/AdminDashboard'; // We reuse AdminDashboard.tsx as the overview
 import AdminUsers from './pages/AdminUsers';
+import AdminSchools from './pages/AdminSchools';
 import AdminContent from './pages/AdminContent';
 import AdminTestimonials from './pages/AdminTestimonials';
 import AdminCurriculum from './pages/AdminCurriculum';
@@ -149,6 +150,7 @@ const App: React.FC = () => {
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<AdminOverview />} />
             <Route path="analytics" element={<AdminAnalytics />} />
+            <Route path="schools" element={<AdminSchools />} />
             <Route path="users" element={<AdminUsers />} />
             <Route path="content" element={<AdminContent />} />
             <Route path="testimonials" element={<AdminTestimonials />} />
