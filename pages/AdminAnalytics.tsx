@@ -148,29 +148,93 @@ const AdminAnalytics: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Popular Pedagogy */}
-                <div className="space-y-6">
-                    <div className="bg-white dark:bg-slate-800 p-8 rounded-[2.5rem] border-2 border-slate-50 dark:border-slate-700 shadow-sm h-full">
-                        <div className="flex items-center gap-3 mb-8">
-                            <div className="w-10 h-10 bg-brand-50 dark:bg-brand-900/20 rounded-xl flex items-center justify-center text-brand-600">
-                                <BookOpen className="w-5 h-5" />
-                            </div>
-                            <h3 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">Top Subjects</h3>
+                {/* Acquisition Channels */}
+                <div className="bg-white dark:bg-slate-800 p-8 rounded-[2.5rem] border-2 border-slate-50 dark:border-slate-700 shadow-sm">
+                    <div className="flex items-center gap-3 mb-8">
+                        <div className="w-10 h-10 bg-blue-50 dark:bg-blue-900/20 rounded-xl flex items-center justify-center text-blue-600">
+                            <TrendingUp className="w-5 h-5" />
                         </div>
+                        <h3 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">Acquisition</h3>
+                    </div>
 
-                        <div className="space-y-4">
-                            {data?.topSubjects.length === 0 ? (
-                                <p className="text-slate-400 italic text-sm text-center py-10">No pedagogical data collected yet.</p>
-                            ) : data?.topSubjects.map((subject: any, i: number) => (
-                                <div key={i} className="group flex items-center justify-between p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/50 hover:bg-brand-50 dark:hover:bg-brand-900/10 transition-colors">
-                                    <div className="flex items-center gap-3">
-                                        <span className="w-6 h-6 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-[10px] font-black text-slate-400 group-hover:text-brand-600 group-hover:border-brand-200 transition-all">{i + 1}</span>
-                                        <span className="font-bold text-slate-700 dark:text-slate-200 group-hover:text-brand-700 dark:group-hover:text-brand-400 transition-colors">{subject.name}</span>
+                    <div className="space-y-6">
+                        {data?.channels?.map((channel: any, i: number) => {
+                            const total = data.totalVisits || 1;
+                            const percentage = Math.round((channel.count / total) * 100);
+                            const colors = [
+                                'bg-brand-500',
+                                'bg-purple-500',
+                                'bg-amber-500',
+                                'bg-emerald-500'
+                            ];
+                            return (
+                                <div key={i} className="space-y-2">
+                                    <div className="flex justify-between items-end">
+                                        <span className="text-sm font-bold text-slate-700 dark:text-slate-300">{channel.name}</span>
+                                        <span className="text-xs font-black text-slate-400">{percentage}%</span>
                                     </div>
-                                    <span className="bg-white dark:bg-slate-800 px-3 py-1 rounded-full text-xs font-black text-slate-400 group-hover:text-brand-600 shadow-sm transition-all">{subject.count}</span>
+                                    <div className="h-2 w-full bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
+                                        <div 
+                                            className={`h-full ${colors[i % colors.length]} rounded-full transition-all duration-1000`} 
+                                            style={{ width: `${percentage}%` }}
+                                        ></div>
+                                    </div>
                                 </div>
-                            ))}
+                            );
+                        })}
+                        {(!data?.channels || data?.channels.length === 0) && (
+                            <p className="text-slate-400 italic text-sm text-center py-10">Tracking sources...</p>
+                        )}
+                    </div>
+                </div>
+
+                {/* Popular Pedagogy */}
+                <div className="bg-white dark:bg-slate-800 p-8 rounded-[2.5rem] border-2 border-slate-50 dark:border-slate-700 shadow-sm h-full">
+                    <div className="flex items-center gap-3 mb-8">
+                        <div className="w-10 h-10 bg-brand-50 dark:bg-brand-900/20 rounded-xl flex items-center justify-center text-brand-600">
+                            <BookOpen className="w-5 h-5" />
                         </div>
+                        <h3 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">Top Subjects</h3>
+                    </div>
+
+                    <div className="space-y-4">
+                        {data?.topSubjects.length === 0 ? (
+                            <p className="text-slate-400 italic text-sm text-center py-10">No pedagogical data collected yet.</p>
+                        ) : data?.topSubjects.map((subject: any, i: number) => (
+                            <div key={i} className="group flex items-center justify-between p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/50 hover:bg-brand-50 dark:hover:bg-brand-900/10 transition-colors">
+                                <div className="flex items-center gap-3">
+                                    <span className="w-6 h-6 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-[10px] font-black text-slate-400 group-hover:text-brand-600 group-hover:border-brand-200 transition-all">{i + 1}</span>
+                                    <span className="font-bold text-slate-700 dark:text-slate-200 group-hover:text-brand-700 dark:group-hover:text-brand-400 transition-colors">{subject.name}</span>
+                                </div>
+                                <span className="bg-white dark:bg-slate-800 px-3 py-1 rounded-full text-xs font-black text-slate-400 group-hover:text-brand-600 shadow-sm transition-all">{subject.count}</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Top Referral Sources */}
+                <div className="lg:col-span-2 bg-white dark:bg-slate-800 p-8 rounded-[2.5rem] border-2 border-slate-50 dark:border-slate-700 shadow-sm">
+                    <div className="flex items-center gap-3 mb-8">
+                        <div className="w-10 h-10 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl flex items-center justify-center text-emerald-600">
+                            <Globe className="w-5 h-5" />
+                        </div>
+                        <h3 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">Top Referral Domains</h3>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {data?.topSources.length === 0 ? (
+                            <p className="col-span-2 text-slate-400 italic text-sm text-center py-10">Awaiting external traffic data...</p>
+                        ) : data?.topSources.map((source: any, i: number) => (
+                            <div key={i} className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-700">
+                                <div className="flex items-center gap-3 truncate">
+                                    <div className="w-8 h-8 rounded-full bg-white dark:bg-slate-800 flex items-center justify-center text-xs font-bold text-brand-600 border border-slate-100 dark:border-slate-700 shrink-0">
+                                        {source.name.charAt(0).toUpperCase()}
+                                    </div>
+                                    <span className="text-sm font-bold text-slate-700 dark:text-slate-200 truncate">{source.name}</span>
+                                </div>
+                                <span className="text-xs font-black text-slate-400 shrink-0">{source.count} visits</span>
+                            </div>
+                        ))}
                     </div>
                 </div>
 

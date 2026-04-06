@@ -43,7 +43,7 @@ const ping = asyncHandler(async (req, res) => {
 // @route   POST /api/analytics/track
 // @access  Public
 const trackPageView = asyncHandler(async (req, res) => {
-    const { path, userId } = req.body;
+    const { path, userId, referrer, utmSource, utmMedium, utmCampaign } = req.body;
     const ip = req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress;
     const userAgent = req.headers['user-agent'];
 
@@ -53,7 +53,11 @@ const trackPageView = asyncHandler(async (req, res) => {
                 path,
                 userId: userId || null,
                 ip,
-                userAgent
+                userAgent,
+                referrer: referrer || null,
+                utmSource: utmSource || null,
+                utmMedium: utmMedium || null,
+                utmCampaign: utmCampaign || null
             }
         });
         res.json(formatResponse(true, 'Traffic logged'));
@@ -149,11 +153,82 @@ const getReport = asyncHandler(async (req, res) => {
 
         const chartData = Object.entries(summarizedTraffic).map(([date, visits]) => ({ date, visits }));
 
+        // 5. Acquisition Sources (Channels)
+        const sourcesRaw = await prisma.trafficLog.findMany({
+            where: {
+                createdAt: { gte: startDate }
+            },
+            select: {
+                referrer: true,
+                utmSource: true
+            }
+        });
+
+        const channelCounts = {
+            'Direct': 0,
+            'Social': 0,
+            'Search': 0,
+            'Referral': 0
+        };
+
+        const detailedSources = {};
+
+        sourcesRaw.forEach(log => {
+            let channel = 'Direct';
+            let sourceName = 'Direct';
+
+            if (log.utmSource) {
+                sourceName = log.utmSource;
+                const src = log.utmSource.toLowerCase();
+                if (['facebook', 'instagram', 'twitter', 'linkedin', 'whatsapp', 't.co'].some(s => src.includes(s))) {
+                    channel = 'Social';
+                } else if (['google', 'bing', 'yahoo', 'duckduckgo'].some(s => src.includes(s))) {
+                    channel = 'Search';
+                } else {
+                    channel = 'Referral';
+                }
+            } else if (log.referrer) {
+                try {
+                    const url = new URL(log.referrer);
+                    const host = url.hostname.toLowerCase();
+                    sourceName = host;
+
+                    if (['facebook.com', 'instagram.com', 't.co', 'twitter.com', 'linkedin.com', 'whatsapp.com'].some(s => host.includes(s))) {
+                        channel = 'Social';
+                    } else if (['google.com', 'bing.com', 'yahoo.com', 'duckduckgo.com', 'baidu.com'].some(s => host.includes(s))) {
+                        channel = 'Search';
+                    } else if (host.includes('teachaide.ai') || host.includes('localhost')) {
+                        channel = 'Direct';
+                        sourceName = 'Direct';
+                    } else {
+                        channel = 'Referral';
+                    }
+                } catch (e) {
+                    channel = 'Direct';
+                }
+            }
+
+            channelCounts[channel]++;
+            if (sourceName !== 'Direct') {
+                detailedSources[sourceName] = (detailedSources[sourceName] || 0) + 1;
+            }
+        });
+
+        const topSources = Object.entries(detailedSources)
+            .map(([name, count]) => ({ name, count }))
+            .sort((a, b) => b.count - a.count)
+            .slice(0, 10);
+
+        const channels = Object.entries(channelCounts)
+            .map(([name, count]) => ({ name, count }));
+
         res.json(formatResponse(true, 'Report generated', {
             liveUsers,
             chartData,
             topTopics,
             topSubjects,
+            topSources,
+            channels,
             totalVisits: await prisma.trafficLog.count({ where: { createdAt: { gte: startDate } } }),
             uniqueUsers: (await prisma.trafficLog.groupBy({ by: ['ip'], where: { createdAt: { gte: startDate } } })).length
         }));

@@ -83,13 +83,19 @@ model User {
 }
 
 model TrafficLog {
-  id        String   @id @default(uuid())
-  path      String
-  ip        String?
-  userAgent String?
-  userId    String?
-  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
-  createdAt DateTime @default(now())
+  id          String   @id @default(uuid())
+  path        String
+  ip          String?
+  userAgent   String?
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  
+  referrer    String?
+  utmSource   String?
+  utmMedium   String?
+  utmCampaign String?
+
+  createdAt   DateTime @default(now())
 }
 
 model ActiveSession {

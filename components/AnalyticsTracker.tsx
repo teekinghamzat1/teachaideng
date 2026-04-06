@@ -21,13 +21,22 @@ const AnalyticsTracker: React.FC = () => {
     useEffect(() => {
         const trackPage = async () => {
             try {
+                const urlParams = new URLSearchParams(window.location.search);
+                const utmSource = urlParams.get('utm_source');
+                const utmMedium = urlParams.get('utm_medium');
+                const utmCampaign = urlParams.get('utm_campaign');
+
                 // We use fetch directly to avoid dependency on db.analytics if it's not yet in the file
                 await fetch('/api/analytics/track', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         path: location.pathname + location.search,
-                        userId: user?.id
+                        userId: user?.id,
+                        referrer: document.referrer,
+                        utmSource,
+                        utmMedium,
+                        utmCampaign
                     })
                 });
             } catch (e) {
