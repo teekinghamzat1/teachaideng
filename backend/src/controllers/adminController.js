@@ -417,19 +417,8 @@ const updateNoteStatus = asyncHandler(async (req, res) => {
 // @route   POST /api/admin/users
 // @access  Private/Admin
 const createUser = asyncHandler(async (req, res) => {
-    const { name, email, password, role, isSchoolAdmin, schoolId, subscriptionPlan } = req.body;
-
-    // Restrict Admin/SuperAdmin creation
-    if (role && (role.toLowerCase() === 'admin' || role.toLowerCase() === 'superadmin')) {
-        res.status(403);
-        throw new Error('Forbidden: Admins cannot create other admins or superadmins.');
-    }
-
-    // Only SuperAdmin can create School Admins
-    if (isSchoolAdmin && req.user.role !== 'superadmin') {
-        res.status(403);
-        throw new Error('Forbidden: Only SuperAdmins can create School Admins.');
-    }
+    // The validation middleware has already stripped sensitive fields like role, isSchoolAdmin, schoolId
+    const { name, email, password, subscriptionPlan } = req.body;
 
     const userExists = await prisma.user.findUnique({
         where: { email },
@@ -443,21 +432,34 @@ const createUser = asyncHandler(async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
+    // Prepare user data object, starting with safe, validated fields
+    const newUserData = {
+        name,
+        email,
+        password: hashedPassword,
+        subscriptionPlan: subscriptionPlan || 'Free',
+        role: 'user', // Always default to 'user' for this endpoint
+        isSchoolAdmin: false, // Never allow creating an admin via this route
+        schoolId: null, // Default to null
+    };
+
+    // If the creator is a School Admin, scope the new user to their school
+    if (req.user.isSchoolAdmin && req.user.schoolId) {
+        // Enforce school boundary. The new user belongs to the admin's school.
+        newUserData.schoolId = req.user.schoolId;
+        // Teachers created by admins are activated by default
+        newUserData.teacherStatus = 'Active';
+    }
+    // Note: A global admin creating a user results in a global user (schoolId: null)
+
     const user = await prisma.user.create({
-        data: {
-            name,
-            email,
-            password: hashedPassword,
-            role: role || 'user',
-            isSchoolAdmin: !!isSchoolAdmin,
-            schoolId: schoolId || null,
-            subscriptionPlan: subscriptionPlan || 'Free',
-        },
+        data: newUserData,
     });
 
     await createAdminLog(req.user.id, req.user.schoolId, 'CREATE_USER', {
         createdUserId: user.id,
-        role,
+        // Log the role that was actually assigned, not what was in the request
+        role: newUserData.role,
         email
     });
 
