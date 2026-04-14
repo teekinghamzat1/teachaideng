@@ -124,7 +124,7 @@ const generateLesson = asyncHandler(async (req, res) => {
   try {
     const metrics = {
       plan: req.user.subscriptionPlan,
-      model: process.env.GENAI_MODEL || 'gemini-1.5-flash',
+      model: process.env.GENAI_MODEL || 'gemini-2.5-pro',
       tokens: usageTokens,
       inputLength: (topic + subject + classLevel).length,
       outputLength: genResult.text ? genResult.text.length : 0
@@ -269,7 +269,7 @@ const generateAssessment = asyncHandler(async (req, res) => {
     genResult = await genai.generateAssessmentViaGenAI({
       topic, subject, classLevel, questionCount,
       maxTokens: estimates.maxTokens,
-      model: 'gemini-1.5-flash'
+      model: 'gemini-2.5-pro'
     });
   } catch (err) {
     console.error('generateAssessment ERROR:', err);
@@ -308,7 +308,7 @@ const generateAssessment = asyncHandler(async (req, res) => {
   try {
     const metrics = {
       plan: req.user.subscriptionPlan,
-      model: 'gemini-1.5-flash',
+      model: 'gemini-2.5-pro',
       tokens: usageTokens,
       inputLength: (topic + subject + classLevel).length,
       outputLength: genResult.text ? genResult.text.length : 0

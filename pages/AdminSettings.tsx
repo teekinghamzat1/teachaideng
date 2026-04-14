@@ -18,7 +18,7 @@ const AdminSettings: React.FC = () => {
     const [config, setConfig] = useState<SystemSettings>({
         maintenanceMode: false,
         allowSignup: true,
-        defaultModel: 'gemini-1.5-flash',
+        defaultModel: 'gemini-2.5-pro',
         maxTokens: 4096,
         smtpPort: 587,
         lessonGenerationCost: 600,
@@ -399,15 +399,12 @@ const AdminSettings: React.FC = () => {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div className="space-y-2">
                                     <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">AI Model Strategy</label>
-                                    <select
-                                        value={config.defaultModel}
-                                        onChange={e => setConfig({ ...config, defaultModel: e.target.value })}
-                                        className="w-full rounded-lg border-slate-200 dark:border-slate-700 dark:bg-slate-900 p-2.5 border text-slate-900 dark:text-white"
-                                    >
-                                        <option value="gemini-1.5-flash">Gemini 1.5 Flash (Fast/Cheap)</option>
-                                        <option value="gemini-1.5-pro">Gemini 1.5 Pro (Smarter)</option>
-                                        <option value="gemini-2.0-flash-exp">Gemini 2.0 Flash (Advanced)</option>
-                                    </select>
+                                    <div className="w-full rounded-lg border-slate-200 dark:border-slate-700 dark:bg-slate-900/50 p-2.5 border text-slate-500 dark:text-slate-400 font-medium bg-slate-50">
+                                        Gemini 2.5 Pro (Platform Standard)
+                                    </div>
+                                    <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-1 flex items-center">
+                                        <Shield className="w-3 h-3 mr-1" /> Enforced by system policy for maximum quality.
+                                    </p>
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">Response Limit (Max Tokens)</label>

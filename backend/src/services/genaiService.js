@@ -14,9 +14,8 @@ const getApiKey = () => {
 };
 
 const normalizeModel = (model) => {
-  // Use gemini-1.5-flash - faster and more stable
-  if (!model || model.includes('1.5-flash') || model.includes('2.0-flash')) return 'gemini-1.5-flash';
-  return model.replace('models/', '');
+  // Enforce gemini-2.5-pro for all platform generations
+  return 'gemini-2.5-pro';
 };
 
 /**
@@ -26,28 +25,28 @@ const extractJson = (str) => {
   if (!str || typeof str !== 'string') return str;
 
   // 1. Clean up potential invisible characters that break JSON
-  str = str.replace(/[\u0000-\u001F\u007F-\u009F]/g, "");
+  let cleanedStr = str.replace(/[\u0000-\u001F\u007F-\u009F]/g, "");
 
   // 2. Try to find JSON block in markdown
-  const markdownMatch = str.match(/```json\s*([\s\S]*?)\s*```/);
+  const markdownMatch = cleanedStr.match(/```json\s*([\s\S]*?)\s*```/);
   if (markdownMatch && markdownMatch[1]) return markdownMatch[1].trim();
 
   // 3. Find the first occurrence of { or [ and the last occurrence of } or ]
-  const firstCurly = str.indexOf('{');
-  const firstBracket = str.indexOf('[');
+  const firstCurly = cleanedStr.indexOf('{');
+  const firstBracket = cleanedStr.indexOf('[');
   const first = (firstCurly !== -1 && (firstBracket === -1 || firstCurly < firstBracket)) ? firstCurly : firstBracket;
 
   if (first !== -1) {
-    const lastCurly = str.lastIndexOf('}');
-    const lastBracket = str.lastIndexOf(']');
+    const lastCurly = cleanedStr.lastIndexOf('}');
+    const lastBracket = cleanedStr.lastIndexOf(']');
     const last = Math.max(lastCurly, lastBracket);
 
     if (last > first) {
-      return str.substring(first, last + 1);
+      return cleanedStr.substring(first, last + 1);
     }
   }
 
-  return str.trim();
+  return cleanedStr.trim();
 };
 
 const withRetry = async (fn, maxRetries = 5, initialDelay = 2000) => {
@@ -88,7 +87,7 @@ async function generateLessonNoteViaGenAI(options) {
     smartHint, includeEvaluation, includeTeachingAids, nigerianCurriculum, maxTokens
   } = options;
   const apiKey = getApiKey();
-  const model = normalizeModel(process.env.GENAI_MODEL || 'gemini-1.5-flash');
+  const model = normalizeModel(process.env.GENAI_MODEL || 'gemini-2.5-pro');
 
   const today = new Date().toISOString().split('T')[0];
   const systemPrompt = `You are TeachAide, an AI assistant designed specifically for Nigerian schools.
@@ -261,7 +260,7 @@ ${options.smartHint}` : ''}
     parts: [{ text: `${systemPrompt}\nUser Topic: ${topic}\nUser Sub-topic: ${subtopic || 'Auto'}\nSubject: ${subject}\nClass: ${classLevel}\nLesson Type: ${lessonType || 'Normal Lesson'}` }]
   }];
 
-  const response = await withRetry(async () => {
+  return withRetry(async () => {
     try {
       const res = await axios.post(`${API_BASE}/models/${model}:generateContent?key=${apiKey}`, {
         contents,
@@ -277,24 +276,9 @@ ${options.smartHint}` : ''}
 
       return { text, usage };
     } catch (err) {
-      if (err.response?.status === 429 && model === 'gemini-1.5-flash') {
-        console.warn('Primary model 429. Falling back to Lite...');
-        const res = await axios.post(`${API_BASE}/models/gemini-1.5-flash-lite:generateContent?key=${apiKey}`, {
-          contents,
-          generationConfig: {
-            responseMimeType: 'application/json',
-            maxOutputTokens: maxTokens || 4096
-          }
-        }, { timeout: 60000 });
-        const candidate = res.data.candidates?.[0];
-        const text = candidate?.content?.parts?.[0]?.text;
-        return { text, usage: res.data.usageMetadata || {} };
-      }
       throw err;
     }
   });
-
-  return response;
 }
 
 /**
@@ -303,7 +287,7 @@ ${options.smartHint}` : ''}
 async function generateAssessmentViaGenAI(options) {
   const { topic, classLevel, subject, questionCount, maxTokens } = options;
   const apiKey = getApiKey();
-  const model = normalizeModel(options.model || 'gemini-1.5-flash');
+  const model = normalizeModel(options.model || 'gemini-2.5-pro');
 
   const systemPrompt = `You are an expert assessment developer. Generate a high-quality assessment in strict JSON format.
   
@@ -320,7 +304,7 @@ async function generateAssessmentViaGenAI(options) {
     parts: [{ text: `${systemPrompt}\nSubject: ${subject}\nClass: ${classLevel}\nTopic: ${topic}\nQuestions: ${questionCount}` }]
   }];
 
-  const response = await withRetry(async () => {
+  return withRetry(async () => {
     try {
       const res = await axios.post(`${API_BASE}/models/${model}:generateContent?key=${apiKey}`, {
         contents,
@@ -336,23 +320,9 @@ async function generateAssessmentViaGenAI(options) {
 
       return { text, usage };
     } catch (err) {
-      if (err.response?.status === 429 && model === 'gemini-1.5-flash') {
-        const res = await axios.post(`${API_BASE}/models/gemini-1.5-flash-lite:generateContent?key=${apiKey}`, {
-          contents,
-          generationConfig: {
-            responseMimeType: 'application/json',
-            maxOutputTokens: maxTokens || 4096
-          }
-        }, { timeout: 60000 });
-        const candidate = res.data.candidates?.[0];
-        const text = candidate?.content?.parts?.[0]?.text;
-        return { text, usage: res.data.usageMetadata || {} };
-      }
       throw err;
     }
   });
-
-  return response;
 }
 
 /**
@@ -361,7 +331,7 @@ async function generateAssessmentViaGenAI(options) {
 async function generateRemarkViaGenAI(options) {
   const { classLevel, subject, topic, lessonOutcome, students, style, maxTokens } = options;
   const apiKey = getApiKey();
-  const model = normalizeModel(process.env.GENAI_MODEL || 'gemini-1.5-flash');
+  const model = normalizeModel(process.env.GENAI_MODEL || 'gemini-2.5-pro');
 
   const systemPrompt = `You are an expert teacher writing a lesson reflection/remark for your records.
   
@@ -389,7 +359,7 @@ async function generateRemarkViaGenAI(options) {
     parts: [{ text: systemPrompt }]
   }];
 
-  const response = await withRetry(async () => {
+  return withRetry(async () => {
     const res = await axios.post(`${API_BASE}/models/${model}:generateContent?key=${apiKey}`, {
       contents,
       generationConfig: {
@@ -403,8 +373,6 @@ async function generateRemarkViaGenAI(options) {
     const usage = res.data.usageMetadata || {};
     return { text, usage };
   });
-
-  return response;
 }
 
 /**
@@ -413,7 +381,7 @@ async function generateRemarkViaGenAI(options) {
 async function generateSEOSummaryViaGenAI(options) {
   const { title, textContent, maxTokens } = options;
   const apiKey = getApiKey();
-  const model = normalizeModel(process.env.GENAI_MODEL || 'gemini-1.5-flash');
+  const model = normalizeModel(process.env.GENAI_MODEL || 'gemini-2.5-pro');
 
   const systemPrompt = `You are an expert SEO copywriter and marketer for an educational technology platform.
 Your task is to generate a catchy SEO Meta Description (130 to 155 characters) for the given blog post.
@@ -435,7 +403,7 @@ Discover the 5 top classroom management techniques for Nigerian schools. Read mo
     parts: [{ text: `${systemPrompt}\n\nHere is an excerpt of the post content for context: ${slicedContext}` }]
   }];
 
-  const response = await withRetry(async () => {
+  return withRetry(async () => {
     const res = await axios.post(`${API_BASE}/models/${model}:generateContent?key=${apiKey}`, {
       contents,
       generationConfig: {
@@ -459,8 +427,6 @@ Discover the 5 top classroom management techniques for Nigerian schools. Read mo
 
     return finalSummary.trim();
   });
-
-  return response;
 }
 
 /**
@@ -469,7 +435,7 @@ Discover the 5 top classroom management techniques for Nigerian schools. Read mo
 async function generateBlogDraftViaGenAI(options) {
   const { topic, audience, category, maxTokens } = options;
   const apiKey = getApiKey();
-  const model = normalizeModel(process.env.GENAI_MODEL || 'gemini-1.5-flash');
+  const model = normalizeModel(process.env.GENAI_MODEL || 'gemini-2.5-pro');
 
   const systemPrompt = `You are an educational content writer for Nigerian teachers.
 
@@ -517,7 +483,7 @@ Important: Please enforce JSON-only output. ENSURE ALL DOUBLE QUOTES INSIDE THE 
     parts: [{ text: systemPrompt }]
   }];
 
-  const response = await withRetry(async () => {
+  return withRetry(async () => {
     try {
       const res = await axios.post(`${API_BASE}/models/${model}:generateContent?key=${apiKey}`, {
         contents,
@@ -543,28 +509,9 @@ Important: Please enforce JSON-only output. ENSURE ALL DOUBLE QUOTES INSIDE THE 
         }
       }
     } catch (err) {
-      if (err.response?.status === 429 && model === 'gemini-1.5-flash') {
-        const res = await axios.post(`${API_BASE}/models/gemini-1.5-flash-lite:generateContent?key=${apiKey}`, {
-          contents,
-          generationConfig: {
-            responseMimeType: 'application/json',
-            maxOutputTokens: maxTokens || 8192
-          }
-        }, { timeout: 60000 });
-        const candidate = res.data.candidates?.[0];
-        const text = candidate?.content?.parts?.[0]?.text;
-        const cleaned = extractJson(text);
-        try {
-          return JSON.parse(cleaned);
-        } catch (e) {
-          return JSON.parse(jsonrepair(cleaned));
-        }
-      }
       throw err;
     }
   });
-
-  return response;
 }
 
 module.exports = {
