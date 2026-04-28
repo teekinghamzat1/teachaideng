@@ -448,21 +448,30 @@ const AdminBlog: React.FC = () => {
                             </div>
                         </div>
 
-                        <form onSubmit={handleAddTopic} className="mb-8 grid grid-cols-1 md:grid-cols-4 gap-4 bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm items-end">
-                            <div>
-                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Topic</label>
-                                <input required placeholder="E.g. Classroom Management" value={newTopic.topic} onChange={e => setNewTopic({ ...newTopic, topic: e.target.value })} className="w-full bg-white dark:bg-slate-800 border-none rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500" />
+                        <form onSubmit={handleAddTopic} className="mb-8 bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                                <div className="md:col-span-2">
+                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Topics (one per line or comma separated)</label>
+                                    <textarea 
+                                        required 
+                                        rows={4}
+                                        placeholder="E.g. Classroom Management&#10;Innovative Teaching&#10;Student Engagement" 
+                                        value={newTopic.topic} 
+                                        onChange={e => setNewTopic({ ...newTopic, topic: e.target.value })} 
+                                        className="w-full bg-slate-50 dark:bg-slate-900 border-none rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-brand-500 shadow-inner" 
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Target Audience</label>
+                                    <input placeholder="E.g. Primary Teachers" value={newTopic.audience} onChange={e => setNewTopic({ ...newTopic, audience: e.target.value })} className="w-full bg-slate-50 dark:bg-slate-900 border-none rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-brand-500 shadow-inner" />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Blog Category</label>
+                                    <input placeholder="E.g. Teaching Practice" value={newTopic.category} onChange={e => setNewTopic({ ...newTopic, category: e.target.value })} className="w-full bg-slate-50 dark:bg-slate-900 border-none rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-brand-500 shadow-inner" />
+                                </div>
                             </div>
-                            <div>
-                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Audience</label>
-                                <input placeholder="E.g. Primary Teachers" value={newTopic.audience} onChange={e => setNewTopic({ ...newTopic, audience: e.target.value })} className="w-full bg-white dark:bg-slate-800 border-none rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500" />
-                            </div>
-                            <div>
-                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Category</label>
-                                <input placeholder="E.g. Teaching Practice" value={newTopic.category} onChange={e => setNewTopic({ ...newTopic, category: e.target.value })} className="w-full bg-white dark:bg-slate-800 border-none rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500" />
-                            </div>
-                            <button type="submit" disabled={isAddingTopic} className="w-full bg-brand-600 text-white rounded-lg px-4 py-2 text-sm font-bold hover:bg-brand-700 disabled:opacity-50 transition">
-                                {isAddingTopic ? 'Adding...' : 'Add to Queue'}
+                            <button type="submit" disabled={isAddingTopic} className="w-full bg-brand-600 text-white rounded-xl px-6 py-3 text-sm font-black hover:bg-brand-700 disabled:opacity-50 transition shadow-lg shadow-brand-500/20">
+                                {isAddingTopic ? 'Adding Topics...' : 'Add Topics to Queue'}
                             </button>
                         </form>
 

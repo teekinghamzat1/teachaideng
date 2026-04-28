@@ -22,17 +22,36 @@ const getTopics = asyncHandler(async (req, res) => {
 const addTopic = asyncHandler(async (req, res) => {
     const { topic, audience, category, priority } = req.body;
 
-    const newTopic = await prisma.topicQueue.create({
-        data: {
-            topic,
-            audience: audience || 'Teachers',
-            category: category || 'General',
-            priority: priority || 0,
-            status: 'QUEUED'
-        }
-    });
+    if (!topic) {
+        res.status(400);
+        throw new Error('Topic(s) required');
+    }
 
-    res.status(201).json(newTopic);
+    // Handle multiple topics (split by newline or comma)
+    let topicsToAdd = [];
+    if (typeof topic === 'string') {
+        topicsToAdd = topic.split(/[\n,]/).map(t => t.trim()).filter(t => t.length > 0);
+    } else if (Array.isArray(topic)) {
+        topicsToAdd = topic;
+    } else {
+        topicsToAdd = [topic];
+    }
+
+    const results = [];
+    for (const t of topicsToAdd) {
+        const newTopic = await prisma.topicQueue.create({
+            data: {
+                topic: t,
+                audience: audience || 'Teachers',
+                category: category || 'General',
+                priority: priority || 0,
+                status: 'QUEUED'
+            }
+        });
+        results.push(newTopic);
+    }
+
+    res.status(201).json(results.length === 1 ? results[0] : { count: results.length, topics: results });
 });
 
 // @desc    Update a topic
