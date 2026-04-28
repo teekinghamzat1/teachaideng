@@ -37,6 +37,8 @@ const addTopic = asyncHandler(async (req, res) => {
         topicsToAdd = [topic];
     }
 
+    console.log(`[TopicQueue] Processing ${topicsToAdd.length} topics:`, topicsToAdd);
+
     const results = [];
     for (const t of topicsToAdd) {
         const newTopic = await prisma.topicQueue.create({

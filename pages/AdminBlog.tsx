@@ -187,17 +187,30 @@ const AdminBlog: React.FC = () => {
         e.preventDefault();
         try {
             setIsAddingTopic(true);
+            
+            // Split topics on client side as well for robustness
+            const topicsArray = newTopic.topic
+                .split(/[\n,]/)
+                .map(t => t.trim())
+                .filter(t => t.length > 0);
+
+            if (topicsArray.length === 0) return;
+
             const res = await fetch('/api/topics', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', ...getAnyAuthHeader() },
-                body: JSON.stringify(newTopic)
+                body: JSON.stringify({
+                    ...newTopic,
+                    topic: topicsArray // Sending as array now
+                })
             });
+
             if (res.ok) {
-                showAlert.success('Topic queued!');
+                showAlert.success(topicsArray.length > 1 ? `${topicsArray.length} topics queued!` : 'Topic queued!');
                 setNewTopic({ topic: '', audience: 'Teachers', category: 'General', priority: 0 });
                 fetchTopics();
             } else {
-                showAlert.error('Failed to queue topic');
+                showAlert.error('Failed to queue topics');
             }
         } catch (error) {
             showAlert.error('An error occurred');
