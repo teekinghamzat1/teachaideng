@@ -126,6 +126,8 @@ const generateLesson = asyncHandler(async (req, res) => {
       plan: req.user.subscriptionPlan,
       model: process.env.GENAI_MODEL || 'gemini-2.5-pro',
       tokens: usageTokens,
+      topic,
+      subject,
       inputLength: (topic + subject + classLevel).length,
       outputLength: genResult.text ? genResult.text.length : 0
     };
@@ -310,6 +312,8 @@ const generateAssessment = asyncHandler(async (req, res) => {
       plan: req.user.subscriptionPlan,
       model: 'gemini-2.5-pro',
       tokens: usageTokens,
+      topic,
+      subject,
       inputLength: (topic + subject + classLevel).length,
       outputLength: genResult.text ? genResult.text.length : 0
     };

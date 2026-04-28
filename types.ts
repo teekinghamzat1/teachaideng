@@ -168,6 +168,32 @@ export interface SystemSettings {
   schoolPlanName?: string;
   schoolPlanPrice?: number;
   schoolPlanDuration?: string;
+
+  schoolBasicPlanName?: string;
+  schoolBasicPlanPrice?: number;
+  schoolBasicPlanLessonLimit?: number;
+
+  schoolStandardPlanName?: string;
+  schoolStandardPlanPrice?: number;
+  schoolStandardPlanLessonLimit?: number;
+
+  schoolProPlanName?: string;
+  schoolProPlanPrice?: number;
+  schoolProPlanLessonLimit?: number;
+  individualDailyLimit?: number;
+  schoolTeacherDailyLimit?: number;
+
+  // Paystack Plan Codes
+  proPlanCode?: string;
+  schoolBasicPlanCode?: string;
+  schoolStandardPlanCode?: string;
+  schoolProPlanCode?: string;
+
+  // Top-up Configuration
+  individualTopUpPrice?: number;
+  individualTopUpAmount?: number;
+  schoolTopUpPrice?: number;
+  schoolTopUpAmount?: number;
 }
 
 export interface Curriculum {
@@ -191,6 +217,10 @@ export interface School {
   capacity?: number;
   createdAt: string;
   updatedAt: string;
+  planType?: 'Basic' | 'Standard' | 'Pro';
+  additionalNotes?: number;
+  notesUsedThisMonth?: number;
+  lastUsageReset?: string;
   teachers?: Teacher[];
   owner?: {
     id: string;
@@ -218,7 +248,7 @@ export interface User {
   name: string;
   email: string;
   role: string;
-  subscriptionPlan: 'Free' | 'Pro' | 'School';
+  subscriptionPlan: string;
   gender?: string;
   schoolName?: string;
   status?: 'Active' | 'Suspended';
@@ -236,6 +266,7 @@ export interface User {
   monthlyLessonLimit?: number;
   lessonsUsedThisMonth?: number;
   lastUsageReset?: string;
+  additionalNotes?: number;
 }
 
 // Lesson usage statistics (USER-FACING ONLY - no tokens exposed)

@@ -48,6 +48,14 @@ model User {
   // Usage Limit Reset (Admin Override)
   lastLimitReset DateTime?
 
+  // Daily Teacher Limits (Anti-Abuse)
+  dailyNoteLimit   Int      @default(3)
+  notesUsedToday   Int      @default(0)
+  lastDailyReset   DateTime @default(now())
+  
+  // Top-up storage
+  additionalNotes  Int      @default(0)
+
   // Account type for progressive onboarding: 'individual' | 'school'
   // Default 'individual' keeps backward compatibility for existing users
   accountType    String   @default("individual")
@@ -301,6 +309,12 @@ model School {
   website      String?
   capacity     Int? @default(0)
 
+  // School Plan tracking
+  planType           String   @default("Basic") // 'Basic', 'Standard', 'Pro'
+  additionalNotes    Int      @default(0) // Top-up balance
+  notesUsedThisMonth Int      @default(0)
+  lastUsageReset     DateTime @default(now())
+
   metadata     String? // JSON string for additional data
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -377,6 +391,10 @@ model SystemSetting {
   proPlanLessonLimit    Int @default(100)
   schoolPlanLessonLimit Int @default(999999)  // Effectively unlimited
   
+  schoolBasicPlanLessonLimit    Int @default(500)
+  schoolStandardPlanLessonLimit Int @default(1500)
+  schoolProPlanLessonLimit      Int @default(5000)
+  
   freePlanTokenLimit    Int @default(100000)
   proPlanTokenLimit     Int @default(1000000)
   schoolPlanTokenLimit  Int @default(10000000)
@@ -392,7 +410,30 @@ model SystemSetting {
 
   schoolPlanName        String @default("School License")
   schoolPlanPrice       Int    @default(20000)
-  schoolPlanDuration    String @default("term")
+  schoolPlanDuration    String @default("month")
+  
+  schoolBasicPlanName      String @default("Basic School")
+  schoolBasicPlanPrice     Int    @default(20000)
+  schoolStandardPlanName   String @default("Standard School")
+  schoolStandardPlanPrice  Int    @default(50000)
+  schoolProPlanName        String @default("Pro School")
+  schoolProPlanPrice       Int    @default(100000)
+  
+  // Daily Generation Limits (Configurable)
+  individualDailyLimit     Int    @default(3)
+  schoolTeacherDailyLimit  Int    @default(5)
+
+  // Paystack Plan Codes (Configurable)
+  proPlanCode              String @default("")
+  schoolBasicPlanCode      String @default("")
+  schoolStandardPlanCode   String @default("")
+  schoolProPlanCode        String @default("")
+
+  // Top-up Configuration (Configurable)
+  individualTopUpPrice     Int    @default(1000)
+  individualTopUpAmount    Int    @default(100)
+  schoolTopUpPrice         Int    @default(5000)
+  schoolTopUpAmount        Int    @default(500)
   
   // Blog Auto-Draft Configuration
   blogAutoDraftSchedule String @default("0 7,22 * * *")

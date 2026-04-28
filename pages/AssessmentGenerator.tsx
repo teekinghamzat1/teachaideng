@@ -11,6 +11,7 @@ import { useNavigate } from 'react-router-dom';
 import FeedbackModal from '../components/FeedbackModal';
 import { showAlert } from '../utils/alerts';
 import { stripFormatting } from '../utils/textUtils';
+import { safeSessionStorage as sessionStorage } from '../utils/storage';
 
 const AssessmentGenerator: React.FC = () => {
     const navigate = useNavigate();

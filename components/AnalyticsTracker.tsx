@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { db } from '../database';
+import { safeSessionStorage as sessionStorage } from '../utils/storage';
 
 // Generate a random session ID if not exists
 const getSessionId = () => {

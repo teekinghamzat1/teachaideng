@@ -1,5 +1,6 @@
 import { LessonNote, Assessment } from "../types";
 import { db } from "../database";
+import { storage as localStorage } from "../utils/storage";
 
 // Helper to get API URL
 const getApiUrl = () => {

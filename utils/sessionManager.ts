@@ -1,3 +1,5 @@
+import { storage } from './storage';
+
 // Session timeout manager
 const SESSION_TIMEOUT = 30 * 60 * 1000; // 30 minutes in milliseconds
 let inactivityTimer: NodeJS.Timeout | null = null;
@@ -20,12 +22,12 @@ export const sessionManager = {
         }, SESSION_TIMEOUT);
 
         // Update last activity timestamp
-        localStorage.setItem('lastActivity', Date.now().toString());
+        storage.setItem('lastActivity', Date.now().toString());
     },
 
     // Check if session is still valid
     isSessionValid(): boolean {
-        const lastActivity = localStorage.getItem('lastActivity');
+        const lastActivity = storage.getItem('lastActivity');
         if (!lastActivity) return false;
 
         const timeSinceActivity = Date.now() - parseInt(lastActivity);
@@ -35,8 +37,8 @@ export const sessionManager = {
     // Logout due to inactivity
     logout() {
         console.info('Session expired due to inactivity');
-        localStorage.removeItem('teachaide_session');
-        localStorage.removeItem('lastActivity');
+        storage.removeItem('teachaide_session');
+        storage.removeItem('lastActivity');
         window.dispatchEvent(new Event('auth-change'));
         window.location.href = '/login?reason=timeout';
     },
@@ -47,7 +49,7 @@ export const sessionManager = {
 
         events.forEach(event => {
             document.addEventListener(event, () => {
-                if (localStorage.getItem('teachaide_session')) {
+                if (storage.getItem('teachaide_session')) {
                     this.resetTimer();
                 }
             }, { passive: true });
@@ -64,5 +66,9 @@ export const sessionManager = {
 
 // Auto-initialize when module loads
 if (typeof window !== 'undefined') {
-    sessionManager.init();
+    try {
+        sessionManager.init();
+    } catch (e) {
+        console.warn('Failed to initialize session manager', e);
+    }
 }

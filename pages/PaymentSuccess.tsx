@@ -6,7 +6,7 @@ const PaymentSuccess: React.FC = () => {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const plan = searchParams.get('plan') || 'Pro';
-    const amount = searchParams.get('amount') || '2,500';
+    const amount = searchParams.get('amount') || '3,500';
 
     useEffect(() => {
         // Auto-redirect after 10 seconds

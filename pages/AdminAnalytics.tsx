@@ -18,18 +18,27 @@ const AdminAnalytics: React.FC = () => {
     const [refreshing, setRefreshing] = useState(false);
     const [range, setRange] = useState('30d');
     const [data, setData] = useState<any>(null);
+    const [activeTab, setActiveTab] = useState<'overview' | 'generations'>('overview');
+    const [generations, setGenerations] = useState<any[]>([]);
 
     const loadData = async (isRefresh = false) => {
         if (isRefresh) setRefreshing(true);
         else setLoading(true);
 
         try {
-            const res = await fetch(`/api/analytics/report?range=${range}`, {
-                headers: getAdminAuthHeader()
-            });
-            const payload = await res.json();
+            const [reportRes, genRes] = await Promise.all([
+                fetch(`/api/analytics/report?range=${range}`, { headers: getAdminAuthHeader() }),
+                fetch(`/api/analytics/generations`, { headers: getAdminAuthHeader() })
+            ]);
+            
+            const payload = await reportRes.json();
             if (payload.success) {
                 setData(payload.data);
+            }
+
+            const genPayload = await genRes.json();
+            if (genPayload.success) {
+                setGenerations(genPayload.data);
             }
         } catch (error) {
             console.error("Failed to load analytics report", error);
@@ -88,7 +97,25 @@ const AdminAnalytics: React.FC = () => {
                 </div>
             </div>
 
-            {/* Top Metrics */}
+            {/* Tabs Navigation */}
+            <div className="flex border-b border-slate-200 dark:border-slate-700 pb-px">
+                <button
+                    onClick={() => setActiveTab('overview')}
+                    className={`py-3 px-6 font-bold text-sm border-b-2 transition-colors ${activeTab === 'overview' ? 'border-brand-600 text-brand-600' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+                >
+                    Overview
+                </button>
+                <button
+                    onClick={() => setActiveTab('generations')}
+                    className={`py-3 px-6 font-bold text-sm border-b-2 transition-colors ${activeTab === 'generations' ? 'border-brand-600 text-brand-600' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+                >
+                    Generation Logs
+                </button>
+            </div>
+
+            {activeTab === 'overview' ? (
+                <>
+                    {/* Top Metrics */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {[
                     { label: 'Live Educators', value: data?.liveUsers || 0, icon: Activity, color: 'text-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-900/10' },
@@ -259,6 +286,53 @@ const AdminAnalytics: React.FC = () => {
                     </div>
                 </div>
             </div>
+            </>
+            ) : (
+                <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                    <div className="overflow-x-auto">
+                        <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
+                            <thead className="bg-slate-50 dark:bg-slate-900/50">
+                                <tr>
+                                    <th className="px-6 py-4 text-left text-xs font-black text-slate-500 uppercase tracking-wider">User</th>
+                                    <th className="px-6 py-4 text-left text-xs font-black text-slate-500 uppercase tracking-wider">Action</th>
+                                    <th className="px-6 py-4 text-left text-xs font-black text-slate-500 uppercase tracking-wider">Topic / Subject</th>
+                                    <th className="px-6 py-4 text-left text-xs font-black text-slate-500 uppercase tracking-wider">Tokens</th>
+                                    <th className="px-6 py-4 text-right text-xs font-black text-slate-500 uppercase tracking-wider">Date</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+                                {generations.length === 0 ? (
+                                    <tr><td colSpan={5} className="text-center py-8 text-slate-500 font-medium">No generation logs found</td></tr>
+                                ) : generations.map((log: any) => (
+                                    <tr key={log.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <div className="text-sm font-bold text-slate-900 dark:text-slate-100">{log.user.name}</div>
+                                            <div className="text-xs text-slate-500">{log.user.email}</div>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400">
+                                                {log.action.replace('_', ' ')}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="text-sm font-bold text-slate-900 dark:text-slate-100 truncate max-w-[200px] md:max-w-xs">{log.topic}</div>
+                                            <div className="text-xs text-slate-500">{log.subject}</div>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <div className="flex items-center gap-1.5 text-sm font-black text-amber-600">
+                                                <Activity className="w-3.5 h-3.5" /> {log.tokens.toLocaleString()}
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium text-slate-500">
+                                            {new Date(log.createdAt).toLocaleString()}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

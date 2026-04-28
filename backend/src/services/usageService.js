@@ -3,100 +3,82 @@ const prisma = require('../config/db');
 /**
  * Usage Service
  * Handles lesson-based usage tracking with token accounting
- * Users see only lessons, backend tracks tokens for cost control
  */
 
-/**
- * Check if user can generate a lesson
- * @param {string} userId 
- * @returns {Promise<{canGenerate: boolean, reason?: string}>}
- */
-/**
- * Check if user can generate an assessment (fair-use limit)
- * Assessments do not consume lesson note credits.
- * @param {string} userId 
- * @returns {Promise<{canGenerate: boolean, reason?: string}>}
- */
 async function canGenerateAssessment(userId) {
     const user = await prisma.user.findUnique({
         where: { id: userId },
-        select: {
-            subscriptionPlan: true
-        }
+        select: { subscriptionPlan: true }
     });
 
-    if (!user) {
-        return { canGenerate: false, reason: 'User not found' };
-    }
+    if (!user) return { canGenerate: false, reason: 'User not found' };
 
-    // Define internal fair-use limits for assessments
-    const assessmentLimits = {
-        'Free': 50,
-        'Pro': 200,
-        'School': 1000
-    };
-
+    const assessmentLimits = { 'Free': 50, 'Pro': 200, 'School': 1000 };
     const plan = user.subscriptionPlan ? user.subscriptionPlan.charAt(0).toUpperCase() + user.subscriptionPlan.slice(1).toLowerCase() : 'Free';
     const limit = assessmentLimits[plan] || assessmentLimits['Free'];
 
-    // Count assessments generated this month using UsageLog
     const now = new Date();
     const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
     const count = await prisma.usageLog.count({
-        where: {
-            userId,
-            action: 'ASSESSMENT_GENERATION',
-            createdAt: { gte: firstOfMonth }
-        }
+        where: { userId, action: 'ASSESSMENT_GENERATION', createdAt: { gte: firstOfMonth } }
     });
 
-    if (count >= limit) {
-        return {
-            canGenerate: false,
-            reason: 'Assessment fair-use limit reached for this month. Please try again next month.'
-        };
-    }
-
+    if (count >= limit) return { canGenerate: false, reason: 'Assessment fair-use limit reached for this month. Please try again next month.' };
     return { canGenerate: true };
 }
 
 async function canGenerateLesson(userId) {
+    await checkAndResetUsage(userId);
+    
     const user = await prisma.user.findUnique({
         where: { id: userId },
-        select: {
-            monthlyLessonLimit: true,
-            lessonsUsedThisMonth: true,
-            subscriptionPlan: true
-        }
+        include: { school: true }
     });
 
-    if (!user) {
-        return { canGenerate: false, reason: 'User not found' };
+    if (!user) return { canGenerate: false, reason: 'User not found' };
+
+    // School logic
+    if (user.schoolId && user.school) {
+        // Teacher daily limit check
+        const settings = await prisma.systemSetting.findUnique({ where: { id: 1 } });
+        const dailyLimit = user.dailyNoteLimit || settings?.schoolTeacherDailyLimit || 5;
+        if (user.notesUsedToday >= dailyLimit) {
+            return {
+                canGenerate: false,
+                reason: "You’ve reached today’s generation limit. You can continue tomorrow."
+            };
+        }
+        
+        // School monthly limit check
+        let schoolBaseLimit = settings?.schoolBasicPlanLessonLimit || 500;
+        if (user.school.planType === 'Standard') schoolBaseLimit = settings?.schoolStandardPlanLessonLimit || 1500;
+        else if (user.school.planType === 'Pro') schoolBaseLimit = settings?.schoolProPlanLessonLimit || 5000;
+        
+        const totalCapacity = schoolBaseLimit + user.school.additionalNotes;
+        if (user.school.notesUsedThisMonth >= totalCapacity) {
+             return {
+                canGenerate: false,
+                reason: "You’ve completed your lesson generation capacity for this month. You can upgrade your plan or add more notes to continue."
+             };
+        }
+        return { canGenerate: true };
     }
 
-    // Check if monthly reset is needed
-    await checkAndResetUsage(userId);
+    // Individual logic
+    const settings = await prisma.systemSetting.findUnique({ where: { id: 1 } });
+    const dailyLimit = user.dailyNoteLimit || settings?.individualDailyLimit || 3;
+    if (user.notesUsedToday >= dailyLimit) {
+        return {
+            canGenerate: false,
+            reason: `You've reached today's generation limit (${dailyLimit} per day). You can continue tomorrow.`
+        };
+    }
 
-    // Refresh user data after potential reset
-    const refreshedUser = await prisma.user.findUnique({
-        where: { id: userId },
-        select: {
-            monthlyLessonLimit: true,
-            lessonsUsedThisMonth: true,
-            subscriptionPlan: true
-        }
-    });
+    const planLimits = await getPlanLimits(user.subscriptionPlan);
+    const effectiveLimit = Math.max(user.monthlyLessonLimit, planLimits.lessonLimit) + (user.additionalNotes || 0);
 
-    // Use dynamic plan limits
-    const planLimits = await getPlanLimits(refreshedUser.subscriptionPlan);
-    // If user limit is default (10) or less than plan limit, use plan limit. 
-    // This allows Admin to override specific users with HIGHER limits if needed, 
-    // but ensures plan updates propagate to everyone else.
-    // For simplicity in this fix: Use the GREATER of the two.
-    const effectiveLimit = Math.max(refreshedUser.monthlyLessonLimit, planLimits.lessonLimit);
-
-    if (refreshedUser.lessonsUsedThisMonth >= effectiveLimit) {
+    if (user.lessonsUsedThisMonth >= effectiveLimit) {
         return {
             canGenerate: false,
             reason: `Monthly lesson limit reached (${effectiveLimit} lessons)`
@@ -106,130 +88,151 @@ async function canGenerateLesson(userId) {
     return { canGenerate: true };
 }
 
-/**
- * Record lesson generation with token usage
- * @param {string} userId 
- * @param {number} inputTokens 
- * @param {number} outputTokens 
- */
 async function recordLessonGeneration(userId, inputTokens = 0, outputTokens = 0) {
     const totalTokens = inputTokens + outputTokens;
+
+    const user = await prisma.user.findUnique({ where: { id: userId } });
 
     await prisma.user.update({
         where: { id: userId },
         data: {
             lessonsUsedThisMonth: { increment: 1 },
-            tokensUsedThisMonth: { increment: totalTokens }
+            tokensUsedThisMonth: { increment: totalTokens },
+            notesUsedToday: { increment: 1 }
         }
     });
 
-    // Usage recorded
-}
-
-/**
- * Get user's current usage stats (lessons only for frontend)
- * @param {string} userId 
- * @returns {Promise<{lessonsUsed: number, lessonsRemaining: number, monthlyLimit: number, resetDate: Date}>}
- */
-/**
- * Check if user's usage needs to be reset based on their plan duration (month/term)
- * @param {string} userId 
- */
-async function checkAndResetUsage(userId) {
-    const user = await prisma.user.findUnique({
-        where: { id: userId },
-        select: { lastUsageReset: true, subscriptionPlan: true }
-    });
-
-    if (!user) return;
-
-    const planLimits = await getPlanLimits(user.subscriptionPlan);
-    const duration = (planLimits.duration || 'month').toLowerCase();
-
-    const now = new Date();
-    const lastReset = new Date(user.lastUsageReset);
-    let needsReset = false;
-
-    if (duration === 'term') {
-        // Term boundaries: Jan 1, May 1, Sept 1
-        const getTermStart = (date) => {
-            const year = date.getFullYear();
-            const month = date.getMonth(); // 0-indexed
-            if (month < 4) return new Date(year, 0, 1); // Jan-Apr (Term 2)
-            if (month < 8) return new Date(year, 4, 1); // May-Aug (Term 3)
-            return new Date(year, 8, 1); // Sept-Dec (Term 1)
-        };
-
-        const currentTermStart = getTermStart(now);
-        const lastResetTermStart = getTermStart(lastReset);
-
-        needsReset = currentTermStart.getTime() !== lastResetTermStart.getTime();
-    } else {
-        // Monthly reset (default)
-        needsReset =
-            now.getMonth() !== lastReset.getMonth() ||
-            now.getFullYear() !== lastReset.getFullYear();
-    }
-
-    if (needsReset) {
-        await prisma.user.update({
-            where: { id: userId },
-            data: {
-                lessonsUsedThisMonth: 0,
-                tokensUsedThisMonth: 0,
-                lastUsageReset: now
-            }
+    if (user && user.schoolId) {
+        await prisma.school.update({
+            where: { id: user.schoolId },
+            data: { notesUsedThisMonth: { increment: 1 } }
         });
     }
 }
 
-/**
- * Get user's current usage stats
- * @param {string} userId 
- */
+async function checkAndResetUsage(userId) {
+    const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { lastUsageReset: true, lastDailyReset: true, subscriptionPlan: true, schoolId: true }
+    });
+
+    if (!user) return;
+
+    const now = new Date();
+    
+    // 1. Daily Reset for User
+    const lastDaily = new Date(user.lastDailyReset || now);
+    const needsDailyReset = now.getDate() !== lastDaily.getDate() ||
+                            now.getMonth() !== lastDaily.getMonth() ||
+                            now.getFullYear() !== lastDaily.getFullYear();
+
+    if (needsDailyReset) {
+        await prisma.user.update({
+            where: { id: userId },
+            data: { notesUsedToday: 0, lastDailyReset: now }
+        });
+    }
+
+    // 2. Monthly Reset for Individual User (lessonsUsedThisMonth)
+    const planLimits = await getPlanLimits(user.subscriptionPlan);
+    const duration = (planLimits.duration || 'month').toLowerCase();
+    
+    const lastReset = new Date(user.lastUsageReset);
+    let needsMonthlyReset = false;
+
+    if (duration === 'term') {
+        const getTermStart = (date) => {
+            const year = date.getFullYear();
+            const month = date.getMonth();
+            if (month < 4) return new Date(year, 0, 1);
+            if (month < 8) return new Date(year, 4, 1);
+            return new Date(year, 8, 1);
+        };
+        needsMonthlyReset = getTermStart(now).getTime() !== getTermStart(lastReset).getTime();
+    } else {
+        needsMonthlyReset = now.getMonth() !== lastReset.getMonth() || now.getFullYear() !== lastReset.getFullYear();
+    }
+
+    if (needsMonthlyReset) {
+        await prisma.user.update({
+            where: { id: userId },
+            data: { 
+                lessonsUsedThisMonth: 0, 
+                tokensUsedThisMonth: 0, 
+                additionalNotes: 0,
+                lastUsageReset: now 
+            }
+        });
+    }
+
+    // 3. Monthly Reset for School
+    if (user.schoolId) {
+        const school = await prisma.school.findUnique({ where: { id: user.schoolId } });
+        if (school) {
+            const lastSchoolReset = new Date(school.lastUsageReset || now);
+            const needsSchoolMonthlyReset = now.getMonth() !== lastSchoolReset.getMonth() ||
+                                            now.getFullYear() !== lastSchoolReset.getFullYear();
+            if (needsSchoolMonthlyReset) {
+                // Monthly, resets usages and clears previous additional topups
+                await prisma.school.update({
+                    where: { id: user.schoolId },
+                    data: { notesUsedThisMonth: 0, additionalNotes: 0, lastUsageReset: now }
+                });
+            }
+        }
+    }
+}
+
 async function getUserUsage(userId) {
-    // Check and reset if needed
     await checkAndResetUsage(userId);
 
     const user = await prisma.user.findUnique({
         where: { id: userId },
-        select: {
-            monthlyLessonLimit: true,
-            lessonsUsedThisMonth: true,
-            lastUsageReset: true,
-            subscriptionPlan: true
-        }
+        include: { school: true }
     });
 
     if (!user) throw new Error('User not found');
+
+    if (user.schoolId && user.school) {
+        const settings = await prisma.systemSetting.findUnique({ where: { id: 1 } });
+        let schoolBaseLimit = settings?.schoolBasicPlanLessonLimit || 500;
+        if (user.school.planType === 'Standard') schoolBaseLimit = settings?.schoolStandardPlanLessonLimit || 1500;
+        else if (user.school.planType === 'Pro') schoolBaseLimit = settings?.schoolProPlanLessonLimit || 5000;
+        
+        const totalCapacity = schoolBaseLimit + user.school.additionalNotes;
+        const lessonsRemaining = Math.max(0, totalCapacity - user.school.notesUsedThisMonth);
+        
+        const resetDate = new Date(user.school.lastUsageReset || new Date());
+        resetDate.setMonth(resetDate.getMonth() + 1);
+        resetDate.setDate(1);
+        resetDate.setHours(0, 0, 0, 0);
+
+        return {
+            lessonsUsed: user.school.notesUsedThisMonth,
+            lessonsRemaining,
+            monthlyLimit: totalCapacity,
+            resetDate,
+            duration: 'month'
+        };
+    }
 
     const planLimits = await getPlanLimits(user.subscriptionPlan);
     const effectiveLimit = Math.max(user.monthlyLessonLimit, planLimits.lessonLimit);
     const duration = (planLimits.duration || 'month').toLowerCase();
 
     const lessonsRemaining = Math.max(0, effectiveLimit - user.lessonsUsedThisMonth);
-
-    // Calculate next reset date
     const resetDate = new Date(user.lastUsageReset);
 
     if (duration === 'term') {
-        // Next Term reset: Move to the start of the next 4-month block
         const month = resetDate.getMonth();
-        if (month < 4) { // Currently in Jan-Apr -> Next reset May 1
-            resetDate.setMonth(4);
-        } else if (month < 8) { // Currently in May-Aug -> Next reset Sept 1
-            resetDate.setMonth(8);
-        } else { // Currently in Sept-Dec -> Next reset Jan 1 of next year
-            resetDate.setFullYear(resetDate.getFullYear() + 1);
-            resetDate.setMonth(0);
-        }
+        if (month < 4) resetDate.setMonth(4);
+        else if (month < 8) resetDate.setMonth(8);
+        else { resetDate.setFullYear(resetDate.getFullYear() + 1); resetDate.setMonth(0); }
         resetDate.setDate(1);
     } else {
-        // Next Monthly reset: 1st day of next month
         resetDate.setMonth(resetDate.getMonth() + 1);
         resetDate.setDate(1);
     }
-
     resetDate.setHours(0, 0, 0, 0);
 
     return {
@@ -237,90 +240,32 @@ async function getUserUsage(userId) {
         lessonsRemaining,
         monthlyLimit: effectiveLimit,
         resetDate,
-        duration // Added to help frontend distinguish between 'Monthly Limit' and 'Termly Limit'
+        duration
     };
 }
 
-/**
- * Reset monthly usage for all users (cron job)
- */
 async function resetMonthlyUsage() {
-    const now = new Date();
-    const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-
-    const result = await prisma.user.updateMany({
-        where: {
-            lastUsageReset: {
-                lt: firstOfMonth
-            }
-        },
-        data: {
-            lessonsUsedThisMonth: 0,
-            tokensUsedThisMonth: 0,
-            lastUsageReset: now
-        }
-    });
-
-    return result.count;
+    return 0; // Handled dynamically via checkAndResetUsage
 }
 
-/**
- * Admin: Set custom limits for a user
- * @param {string} userId 
- * @param {number} lessonLimit 
- * @param {number} tokenLimit 
- */
 async function setUserLimits(userId, lessonLimit, tokenLimit) {
     await prisma.user.update({
         where: { id: userId },
-        data: {
-            monthlyLessonLimit: lessonLimit,
-            monthlyTokenLimit: tokenLimit
-        }
+        data: { monthlyLessonLimit: lessonLimit, monthlyTokenLimit: tokenLimit }
     });
-
-    // Custom limits set
 }
 
-/**
- * Get plan limits from system settings
- * @param {string} plan - 'Free', 'Pro', or 'School'
- * @returns {Promise<{lessonLimit: number, tokenLimit: number}>}
- */
 async function getPlanLimits(plan) {
-    const settings = await prisma.systemSetting.findUnique({
-        where: { id: 1 }
-    });
-
+    const settings = await prisma.systemSetting.findUnique({ where: { id: 1 } });
     if (!settings) {
-        // Fallback defaults
-        const defaults = {
-            'Free': { lessonLimit: 10, tokenLimit: 100000, duration: 'month' },
-            'Pro': { lessonLimit: 100, tokenLimit: 1000000, duration: 'month' },
-            'School': { lessonLimit: 999999, tokenLimit: 10000000, duration: 'term' }
-        };
-        return defaults[plan] || defaults['Free'];
+        return { lessonLimit: 10, tokenLimit: 100000, duration: 'month' };
     }
 
-    // Normalize plan name to title case (e.g. "pro" -> "Pro")
     const formattedPlan = plan ? plan.charAt(0).toUpperCase() + plan.slice(1).toLowerCase() : 'Free';
-
     const planMap = {
-        'Free': {
-            lessonLimit: settings.freePlanLessonLimit,
-            tokenLimit: settings.freePlanTokenLimit,
-            duration: settings.freePlanDuration || 'month'
-        },
-        'Pro': {
-            lessonLimit: settings.proPlanLessonLimit,
-            tokenLimit: settings.proPlanTokenLimit,
-            duration: settings.proPlanDuration || 'month'
-        },
-        'School': {
-            lessonLimit: settings.schoolPlanLessonLimit,
-            tokenLimit: settings.schoolPlanTokenLimit,
-            duration: settings.schoolPlanDuration || 'term'
-        }
+        'Free': { lessonLimit: settings.freePlanLessonLimit, tokenLimit: settings.freePlanTokenLimit, duration: settings.freePlanDuration || 'month' },
+        'Pro': { lessonLimit: settings.proPlanLessonLimit, tokenLimit: settings.proPlanTokenLimit, duration: settings.proPlanDuration || 'month' },
+        'School': { lessonLimit: settings.schoolBasicPlanLessonLimit, tokenLimit: settings.schoolPlanTokenLimit, duration: settings.schoolPlanDuration || 'month' }
     };
 
     return planMap[formattedPlan] || planMap['Free'];

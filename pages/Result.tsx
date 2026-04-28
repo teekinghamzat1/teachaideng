@@ -9,6 +9,7 @@ import { showAlert } from '../utils/alerts';
 import { useBranding } from '../contexts/BrandingContext';
 import { stripFormatting as stripMarkdown, parseMarkdown } from '../utils/textUtils';
 import FeedbackModal from '../components/FeedbackModal';
+import { safeSessionStorage as sessionStorage } from '../utils/storage';
 
 const Result: React.FC = () => {
     const location = useLocation();

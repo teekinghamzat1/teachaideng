@@ -129,7 +129,8 @@ const addTeacher = asyncHandler(async (req, res) => {
             role: 'teacher',
             schoolId: school.id,
             teacherStatus: 'Invited',
-            subscriptionPlan: 'School' // Teachers inherit school plan
+            subscriptionPlan: 'School', // Teachers inherit school plan
+            dailyNoteLimit: 5
         }
     });
 

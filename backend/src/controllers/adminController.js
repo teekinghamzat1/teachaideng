@@ -452,6 +452,7 @@ const createUser = asyncHandler(async (req, res) => {
             isSchoolAdmin: !!isSchoolAdmin,
             schoolId: schoolId || null,
             subscriptionPlan: subscriptionPlan || 'Free',
+            dailyNoteLimit: (schoolId || isSchoolAdmin) ? 5 : 3
         },
     });
 
@@ -529,7 +530,7 @@ const provisionSchool = asyncHandler(async (req, res) => {
     });
 
     // Link user as school owner
-    await prisma.user.update({ where: { id: userId }, data: { schoolId: school.id, isSchoolAdmin: true, subscriptionPlan: 'School' } });
+    await prisma.user.update({ where: { id: userId }, data: { schoolId: school.id, isSchoolAdmin: true, subscriptionPlan: 'School', dailyNoteLimit: 5 } });
 
     res.status(201).json(formatResponse(true, 'School provisioned and user linked as owner', { school }));
 });
@@ -613,6 +614,70 @@ const updateSchoolTeacherLimit = asyncHandler(async (req, res) => {
     });
 
     res.json(formatResponse(true, 'Teacher limit updated', updatedSchool));
+});
+
+// @desc    Top up school notes
+// @route   POST /api/admin/schools/:id/topup
+// @access  Private/SuperAdmin
+const topupSchoolNotes = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { amount } = req.body;
+
+    if (!amount || amount < 1) {
+        res.status(400);
+        throw new Error('Top-up amount must be at least 1');
+    }
+
+    const school = await prisma.school.findUnique({ where: { id } });
+    if (!school) {
+        res.status(404);
+        throw new Error('School not found');
+    }
+
+    const updatedSchool = await prisma.school.update({
+        where: { id },
+        data: { additionalNotes: { increment: Number(amount) } }
+    });
+
+    await createAdminLog(req.user.id, null, 'TOPUP_SCHOOL_NOTES', {
+        schoolId: id,
+        schoolName: school.name,
+        amount: Number(amount)
+    });
+
+    res.json(formatResponse(true, `Added ${amount} notes to ${school.name}`, updatedSchool));
+});
+
+// @desc    Update school plan tier
+// @route   PATCH /api/admin/schools/:id/tier
+// @access  Private/SuperAdmin
+const updateSchoolPlanTier = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { tier } = req.body; // 'Basic', 'Standard', 'Pro'
+
+    if (!['Basic', 'Standard', 'Pro'].includes(tier)) {
+        res.status(400);
+        throw new Error('Invalid tier. Must be Basic, Standard, or Pro.');
+    }
+
+    const school = await prisma.school.findUnique({ where: { id } });
+    if (!school) {
+        res.status(404);
+        throw new Error('School not found');
+    }
+
+    const updatedSchool = await prisma.school.update({
+        where: { id },
+        data: { planType: tier }
+    });
+
+    await createAdminLog(req.user.id, null, 'UPDATE_SCHOOL_TIER', {
+        schoolId: id,
+        schoolName: school.name,
+        newTier: tier
+    });
+
+    res.json(formatResponse(true, `School plan updated to ${tier}`, updatedSchool));
 });
 
 // @desc    Test SMTP configuration
@@ -947,6 +1012,9 @@ module.exports = {
     getErrorLogs,
     logError,
     resolveError,
+    resolveError,
     sendMassEmail,
-    getMassEmailHistory
+    getMassEmailHistory,
+    topupSchoolNotes,
+    updateSchoolPlanTier
 };

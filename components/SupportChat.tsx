@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { db } from '../database';
 import { MessageSquare, X, Send, Loader2, Ticket, Clock, AlertCircle, Image as ImageIcon, XCircle } from './Icons';
 import { requestNotificationPermission, showBrowserNotification } from '../utils/notificationUtils';
+import { storage as localStorage } from '../utils/storage';
 
 interface SupportChatProps {
     hideToggle?: boolean;

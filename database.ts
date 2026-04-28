@@ -1,4 +1,5 @@
 import { User, LessonNote, Assessment, Student, Timetable, AppSettings, AdminLog, SystemSettings, Curriculum, Subject, ClassLevel, School } from './types';
+import { storage as localStorage } from './utils/storage';
 
 // Helper for API calls
 const API_URL = '/api';
@@ -598,7 +599,7 @@ export const db = {
   },
 
   payment: {
-    async verify(reference: string, plan: 'Pro' | 'School'): Promise<void> {
+    async verify(reference: string, plan: string): Promise<void> {
       const response = await fetch(`${API_URL}/payment/verify`, {
         method: 'POST',
         headers: {
@@ -635,6 +636,28 @@ export const db = {
     async getAllSchools(): Promise<School[]> {
       const response = await fetch(`${API_URL}/admin/schools`, {
         headers: getAnyAuthHeader(),
+      });
+      return handleResponse(response);
+    },
+    async topupSchoolNotes(id: string, amount: number): Promise<School> {
+      const response = await fetch(`${API_URL}/admin/schools/${id}/topup`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAdminAuthHeader()
+        },
+        body: JSON.stringify({ amount })
+      });
+      return handleResponse(response);
+    },
+    async updateSchoolPlanTier(id: string, tier: string): Promise<School> {
+      const response = await fetch(`${API_URL}/admin/schools/${id}/tier`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAdminAuthHeader()
+        },
+        body: JSON.stringify({ tier })
       });
       return handleResponse(response);
     },

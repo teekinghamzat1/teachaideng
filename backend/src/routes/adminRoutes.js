@@ -20,7 +20,9 @@ const {
     logError,
     resolveError,
     provisionSchool,
-    deleteUserPermanently
+    deleteUserPermanently,
+    topupSchoolNotes,
+    updateSchoolPlanTier
 } = require('../controllers/adminController');
 
 const {
@@ -77,6 +79,8 @@ router.put('/content/notes/:id/status', updateNoteStatus);
 
 // School Management
 router.patch('/schools/:id/teacher-limit', updateSchoolTeacherLimit);
+router.post('/schools/:id/topup', superAdmin, topupSchoolNotes);
+router.patch('/schools/:id/tier', superAdmin, updateSchoolPlanTier);
 router.get('/schools', getSchools);
 
 // Admin-only: create a school and link an existing user as owner (placeholder for future onboarding)

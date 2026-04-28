@@ -15,6 +15,7 @@ import {
     Image as ImageIcon,
     Filter
 } from '../components/Icons';
+import { storage as localStorage } from '../utils/storage';
 
 const AdminSupport: React.FC = () => {
     const [sessions, setSessions] = useState<any[]>([]);

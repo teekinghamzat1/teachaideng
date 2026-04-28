@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../database';
 import { School } from '../types';
-import { Search, Loader2, Edit, MapPin, Phone, Mail, Globe, Activity, CheckSquare, XSquare, Download, Building } from '../components/Icons';
+import { Search, Loader2, Edit, MapPin, Phone, Mail, Globe, Activity, CheckSquare, XSquare, Download, Building, CreditCard, Plus, RefreshCw, Zap } from '../components/Icons';
 import { showAlert } from '../utils/alerts';
 
 const AdminSchools: React.FC = () => {
@@ -14,6 +14,14 @@ const AdminSchools: React.FC = () => {
     const [showLimitModal, setShowLimitModal] = useState(false);
     const [selectedSchool, setSelectedSchool] = useState<School | null>(null);
     const [newLimit, setNewLimit] = useState(15);
+    
+    // Top-up Modal State
+    const [showTopupModal, setShowTopupModal] = useState(false);
+    const [topupAmount, setTopupAmount] = useState(100);
+
+    // Tier Modal State
+    const [showTierModal, setShowTierModal] = useState(false);
+    const [selectedTier, setSelectedTier] = useState<'Basic' | 'Standard' | 'Pro'>('Basic');
 
     const currentUser = db.adminAuth.getCurrentUser();
     const isSuperAdmin = currentUser?.role?.toLowerCase() === 'superadmin';
@@ -64,6 +72,30 @@ const AdminSchools: React.FC = () => {
         }
     };
 
+    const handleTopup = async () => {
+        if (!selectedSchool) return;
+        try {
+            await db.admin.topupSchoolNotes(selectedSchool.id, topupAmount);
+            showAlert.success('Top-up Successful', `Added ${topupAmount} notes to ${selectedSchool.name}`);
+            setShowTopupModal(false);
+            loadSchools();
+        } catch (error: any) {
+            showAlert.error('Top-up Failed', error.message);
+        }
+    };
+
+    const handleUpdateTier = async () => {
+        if (!selectedSchool) return;
+        try {
+            await db.admin.updateSchoolPlanTier(selectedSchool.id, selectedTier);
+            showAlert.success('Plan Updated', `${selectedSchool.name} is now on ${selectedTier} plan`);
+            setShowTierModal(false);
+            loadSchools();
+        } catch (error: any) {
+            showAlert.error('Update Failed', error.message);
+        }
+    };
+
     // To prevent unauthorized access if school admin somehow accesses it
     if (!currentUser || (currentUser.isSchoolAdmin && !isSuperAdmin)) {
         return <div className="p-8 text-center text-slate-500">Access Denied</div>;
@@ -108,8 +140,8 @@ const AdminSchools: React.FC = () => {
                             <tr>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Institution Details</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Owner / Contact Person</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Contact Info</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Limits & Usage</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Plan & Status</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Quota & Usage</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Registered</th>
                                 <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider sticky right-0 bg-slate-50 dark:bg-slate-800 z-20 border-l border-slate-200 dark:border-slate-700">Actions</th>
                             </tr>
@@ -159,30 +191,39 @@ const AdminSchools: React.FC = () => {
                                             </div>
                                         </td>
 
-                                        {/* School Contact Info */}
+                                         {/* Plan & Status */}
                                         <td className="px-6 py-4 whitespace-nowrap">
-                                            <div className="flex flex-col space-y-1.5">
-                                                <span className="text-xs text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                                                    <Mail className="w-3.5 h-3.5 text-slate-400" />
-                                                    {school.email || <span className="italic opacity-50">Not Provided</span>}
-                                                </span>
-                                                <span className="text-xs text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                                                    <Phone className="w-3.5 h-3.5 text-slate-400" />
-                                                    {school.phone || <span className="italic opacity-50">Not Provided</span>}
-                                                </span>
+                                            <div className="flex flex-col">
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest ${
+                                                        school.planType === 'Pro' ? 'bg-purple-100 text-purple-700' :
+                                                        school.planType === 'Standard' ? 'bg-blue-100 text-blue-700' :
+                                                        'bg-slate-100 text-slate-700'
+                                                    }`}>
+                                                        {school.planType || 'Basic'}
+                                                    </span>
+                                                    {school.isActive ? (
+                                                        <span className="flex h-2 w-2 rounded-full bg-green-500" title="Active"></span>
+                                                    ) : (
+                                                        <span className="flex h-2 w-2 rounded-full bg-red-500" title="Inactive"></span>
+                                                    )}
+                                                </div>
+                                                <span className="text-[10px] text-slate-400 font-medium">LICENSED ENTITY</span>
                                             </div>
                                         </td>
 
-                                        {/* Limits & Settings */}
+                                        {/* Quota & Usage */}
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <div className="flex flex-col">
-                                                <span className="text-sm font-medium text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+                                                <div className="flex items-center gap-1.5 text-sm font-bold text-slate-900 dark:text-slate-100">
                                                     <Activity className="w-4 h-4 text-brand-500" />
-                                                    Limit: {school.teacherLimit} Teachers
-                                                </span>
-                                                <span className="text-xs text-slate-500 mt-1">
-                                                    Reported Capacity: <span className="font-semibold text-slate-700 dark:text-slate-300">{school.capacity || 'Unknown'}</span>
-                                                </span>
+                                                    {school.notesUsedThisMonth || 0} Notes Used
+                                                </div>
+                                                <div className="mt-1 flex items-center gap-2 text-[10px]">
+                                                    <span className="text-slate-500">Teachers: <span className="text-slate-900 dark:text-slate-300 font-bold">{school.teacherLimit}</span></span>
+                                                    <span className="text-slate-300">|</span>
+                                                    <span className="text-slate-500">Bonus: <span className="text-brand-600 font-bold">+{school.additionalNotes || 0}</span></span>
+                                                </div>
                                             </div>
                                         </td>
 
@@ -193,17 +234,38 @@ const AdminSchools: React.FC = () => {
 
                                         {/* Actions */}
                                         <td className="px-4 py-4 whitespace-nowrap text-right text-sm font-medium sticky right-0 bg-white group-hover:bg-slate-50 dark:bg-slate-800 dark:group-hover:bg-slate-700 z-10 border-l border-slate-200 dark:border-slate-700 transition-colors">
-                                            <div className="flex items-center justify-end gap-3">
+                                            <div className="flex items-center justify-end gap-2">
                                                 <button 
                                                     onClick={() => {
                                                         setSelectedSchool(school);
                                                         setNewLimit(school.teacherLimit || 15);
                                                         setShowLimitModal(true);
                                                     }} 
-                                                    className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-slate-100 hover:bg-brand-50 text-slate-700 hover:text-brand-700 rounded-lg text-xs font-bold transition-colors" 
+                                                    className="p-2 text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-colors"
+                                                    title="Teacher Limit"
                                                 >
-                                                    <Edit className="w-3.5 h-3.5" />
-                                                    Edit Limit
+                                                    <Edit className="w-4 h-4" />
+                                                </button>
+                                                <button 
+                                                    onClick={() => {
+                                                        setSelectedSchool(school);
+                                                        setShowTopupModal(true);
+                                                    }} 
+                                                    className="p-2 text-slate-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                                                    title="Top-up Notes"
+                                                >
+                                                    <Plus className="w-4 h-4" />
+                                                </button>
+                                                <button 
+                                                    onClick={() => {
+                                                        setSelectedSchool(school);
+                                                        setSelectedTier((school.planType as any) || 'Basic');
+                                                        setShowTierModal(true);
+                                                    }} 
+                                                    className="p-2 text-slate-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+                                                    title="Change Tier"
+                                                >
+                                                    <Zap className="w-4 h-4" />
                                                 </button>
                                             </div>
                                         </td>
@@ -262,6 +324,67 @@ const AdminSchools: React.FC = () => {
                                 >
                                     Confirm Update
                                 </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Top-up Modal */}
+                {showTopupModal && selectedSchool && (
+                    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in">
+                        <div className="bg-white rounded-[2rem] shadow-2xl max-w-md w-full p-8 border border-slate-100">
+                            <h3 className="text-2xl font-black text-slate-900 mb-2">Top-up Notes</h3>
+                            <p className="text-sm text-slate-500 mb-6 pb-6 border-b border-slate-100">
+                                Add extra generation credits to <span className="font-bold text-slate-900">{selectedSchool.name}</span>
+                            </p>
+                            
+                            <div className="mb-8">
+                                <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Amount of Notes</label>
+                                <input
+                                    type="number"
+                                    value={topupAmount}
+                                    onChange={(e) => setTopupAmount(parseInt(e.target.value))}
+                                    className="w-full px-4 py-4 text-xl font-black text-slate-900 bg-slate-50 border-2 border-slate-200 rounded-2xl focus:border-green-500 outline-none transition-colors"
+                                />
+                            </div>
+                            
+                            <div className="flex gap-3">
+                                <button onClick={() => setShowTopupModal(false)} className="flex-1 px-4 py-4 bg-slate-50 text-slate-500 rounded-2xl font-black text-xs uppercase tracking-widest border border-slate-200/50">Cancel</button>
+                                <button onClick={handleTopup} className="flex-1 px-4 py-4 bg-green-500 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-green-600 shadow-xl shadow-green-500/20 transition-all">Confirm Top-up</button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Change Tier Modal */}
+                {showTierModal && selectedSchool && (
+                    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in">
+                        <div className="bg-white rounded-[2rem] shadow-2xl max-w-md w-full p-8 border border-slate-100">
+                            <h3 className="text-2xl font-black text-slate-900 mb-2">Change Plan Tier</h3>
+                            <p className="text-sm text-slate-500 mb-6 pb-6 border-b border-slate-100">
+                                Update the subscription level for <span className="font-bold text-slate-900">{selectedSchool.name}</span>
+                            </p>
+                            
+                            <div className="grid grid-cols-1 gap-3 mb-8">
+                                {(['Basic', 'Standard', 'Pro'] as const).map(tier => (
+                                    <button
+                                        key={tier}
+                                        onClick={() => setSelectedTier(tier)}
+                                        className={`px-6 py-4 rounded-2xl border-2 transition-all flex items-center justify-between ${
+                                            selectedTier === tier 
+                                            ? 'border-purple-500 bg-purple-50 text-purple-900' 
+                                            : 'border-slate-100 bg-slate-50 text-slate-500 hover:border-slate-200'
+                                        }`}
+                                    >
+                                        <span className="font-black uppercase tracking-widest text-xs">{tier} Plan</span>
+                                        {selectedTier === tier && <CheckSquare className="w-5 h-5 text-purple-600" />}
+                                    </button>
+                                ))}
+                            </div>
+                            
+                            <div className="flex gap-3">
+                                <button onClick={() => setShowTierModal(false)} className="flex-1 px-4 py-4 bg-slate-50 text-slate-500 rounded-2xl font-black text-xs uppercase tracking-widest border border-slate-200/50">Cancel</button>
+                                <button onClick={handleUpdateTier} className="flex-1 px-4 py-4 bg-purple-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-purple-700 shadow-xl shadow-purple-500/20 transition-all">Update Tier</button>
                             </div>
                         </div>
                     </div>

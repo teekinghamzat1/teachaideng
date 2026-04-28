@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../database';
 import { SystemSettings } from '../types';
-import { SettingsIcon, Save, AlertTriangle, Zap, Building, UserIcon, Shield, CreditCard, Activity, Bell } from '../components/Icons';
+import { SettingsIcon, Save, AlertTriangle, Zap, Building, UserIcon, Shield, CreditCard, Activity, Bell, Sparkles, User } from '../components/Icons';
 import { showAlert } from '../utils/alerts';
 
 const AdminSettings: React.FC = () => {
@@ -21,8 +21,6 @@ const AdminSettings: React.FC = () => {
         defaultModel: 'gemini-2.5-pro',
         maxTokens: 4096,
         smtpPort: 587,
-        lessonGenerationCost: 600,
-        assessmentGenerationCost: 200,
         port: 5000,
         nodeEnv: 'development',
         siteName: 'TeachAide AI',
@@ -56,7 +54,26 @@ const AdminSettings: React.FC = () => {
         proPlanName: 'Pro Plan',
         proPlanPrice: 5000,
         schoolPlanName: 'School License',
-        schoolPlanPrice: 50000
+        schoolPlanPrice: 50000,
+        schoolBasicPlanName: 'Basic School',
+        schoolBasicPlanPrice: 20000,
+        schoolBasicPlanLessonLimit: 500,
+        schoolStandardPlanName: 'Standard School',
+        schoolStandardPlanPrice: 50000,
+        schoolStandardPlanLessonLimit: 1500,
+        schoolProPlanName: 'Pro School',
+        schoolProPlanPrice: 100000,
+        schoolProPlanLessonLimit: 5000,
+        individualDailyLimit: 3,
+        schoolTeacherDailyLimit: 5,
+        proPlanCode: '',
+        schoolBasicPlanCode: '',
+        schoolStandardPlanCode: '',
+        schoolProPlanCode: '',
+        individualTopUpPrice: 1000,
+        individualTopUpAmount: 100,
+        schoolTopUpPrice: 5000,
+        schoolTopUpAmount: 500
     });
 
     const [loading, setLoading] = useState(false);
@@ -415,24 +432,6 @@ const AdminSettings: React.FC = () => {
                                         className="w-full rounded-lg border-slate-200 dark:border-slate-700 dark:bg-slate-900 p-2.5 border text-slate-900 dark:text-white"
                                     />
                                 </div>
-                                <div className="space-y-2">
-                                    <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">Lesson Generation Cost (Tokens)</label>
-                                    <input
-                                        type="number"
-                                        value={config.lessonGenerationCost}
-                                        onChange={e => setConfig({ ...config, lessonGenerationCost: Number(e.target.value) })}
-                                        className="w-full rounded-lg border-slate-200 dark:border-slate-700 dark:bg-slate-900 p-2.5 border text-slate-900 dark:text-white"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">Assessment Cost (Tokens)</label>
-                                    <input
-                                        type="number"
-                                        value={config.assessmentGenerationCost}
-                                        onChange={e => setConfig({ ...config, assessmentGenerationCost: Number(e.target.value) })}
-                                        className="w-full rounded-lg border-slate-200 dark:border-slate-700 dark:bg-slate-900 p-2.5 border text-slate-900 dark:text-white"
-                                    />
-                                </div>
                             </div>
                         </div>
                     )}
@@ -481,27 +480,77 @@ const AdminSettings: React.FC = () => {
                                             <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Duration Label</label>
                                             <input placeholder="per month" value={config.proPlanDuration} onChange={e => setConfig({ ...config, proPlanDuration: e.target.value })} className="w-full mt-1 rounded-lg border dark:border-slate-700 dark:bg-slate-900 p-2 text-slate-900 dark:text-white" />
                                         </div>
+                                        <div>
+                                            <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Plan Code (Paystack)</label>
+                                            <input type="text" value={config.proPlanCode} onChange={e => setConfig({ ...config, proPlanCode: e.target.value })} placeholder="PLN_..." className="w-full mt-1 rounded-lg border dark:border-slate-700 dark:bg-slate-900 p-2 text-sm font-bold text-brand-600 dark:text-brand-400" />
+                                        </div>
                                     </div>
                                 </div>
 
-                                {/* School Plan */}
+                                 {/* School Plan (Tiered) */}
                                 <div className="p-6 bg-purple-50/50 dark:bg-purple-900/10 rounded-2xl border border-purple-100 dark:border-purple-900/30">
-                                    <h3 className="text-lg font-bold mb-4 text-slate-800 dark:text-slate-200 flex items-center">
-                                        <span className="w-2 h-6 bg-purple-500 rounded-full mr-3" />
-                                        School License
-                                    </h3>
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                        <div>
-                                            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Display Name</label>
-                                            <input value={config.schoolPlanName} onChange={e => setConfig({ ...config, schoolPlanName: e.target.value })} className="w-full mt-1 rounded-lg border dark:border-slate-700 dark:bg-slate-900 p-2 text-slate-900 dark:text-white" />
+                                    <div className="flex items-center justify-between mb-6">
+                                        <h3 className="text-lg font-bold text-slate-800 dark:text-slate-200 flex items-center">
+                                            <span className="w-2 h-6 bg-purple-500 rounded-full mr-3" />
+                                            School Plan Tiers
+                                        </h3>
+                                        <div className="px-3 py-1 bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 rounded-full text-xs font-black uppercase tracking-wider">STRUCTURED</div>
+                                    </div>
+                                    
+                                    <div className="space-y-8">
+                                        {/* Basic Tier */}
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pb-6 border-b border-purple-100 dark:border-purple-900/20">
+                                            <div>
+                                                <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Basic Name</label>
+                                                <input value={config.schoolBasicPlanName} onChange={e => setConfig({ ...config, schoolBasicPlanName: e.target.value })} className="w-full mt-1 rounded-lg border dark:border-slate-700 dark:bg-slate-900 p-2 text-slate-900 dark:text-white" />
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Monthly Price (₦)</label>
+                                                <input type="number" value={config.schoolBasicPlanPrice} onChange={e => setConfig({ ...config, schoolBasicPlanPrice: Number(e.target.value) })} className="w-full mt-1 rounded-lg border dark:border-slate-700 dark:bg-slate-900 p-2 text-slate-900 dark:text-white" />
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Duration Label</label>
+                                                <input placeholder="per month" value={config.schoolPlanDuration} onChange={e => setConfig({ ...config, schoolPlanDuration: e.target.value })} className="w-full mt-1 rounded-lg border dark:border-slate-700 dark:bg-slate-900 p-2 text-slate-900 dark:text-white" />
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Basic Plan Code</label>
+                                                <input type="text" value={config.schoolBasicPlanCode} onChange={e => setConfig({ ...config, schoolBasicPlanCode: e.target.value })} placeholder="PLN_..." className="w-full mt-1 rounded-lg border dark:border-slate-700 dark:bg-slate-900 p-2 text-sm font-bold text-purple-600 dark:text-purple-400" />
+                                            </div>
                                         </div>
-                                        <div>
-                                            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Annual Price (₦)</label>
-                                            <input type="number" value={config.schoolPlanPrice} onChange={e => setConfig({ ...config, schoolPlanPrice: Number(e.target.value) })} className="w-full mt-1 rounded-lg border dark:border-slate-700 dark:bg-slate-900 p-2 text-slate-900 dark:text-white" />
+
+                                        {/* Standard Tier */}
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pb-6 border-b border-purple-100 dark:border-purple-900/20">
+                                            <div>
+                                                <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Standard Name</label>
+                                                <input value={config.schoolStandardPlanName} onChange={e => setConfig({ ...config, schoolStandardPlanName: e.target.value })} className="w-full mt-1 rounded-lg border dark:border-slate-700 dark:bg-slate-900 p-2 text-slate-900 dark:text-white" />
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Monthly Price (₦)</label>
+                                                <input type="number" value={config.schoolStandardPlanPrice} onChange={e => setConfig({ ...config, schoolStandardPlanPrice: Number(e.target.value) })} className="w-full mt-1 rounded-lg border dark:border-slate-700 dark:bg-slate-900 p-2 text-slate-900 dark:text-white" />
+                                            </div>
+                                            <div className="flex items-center text-xs text-slate-400 italic">
+                                                * Inherits Duration Label
+                                            </div>
                                         </div>
-                                        <div>
-                                            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Duration Label</label>
-                                            <input placeholder="per year" value={config.schoolPlanDuration} onChange={e => setConfig({ ...config, schoolPlanDuration: e.target.value })} className="w-full mt-1 rounded-lg border dark:border-slate-700 dark:bg-slate-900 p-2 text-slate-900 dark:text-white" />
+
+                                        {/* Pro Tier */}
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                            <div>
+                                                <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Pro Name</label>
+                                                <input value={config.schoolProPlanName} onChange={e => setConfig({ ...config, schoolProPlanName: e.target.value })} className="w-full mt-1 rounded-lg border dark:border-slate-700 dark:bg-slate-900 p-2 text-slate-900 dark:text-white" />
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Monthly Price (₦)</label>
+                                                <input type="number" value={config.schoolProPlanPrice} onChange={e => setConfig({ ...config, schoolProPlanPrice: Number(e.target.value) })} className="w-full mt-1 rounded-lg border dark:border-slate-700 dark:bg-slate-900 p-2 text-slate-900 dark:text-white" />
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Standard Plan Code</label>
+                                                <input type="text" value={config.schoolStandardPlanCode} onChange={e => setConfig({ ...config, schoolStandardPlanCode: e.target.value })} placeholder="PLN_..." className="w-full mt-1 rounded-lg border dark:border-slate-700 dark:bg-slate-900 p-2 text-sm font-bold text-purple-600 dark:text-purple-400" />
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Pro Plan Code</label>
+                                                <input type="text" value={config.schoolProPlanCode} onChange={e => setConfig({ ...config, schoolProPlanCode: e.target.value })} placeholder="PLN_..." className="w-full mt-1 rounded-lg border dark:border-slate-700 dark:bg-slate-900 p-2 text-sm font-bold text-purple-600 dark:text-purple-400" />
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -515,32 +564,136 @@ const AdminSettings: React.FC = () => {
                                 <Activity className="w-6 h-6 mr-3 text-green-500" />
                                 Monthly Lesson Allowances
                             </h2>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                <div className="space-y-4">
+                             <div className="space-y-6">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-xl border dark:border-slate-700">
-                                        <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Free Plan</label>
+                                        <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Free Plan</label>
                                         <div className="flex items-end gap-2 mt-1">
                                             <input type="number" value={config.freePlanLessonLimit} onChange={e => setConfig({ ...config, freePlanLessonLimit: Number(e.target.value) })} className="w-full rounded-lg border dark:border-slate-700 dark:bg-slate-900 p-2 text-2xl font-bold text-slate-700 dark:text-white" />
                                             <span className="text-sm text-slate-500 mb-2">/mo</span>
                                         </div>
                                     </div>
-                                </div>
-                                <div className="space-y-4">
                                     <div className="p-4 bg-brand-50 dark:bg-brand-900/10 rounded-xl border border-brand-100 dark:border-brand-900/30">
-                                        <label className="text-xs font-bold text-brand-600 uppercase">Pro Plan</label>
+                                        <label className="text-xs font-bold text-brand-600 uppercase tracking-widest">Pro Plan</label>
                                         <div className="flex items-end gap-2 mt-1">
                                             <input type="number" value={config.proPlanLessonLimit} onChange={e => setConfig({ ...config, proPlanLessonLimit: Number(e.target.value) })} className="w-full rounded-lg border dark:border-slate-700 dark:bg-slate-900 p-2 text-2xl font-bold text-brand-700 dark:text-white" />
                                             <span className="text-sm text-brand-500 mb-2">/mo</span>
                                         </div>
                                     </div>
                                 </div>
-                                <div className="space-y-4">
-                                    <div className="p-4 bg-purple-50 dark:bg-purple-900/10 rounded-xl border border-purple-100 dark:border-purple-900/30">
-                                        <label className="text-xs font-bold text-purple-600 uppercase">School Plan</label>
-                                        <div className="flex items-end gap-2 mt-1">
-                                            <input type="number" value={config.schoolPlanLessonLimit} onChange={e => setConfig({ ...config, schoolPlanLessonLimit: Number(e.target.value) })} className="w-full rounded-lg border dark:border-slate-700 dark:bg-slate-900 p-2 text-2xl font-bold text-purple-700 dark:text-white" />
-                                            <span className="text-sm text-purple-500 mb-2">/mo</span>
+
+                                <div className="p-6 bg-purple-50 dark:bg-purple-900/10 rounded-2xl border border-purple-100 dark:border-purple-900/30">
+                                    <h3 className="text-sm font-black text-purple-600 uppercase tracking-[0.2em] mb-4">School Plan Tier Limits</h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                        <div>
+                                            <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Basic Limit</label>
+                                            <div className="flex items-end gap-2 mt-1">
+                                                <input type="number" value={config.schoolBasicPlanLessonLimit} onChange={e => setConfig({ ...config, schoolBasicPlanLessonLimit: Number(e.target.value) })} className="w-full rounded-lg border dark:border-slate-700 dark:bg-slate-900 p-2 text-xl font-bold text-purple-700 dark:text-white" />
+                                                <span className="text-xs text-purple-500 mb-2 font-bold">/mo</span>
+                                            </div>
                                         </div>
+                                        <div>
+                                            <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Standard Limit</label>
+                                            <div className="flex items-end gap-2 mt-1">
+                                                <input type="number" value={config.schoolStandardPlanLessonLimit} onChange={e => setConfig({ ...config, schoolStandardPlanLessonLimit: Number(e.target.value) })} className="w-full rounded-lg border dark:border-slate-700 dark:bg-slate-900 p-2 text-xl font-bold text-purple-700 dark:text-white" />
+                                                <span className="text-xs text-purple-500 mb-2 font-bold">/mo</span>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Pro Limit</label>
+                                            <div className="flex items-end gap-2 mt-1">
+                                                <input type="number" value={config.schoolProPlanLessonLimit} onChange={e => setConfig({ ...config, schoolProPlanLessonLimit: Number(e.target.value) })} className="w-full rounded-lg border dark:border-slate-700 dark:bg-slate-900 p-2 text-xl font-bold text-purple-700 dark:text-white" />
+                                                <span className="text-xs text-purple-500 mb-2 font-bold">/mo</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="p-6 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm animate-in fade-in slide-in-from-bottom-2 duration-400">
+                                    <h3 className="text-sm font-black text-slate-800 dark:text-slate-200 uppercase tracking-[0.2em] mb-4 flex items-center">
+                                        <Activity className="w-4 h-4 mr-2 text-amber-500" />
+                                        Daily Anti-Abuse Caps
+                                    </h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                        <div className="group transition-all">
+                                            <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest group-hover:text-blue-500 transition-colors">Independent Teacher Daily Cap</label>
+                                            <div className="flex items-center gap-4 mt-2">
+                                                <input 
+                                                    type="number" 
+                                                    value={config.individualDailyLimit} 
+                                                    onChange={e => setConfig({ ...config, individualDailyLimit: Number(e.target.value) })} 
+                                                    className="w-24 rounded-xl border-2 border-slate-200 focus:border-blue-500 dark:border-slate-700 dark:bg-slate-900 p-3 text-2xl font-black text-slate-700 dark:text-white outline-none transition-all shadow-inner" 
+                                                />
+                                                <div className="text-xs text-slate-500 font-medium leading-relaxed">
+                                                    Generations per day for <br/> individual Free/Pro users.
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="group transition-all">
+                                            <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest group-hover:text-purple-500 transition-colors">School Teacher Daily Cap</label>
+                                            <div className="flex items-center gap-4 mt-2">
+                                                <input 
+                                                    type="number" 
+                                                    value={config.schoolTeacherDailyLimit} 
+                                                    onChange={e => setConfig({ ...config, schoolTeacherDailyLimit: Number(e.target.value) })} 
+                                                    className="w-24 rounded-xl border-2 border-slate-200 focus:border-purple-500 dark:border-slate-700 dark:bg-slate-900 p-3 text-2xl font-black text-slate-700 dark:text-white outline-none transition-all shadow-inner" 
+                                                />
+                                                <div className="text-xs text-slate-500 font-medium leading-relaxed">
+                                                    Generations per day for <br/> teachers in school plans.
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-900/10 rounded-lg flex items-start gap-3 border border-amber-100 dark:border-amber-900/20">
+                                        <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5" />
+                                        <p className="text-[10px] text-amber-700 dark:text-amber-400 leading-normal">
+                                            <strong>Note:</strong> These are global defaults. Per-user overrides in the teacher management panel will take precedence if set.
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="p-6 bg-blue-50 dark:bg-blue-900/10 rounded-2xl border border-blue-100 dark:border-blue-900/30 animate-in fade-in slide-in-from-bottom-2 duration-400">
+                                    <h3 className="text-sm font-black text-blue-600 uppercase tracking-[0.2em] mb-4 flex items-center">
+                                        <Sparkles className="w-4 h-4 mr-2" />
+                                        Automated Top-ups
+                                    </h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                        <div className="space-y-4">
+                                            <h4 className="text-xs font-black text-slate-500 uppercase flex items-center">
+                                                <User className="w-3 h-3 mr-2 text-blue-500" /> Individual Top-up
+                                            </h4>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div>
+                                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Price (₦)</label>
+                                                    <input type="number" value={config.individualTopUpPrice} onChange={e => setConfig({ ...config, individualTopUpPrice: Number(e.target.value) })} className="w-full mt-1 rounded-lg border dark:border-slate-700 dark:bg-slate-900 p-2 text-sm font-bold" />
+                                                </div>
+                                                <div>
+                                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Notes Amount</label>
+                                                    <input type="number" value={config.individualTopUpAmount} onChange={e => setConfig({ ...config, individualTopUpAmount: Number(e.target.value) })} className="w-full mt-1 rounded-lg border dark:border-slate-700 dark:bg-slate-900 p-2 text-sm font-bold" />
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="space-y-4 md:border-l dark:border-slate-800 md:pl-8">
+                                            <h4 className="text-xs font-black text-slate-500 uppercase flex items-center">
+                                                <Building className="w-3 h-3 mr-2 text-purple-500" /> School Top-up
+                                            </h4>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div>
+                                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Price (₦)</label>
+                                                    <input type="number" value={config.schoolTopUpPrice} onChange={e => setConfig({ ...config, schoolTopUpPrice: Number(e.target.value) })} className="w-full mt-1 rounded-lg border dark:border-slate-700 dark:bg-slate-900 p-2 text-sm font-bold" />
+                                                </div>
+                                                <div>
+                                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Notes Amount</label>
+                                                    <input type="number" value={config.schoolTopUpAmount} onChange={e => setConfig({ ...config, schoolTopUpAmount: Number(e.target.value) })} className="w-full mt-1 rounded-lg border dark:border-slate-700 dark:bg-slate-900 p-2 text-sm font-bold" />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="mt-4 p-3 bg-blue-100/50 dark:bg-blue-900/20 rounded-lg">
+                                        <p className="text-[10px] text-blue-700 dark:text-blue-400 leading-tight">
+                                            <strong>Pro Tip:</strong> These top-ups allow users to buy one-time credit packs when they hit their plan limits without changing their monthly subscription.
+                                        </p>
                                     </div>
                                 </div>
                             </div>

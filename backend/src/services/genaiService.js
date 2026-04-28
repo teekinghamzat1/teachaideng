@@ -251,6 +251,10 @@ Steps must appear in exact order from Step I to Step VI; do not shuffle.
 If no written exercise, Step V adapts to oral/guided practice.
 CRITICAL: DO NOT INCLUDE Pupil's Activity in the JSON or as a concept. Focus only on Teacher's Activity to save tokens.
 
+MAXIMUM LENGTH CONSTRAINT:
+You have a hard limit of ${maxTokens || 3000} tokens for this generation.
+${maxTokens && maxTokens < 3000 ? 'This limit is strict. You MUST radically shorten your explanations, provide only critical points, and maintain EXTREMELY brief sections to completely fit within this budget without breaking the JSON.' : 'You must optimize your content length to comfortably fit within this limit without cutting off the JSON.'}
+
 ${options.smartHint ? `SMART CONTEXT HINT (PRIORITY):
 ${options.smartHint}` : ''}
 `;
@@ -266,7 +270,7 @@ ${options.smartHint}` : ''}
         contents,
         generationConfig: {
           responseMimeType: 'application/json',
-          maxOutputTokens: maxTokens || 4096
+          maxOutputTokens: maxTokens || 3000
         }
       }, { timeout: 60000 });
 
@@ -310,7 +314,7 @@ async function generateAssessmentViaGenAI(options) {
         contents,
         generationConfig: {
           responseMimeType: 'application/json',
-          maxOutputTokens: maxTokens || 4096
+          maxOutputTokens: maxTokens || 3000
         }
       }, { timeout: 60000 });
 

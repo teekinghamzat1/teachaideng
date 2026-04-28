@@ -252,9 +252,53 @@ const cleanupSessions = asyncHandler(async (req, res) => {
     res.json(formatResponse(true, 'Expired sessions cleaned up'));
 });
 
+// @desc    Get recent generation logs
+// @route   GET /api/analytics/generations
+// @access  Private/Admin
+const getGenerations = asyncHandler(async (req, res) => {
+    try {
+        const generations = await prisma.usageLog.findMany({
+            where: {
+                action: { in: ['LESSON_GENERATION', 'ASSESSMENT_GENERATION'] }
+            },
+            orderBy: { createdAt: 'desc' },
+            take: 100,
+            include: {
+                user: {
+                    select: { name: true, email: true }
+                }
+            }
+        });
+
+        // Format data for frontend table
+        const formatted = generations.map(log => {
+            let meta = {};
+            try {
+                meta = typeof log.meta === 'string' ? JSON.parse(log.meta) : log.meta || {};
+            } catch (e) {}
+
+            return {
+                id: log.id,
+                action: log.action,
+                user: log.user ? { name: log.user.name, email: log.user.email } : { name: 'Unknown', email: 'N/A' },
+                topic: meta.topic || 'N/A',
+                subject: meta.subject || 'N/A',
+                tokens: meta.tokens || 0,
+                createdAt: log.createdAt
+            };
+        });
+
+        res.json(formatResponse(true, 'Generations retrieved', formatted));
+    } catch (error) {
+        console.error('Failed to retrieve generations:', error);
+        res.status(500).json(formatResponse(false, 'Failed to retrieve generations'));
+    }
+});
+
 module.exports = {
     ping,
     trackPageView,
     getReport,
-    cleanupSessions
+    cleanupSessions,
+    getGenerations
 };
