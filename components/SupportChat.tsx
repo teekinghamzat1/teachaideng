@@ -128,14 +128,12 @@ const SupportChat: React.FC<SupportChatProps> = ({ hideToggle = false, defaultOp
                             const newMessages = data.slice(prev.length);
                             const adminMsgs = newMessages.filter(m => m.senderRole === 'admin');
 
-                            if (adminMsgs.length > 0) {
+                            if (adminMsgs.length > 0 && !isOpenRef.current) {
                                 // Only notify if window is closed
-                                if (!isOpenRef.current) {
-                                    showBrowserNotification('New Message from Support', {
-                                        body: adminMsgs[adminMsgs.length - 1].content,
-                                        tag: 'support-chat'
-                                    });
-                                }
+                                showBrowserNotification('New Message from Support', {
+                                    body: adminMsgs[adminMsgs.length - 1].content,
+                                    tag: 'support-chat'
+                                });
                             }
                         }
                         return data;

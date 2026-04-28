@@ -45,23 +45,17 @@ const verifyPayment = asyncHandler(async (req, res) => {
 
         if (isValid) {
             const settings = await prisma.systemSetting.findUnique({ where: { id: 1 } });
-            let normalizedPlan = plan;
-            let isTopUp = false;
-            let topUpType = '';
-
-            // 1. Handle Top-Ups
-            if (plan === 'TopUp_Individual' || plan === 'TopUp_School') {
-                isTopUp = true;
-                topUpType = plan;
-            }
+            const isTopUp = plan === 'TopUp_Individual' || plan === 'TopUp_School';
+            const topUpType = isTopUp ? plan : '';
 
             // 2. Map Paystack Plan Codes to Internal Tiers
-            if (!isTopUp) {
-                if (plan === settings.proPlanCode) normalizedPlan = 'Pro';
-                else if (plan === settings.schoolBasicPlanCode) normalizedPlan = 'School_Basic';
-                else if (plan === settings.schoolStandardPlanCode) normalizedPlan = 'School_Standard';
-                else if (plan === settings.schoolProPlanCode) normalizedPlan = 'School_Pro';
-            }
+            const planMap = {
+                [settings.proPlanCode]: 'Pro',
+                [settings.schoolBasicPlanCode]: 'School_Basic',
+                [settings.schoolStandardPlanCode]: 'School_Standard',
+                [settings.schoolProPlanCode]: 'School_Pro'
+            };
+            const normalizedPlan = (!isTopUp && planMap[plan]) ? planMap[plan] : plan;
 
             if (isTopUp) {
                 // TOP-UP LOGIC
@@ -99,32 +93,32 @@ const verifyPayment = asyncHandler(async (req, res) => {
             const isSchoolPlan = normalizedPlan.startsWith('School_') || normalizedPlan === 'School';
 
             // Initial Update of the user's plan
-            let updatedUser = await prisma.user.update({
+            const updatedUser = await prisma.user.update({
                 where: { id: userId },
                 data: {
                     subscriptionPlan: normalizedPlan,
                     isSchoolAdmin: isSchoolPlan,
                     dailyNoteLimit: isSchoolPlan ? 5 : 3,
-                    // When upgrading to a paid plan, we might want to reset the lessons used if it's a fresh subscription
-                    // but usually the reset logic handles this monthly.
                 }
             });
 
+            let finalUser = updatedUser;
+
             // School License Specific Logic
             if (isSchoolPlan) {
-                let tier = 'Basic';
-                if (normalizedPlan === 'School_Standard') tier = 'Standard';
-                else if (normalizedPlan === 'School_Pro') tier = 'Pro';
+                const tierMap = { 'School_Standard': 'Standard', 'School_Pro': 'Pro' };
+                const tier = tierMap[normalizedPlan] || 'Basic';
 
-                let existingSchool = await prisma.school.findFirst({
+                const existingSchool = await prisma.school.findFirst({
                     where: { ownerId: userId }
                 });
 
+                let schoolRecord;
                 if (!existingSchool) {
                     const schoolName = updatedUser.schoolName || `${updatedUser.name}'s School`;
                     const slug = schoolName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '') + '-' + Date.now();
 
-                    existingSchool = await prisma.school.create({
+                    schoolRecord = await prisma.school.create({
                         data: {
                             name: schoolName,
                             slug,
@@ -135,17 +129,17 @@ const verifyPayment = asyncHandler(async (req, res) => {
                     });
                 } else {
                     // Update existing school tier
-                    existingSchool = await prisma.school.update({
+                    schoolRecord = await prisma.school.update({
                         where: { id: existingSchool.id },
                         data: { planType: tier }
                     });
                 }
 
                 // IMPORTANT: Link User to School
-                updatedUser = await prisma.user.update({
+                finalUser = await prisma.user.update({
                     where: { id: userId },
                     data: {
-                        schoolId: existingSchool.id,
+                        schoolId: schoolRecord.id,
                         isSchoolAdmin: true
                     }
                 });
@@ -175,10 +169,10 @@ const verifyPayment = asyncHandler(async (req, res) => {
             // 4. Send Receipt
             const { sendPaymentReceipt } = require('../utils/emailService');
             try {
-                await sendPaymentReceipt(updatedUser.email, updatedUser.name, normalizedPlan, amountPaid, reference);
+                await sendPaymentReceipt(finalUser.email, finalUser.name, normalizedPlan, amountPaid, reference);
             } catch (e) { console.error('Email failed'); }
 
-            res.json(formatResponse(true, `Upgraded to ${normalizedPlan} Plan successfully`, updatedUser));
+            res.json(formatResponse(true, `Upgraded to ${normalizedPlan} Plan successfully`, finalUser));
         } else {
             res.status(400);
             throw new Error('Payment verification failed');
