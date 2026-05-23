@@ -627,8 +627,9 @@ export const db = {
       return handleResponse(response);
     },
 
-    async getAllUsers(): Promise<User[]> {
-      const response = await fetch(`${API_URL}/admin/users`, {
+    async getAllUsers(type?: string): Promise<User[]> {
+      const url = type ? `${API_URL}/admin/users?type=${type}` : `${API_URL}/admin/users`;
+      const response = await fetch(url, {
         headers: getAnyAuthHeader(),
       });
       return handleResponse(response);

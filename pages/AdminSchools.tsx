@@ -141,6 +141,7 @@ const AdminSchools: React.FC = () => {
                                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Institution Details</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Owner / Contact Person</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Plan & Status</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Expiry</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Quota & Usage</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Registered</th>
                                 <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider sticky right-0 bg-slate-50 dark:bg-slate-800 z-20 border-l border-slate-200 dark:border-slate-700">Actions</th>
@@ -148,9 +149,9 @@ const AdminSchools: React.FC = () => {
                         </thead>
                         <tbody className="bg-white dark:bg-slate-800 divide-y divide-slate-200 dark:divide-slate-700">
                             {loading ? (
-                                <tr><td colSpan={6} className="text-center py-12"><Loader2 className="w-8 h-8 animate-spin mx-auto text-brand-500" /><p className="mt-2 text-sm text-slate-500">Loading schools...</p></td></tr>
+                                <tr><td colSpan={7} className="text-center py-12"><Loader2 className="w-8 h-8 animate-spin mx-auto text-brand-500" /><p className="mt-2 text-sm text-slate-500">Loading schools...</p></td></tr>
                             ) : filteredSchools.length === 0 ? (
-                                <tr><td colSpan={6} className="text-center py-12 text-slate-500 italic">No schools completely match your criteria</td></tr>
+                                <tr><td colSpan={7} className="text-center py-12 text-slate-500 italic">No schools completely match your criteria</td></tr>
                             ) : (
                                 filteredSchools.map((school) => (
                                     <tr key={school.id} className="hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
@@ -212,14 +213,52 @@ const AdminSchools: React.FC = () => {
                                             </div>
                                         </td>
 
+                                        {/* Expiry */}
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            {school.owner?.subscriptionExpiryDate ? (() => {
+                                                const expiry = new Date(school.owner.subscriptionExpiryDate);
+                                                const daysLeft = Math.ceil((expiry.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+                                                
+                                                let color = 'text-green-600 dark:text-green-400';
+                                                let text = `${daysLeft}d left`;
+                                                
+                                                if (daysLeft <= 0) {
+                                                    color = 'text-red-500 dark:text-red-400';
+                                                    text = 'Expired';
+                                                } else if (daysLeft <= 3) {
+                                                    color = 'text-red-400 dark:text-red-300 font-medium';
+                                                    text = `${daysLeft}d left`;
+                                                } else if (daysLeft <= 7) {
+                                                    color = 'text-amber-500 dark:text-amber-400';
+                                                    text = `${daysLeft}d left`;
+                                                }
+                                                
+                                                return (
+                                                    <div>
+                                                        <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                                                            {expiry.toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                                        </div>
+                                                        <div className={`text-xs ${color}`}>
+                                                            {text}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })() : (
+                                                <span className="text-xs text-slate-400 dark:text-slate-505">—</span>
+                                            )}
+                                        </td>
+
                                         {/* Quota & Usage */}
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <div className="flex flex-col">
                                                 <div className="flex items-center gap-1.5 text-sm font-bold text-slate-900 dark:text-slate-100">
                                                     <Activity className="w-4 h-4 text-brand-500" />
-                                                    {school.notesUsedThisMonth || 0} Notes Used
+                                                    {school.notesUsedThisMonth || 0} Notes Used (Month)
                                                 </div>
-                                                <div className="mt-1 flex items-center gap-2 text-[10px]">
+                                                <div className="text-xs text-slate-500 font-semibold mt-1">
+                                                    Total Generations: {school._count?.lessonNotes || 0} Notes
+                                                </div>
+                                                <div className="mt-1.5 flex items-center gap-2 text-[10px]">
                                                     <span className="text-slate-500">Teachers: <span className="text-slate-900 dark:text-slate-300 font-bold">{school.teacherLimit}</span></span>
                                                     <span className="text-slate-300">|</span>
                                                     <span className="text-slate-500">Bonus: <span className="text-brand-600 font-bold">+{school.additionalNotes || 0}</span></span>

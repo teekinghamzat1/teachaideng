@@ -55,7 +55,7 @@ const AdminUsers: React.FC = () => {
     const loadUsers = async () => {
         setLoading(true);
         try {
-            const data = await db.admin.getAllUsers();
+            const data = await db.admin.getAllUsers('individual');
             setUsers(data);
             setFilteredUsers(data);
         } catch (error) {

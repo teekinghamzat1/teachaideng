@@ -165,6 +165,9 @@ const getUsers = asyncHandler(async (req, res) => {
     const userRole = (req.user?.role || '').toLowerCase();
     if (req.user.isSchoolAdmin && req.user.schoolId && userRole !== 'superadmin') {
         where.schoolId = req.user.schoolId;
+    } else if (req.query.type === 'individual') {
+        where.schoolId = null;
+        where.isSchoolAdmin = false;
     }
 
     const users = await prisma.user.findMany({
@@ -506,10 +509,19 @@ const getSchools = asyncHandler(async (req, res) => {
     const schools = await prisma.school.findMany({
         include: {
             owner: {
-                select: { name: true, email: true }
+                select: {
+                    name: true,
+                    email: true,
+                    subscriptionStartDate: true,
+                    subscriptionExpiryDate: true
+                }
             },
             _count: {
-                select: { teachers: true }
+                select: {
+                    teachers: true,
+                    lessonNotes: true,
+                    assessments: true
+                }
             }
         }
     });

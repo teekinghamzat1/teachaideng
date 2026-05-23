@@ -226,6 +226,13 @@ export interface School {
     id: string;
     name: string;
     email: string;
+    subscriptionStartDate?: string;
+    subscriptionExpiryDate?: string;
+  };
+  _count?: {
+    teachers: number;
+    lessonNotes?: number;
+    assessments?: number;
   };
 }
 
@@ -276,7 +283,11 @@ export interface User {
     name: string;
     teacherLimit: number;
     planType?: string;
-    _count?: { teachers: number };
+    _count?: {
+      teachers: number;
+      lessonNotes?: number;
+      assessments?: number;
+    };
   }>;
   school?: { id: string; name: string };
 }
