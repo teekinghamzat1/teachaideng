@@ -707,6 +707,139 @@ const sendAdminNotification = async (subject, htmlContent) => {
     }
 };
 
+/**
+ * Send plan expiring soon email
+ */
+const sendPlanExpiringSoonEmail = async (userEmail, userName, planName, expiryDate) => {
+    try {
+        const transporter = await getTransporter();
+        if (!transporter) return false;
+
+        const settings = await prisma.systemSetting.findUnique({ where: { id: 1 } });
+        const fromEmail = settings.smtpFromEmail || settings.smtpUser;
+        const fromName = settings.smtpFromName || 'TeachAide AI';
+
+        const mailOptions = {
+            from: `"${fromName}" <${fromEmail}>`,
+            to: userEmail,
+            subject: `Action Required: Your ${planName} Plan is Expiring Soon ⚠️`,
+            html: `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <style>
+                        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                        .header { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+                        .content { background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; }
+                        .warning-box { background: #fef3c7; border-left: 4px solid #f59e0b; padding: 20px; margin: 20px 0; border-radius: 5px; }
+                        .button { display: inline-block; background: #d97706; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; margin: 20px 0; font-weight: bold; }
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <div class="header">
+                            <h1>Subscription Expiring Soon!</h1>
+                        </div>
+                        <div class="content">
+                            <p>Hello <strong>${userName}</strong>,</p>
+                            <p>We hope you've been enjoying the features of your <strong>${planName}</strong> plan on TeachAide!</p>
+                            
+                            <div class="warning-box">
+                                <p>This is a quick reminder that your current subscription is scheduled to expire on <strong>${new Date(expiryDate).toLocaleDateString('en-NG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</strong>.</p>
+                            </div>
+                            
+                            <p>To avoid any interruption to your access and continue enjoying all premium features without limits, please renew your subscription before the expiry date.</p>
+
+                            <center>
+                                <a href="${process.env.FRONTEND_URL || 'https://teachaide.ai'}/pricing" class="button">Renew Subscription Now</a>
+                            </center>
+
+                            <p>If you have any questions, feel free to contact our support team.</p>
+                            
+                            <p>Best regards,<br><strong>The ${settings.siteName || 'TeachAide AI'} Team</strong></p>
+                        </div>
+                    </div>
+                </body>
+                </html>
+            `
+        };
+
+        await transporter.sendMail(mailOptions);
+        return true;
+    } catch (error) {
+        console.error('Error sending expiring soon email:', error);
+        return false;
+    }
+};
+
+/**
+ * Send plan expired email
+ */
+const sendPlanExpiredEmail = async (userEmail, userName) => {
+    try {
+        const transporter = await getTransporter();
+        if (!transporter) return false;
+
+        const settings = await prisma.systemSetting.findUnique({ where: { id: 1 } });
+        const fromEmail = settings.smtpFromEmail || settings.smtpUser;
+        const fromName = settings.smtpFromName || 'TeachAide AI';
+
+        const mailOptions = {
+            from: `"${fromName}" <${fromEmail}>`,
+            to: userEmail,
+            subject: `Notice: Your TeachAide Subscription Has Expired`,
+            html: `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <style>
+                        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                        .header { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+                        .content { background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; }
+                        .info-box { background: white; padding: 20px; border-left: 4px solid #ef4444; margin: 20px 0; border-radius: 5px; }
+                        .button { display: inline-block; background: #dc2626; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; margin: 20px 0; font-weight: bold; }
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <div class="header">
+                            <h1>Subscription Expired</h1>
+                        </div>
+                        <div class="content">
+                            <p>Hello <strong>${userName}</strong>,</p>
+                            
+                            <p>We are writing to let you know that your TeachAide subscription has officially expired. Your account has been automatically transitioned to the Free plan.</p>
+                            
+                            <div class="info-box">
+                                <p>You still have access to TeachAide, but your usage limits and premium feature access have been adjusted to the standard Free tier.</p>
+                            </div>
+                            
+                            <p>We would love to have you back on a premium plan! You can restore full access immediately by renewing your subscription.</p>
+
+                            <center>
+                                <a href="${process.env.FRONTEND_URL || 'https://teachaide.ai'}/pricing" class="button">Upgrade My Plan</a>
+                            </center>
+
+                            <p>Thank you for using TeachAide.</p>
+                            
+                            <p>Best regards,<br><strong>The ${settings.siteName || 'TeachAide AI'} Team</strong></p>
+                        </div>
+                    </div>
+                </body>
+                </html>
+            `
+        };
+
+        await transporter.sendMail(mailOptions);
+        return true;
+    } catch (error) {
+        console.error('Error sending plan expired email:', error);
+        return false;
+    }
+};
+
 module.exports = {
     sendPaymentReceipt,
     sendTeacherInvitation,
@@ -715,5 +848,7 @@ module.exports = {
     sendWelcomeEmail,
     sendLessonNoteEmail,
     sendAdminNotification,
+    sendPlanExpiringSoonEmail,
+    sendPlanExpiredEmail,
     getTransporter
 };

@@ -249,6 +249,8 @@ export interface User {
   email: string;
   role: string;
   subscriptionPlan: string;
+  subscriptionStartDate?: string;
+  subscriptionExpiryDate?: string;
   gender?: string;
   schoolName?: string;
   status?: 'Active' | 'Suspended';
@@ -267,6 +269,16 @@ export interface User {
   lessonsUsedThisMonth?: number;
   lastUsageReset?: string;
   additionalNotes?: number;
+
+  // School relations (from admin API)
+  ownedSchools?: Array<{
+    id: string;
+    name: string;
+    teacherLimit: number;
+    planType?: string;
+    _count?: { teachers: number };
+  }>;
+  school?: { id: string; name: string };
 }
 
 // Lesson usage statistics (USER-FACING ONLY - no tokens exposed)

@@ -17,6 +17,8 @@ model User {
   password         String
   role             String @default("user") // 'user', 'admin', 'teacher', 'school_admin'
   subscriptionPlan String @default("Free") // 'Free', 'Pro', 'School'
+  subscriptionStartDate DateTime?
+  subscriptionExpiryDate DateTime?
   avatar           String @default("")
 
   // School Management Fields

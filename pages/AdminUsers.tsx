@@ -213,7 +213,9 @@ const AdminUsers: React.FC = () => {
             {
                 'Free': 'Free',
                 'Pro': 'Pro',
-                'School': 'School'
+                'School_Basic': 'School Basic',
+                'School_Standard': 'School Standard',
+                'School_Pro': 'School Pro'
             },
             currentPlan
         );
@@ -259,7 +261,7 @@ const AdminUsers: React.FC = () => {
                                     onChange={e => {
                                         const val = e.target.value;
                                         if (val === 'School Admin') {
-                                            setNewUser({ ...newUser, isSchoolAdmin: true, role: 'teacher', subscriptionPlan: 'School' });
+                                            setNewUser({ ...newUser, isSchoolAdmin: true, role: 'teacher', subscriptionPlan: 'School_Basic' });
                                         } else {
                                             setNewUser({ ...newUser, isSchoolAdmin: false, role: val, subscriptionPlan: val === 'Admin' ? 'Pro' : 'Free' });
                                         }
@@ -445,16 +447,19 @@ const AdminUsers: React.FC = () => {
                                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Email</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Role</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Plan</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Expiry</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Usage</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">School</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Status</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Last Active</th>
                                 <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider sticky right-0 bg-slate-50 dark:bg-slate-800 z-20 border-l border-slate-200 dark:border-slate-700">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="bg-white dark:bg-slate-800 divide-y divide-slate-200 dark:divide-slate-700">
                             {loading ? (
-                                <tr><td colSpan={6} className="text-center py-8"><Loader2 className="w-8 h-8 animate-spin mx-auto text-brand-500" /></td></tr>
+                                <tr><td colSpan={10} className="text-center py-8"><Loader2 className="w-8 h-8 animate-spin mx-auto text-brand-500" /></td></tr>
                             ) : filteredUsers.length === 0 ? (
-                                <tr><td colSpan={6} className="text-center py-8 text-slate-500">No users found</td></tr>
+                                <tr><td colSpan={10} className="text-center py-8 text-slate-500">No users found</td></tr>
                             ) : (
                                 filteredUsers.map((user) => (
                                     <tr key={user.id} className="hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
@@ -476,12 +481,45 @@ const AdminUsers: React.FC = () => {
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
-                                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${user.subscriptionPlan === 'School' ? 'bg-slate-900 text-white' :
+                                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${user.subscriptionPlan?.startsWith('School') ? 'bg-slate-900 text-white' :
                                                 user.subscriptionPlan === 'Pro' ? 'bg-brand-100 text-brand-800' :
                                                     'bg-slate-100 text-slate-600'
                                                 }`}>
-                                                {user.subscriptionPlan || 'Free'}
+                                                {user.subscriptionPlan ? user.subscriptionPlan.replace('_', ' ') : 'Free'}
                                             </span>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            {user.subscriptionExpiryDate ? (() => {
+                                                const expiry = new Date(user.subscriptionExpiryDate);
+                                                const daysLeft = Math.ceil((expiry.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+                                                
+                                                let color = 'text-green-600 dark:text-green-400';
+                                                let text = `${daysLeft}d left`;
+                                                
+                                                if (daysLeft <= 0) {
+                                                    color = 'text-red-500 dark:text-red-400';
+                                                    text = 'Expired';
+                                                } else if (daysLeft <= 3) {
+                                                    color = 'text-red-400 dark:text-red-300 font-medium';
+                                                    text = `${daysLeft}d left`;
+                                                } else if (daysLeft <= 7) {
+                                                    color = 'text-amber-500 dark:text-amber-400';
+                                                    text = `${daysLeft}d left`;
+                                                }
+                                                
+                                                return (
+                                                    <div>
+                                                        <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                                                            {expiry.toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                                        </div>
+                                                        <div className={`text-xs ${color}`}>
+                                                            {text}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })() : (
+                                                <span className="text-xs text-slate-400 dark:text-slate-505">—</span>
+                                            )}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             {user.usage ? (

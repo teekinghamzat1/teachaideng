@@ -93,12 +93,17 @@ const verifyPayment = asyncHandler(async (req, res) => {
             const isSchoolPlan = normalizedPlan.startsWith('School_') || normalizedPlan === 'School';
 
             // Initial Update of the user's plan
+            const now = new Date();
+            const expiry = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+
             const updatedUser = await prisma.user.update({
                 where: { id: userId },
                 data: {
                     subscriptionPlan: normalizedPlan,
                     isSchoolAdmin: isSchoolPlan,
                     dailyNoteLimit: isSchoolPlan ? 5 : 3,
+                    subscriptionStartDate: now,
+                    subscriptionExpiryDate: expiry
                 }
             });
 

@@ -125,10 +125,12 @@ const PORT = process.env.PORT || 5000;
 
 const { seedDefaultCurriculum } = require('./src/controllers/curriculumController');
 const { initBlogCron } = require('./src/cron/blogAutoDraft');
+const { initSubscriptionCron } = require('./src/cron/subscriptionCron');
 
 // Initialize Cron Jobs
 if (process.env.NODE_ENV !== 'test' && (!process.env.VERCEL || process.env.ENABLE_CRON === 'true')) {
     initBlogCron();
+    initSubscriptionCron();
 }
 
 // For local development

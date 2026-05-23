@@ -175,6 +175,8 @@ const getUsers = asyncHandler(async (req, res) => {
             email: true,
             role: true,
             subscriptionPlan: true,
+            subscriptionStartDate: true,
+            subscriptionExpiryDate: true,
             isSchoolAdmin: true,
             teacherLimit: true,
             schoolId: true,
@@ -827,12 +829,25 @@ const updateUserPlan = asyncHandler(async (req, res) => {
         throw new Error('User not found');
     }
 
-    const normalizedPlan = plan.charAt(0).toUpperCase() + plan.slice(1).toLowerCase();
+    // Don't arbitrarily lowercase everything because School_Basic becomes School_basic.
+    // We'll normalize by ensuring exact case matches if it matches our known plans, otherwise keep as is.
+    const validPlans = ['Free', 'Pro', 'School', 'School_Basic', 'School_Standard', 'School_Pro'];
+    const matchedPlan = validPlans.find(p => p.toLowerCase() === plan.toLowerCase());
+    const normalizedPlan = matchedPlan || (plan.charAt(0).toUpperCase() + plan.slice(1).toLowerCase());
+
+    const isSchoolPlan = normalizedPlan.startsWith('School_') || normalizedPlan === 'School';
 
     // 1. Update basic plan info
+    const isFree = normalizedPlan === 'Free';
+    const now = new Date();
+    const expiry = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+
     const updateData = {
         subscriptionPlan: normalizedPlan,
-        isSchoolAdmin: normalizedPlan === 'School'
+        isSchoolAdmin: isSchoolPlan,
+        dailyNoteLimit: isSchoolPlan ? 5 : 3,
+        subscriptionStartDate: isFree ? null : now,
+        subscriptionExpiryDate: isFree ? null : expiry
     };
 
     let updatedUser = await prisma.user.update({
@@ -841,7 +856,10 @@ const updateUserPlan = asyncHandler(async (req, res) => {
     });
 
     // 2. If promoted to School, ensure a school exists for them
-    if (normalizedPlan === 'School') {
+    if (isSchoolPlan) {
+        const tierMap = { 'School_Standard': 'Standard', 'School_Pro': 'Pro', 'School_Basic': 'Basic', 'School': 'Basic' };
+        const tier = tierMap[normalizedPlan] || 'Basic';
+
         let existingSchool = await prisma.school.findFirst({
             where: { ownerId: id }
         });
@@ -855,8 +873,15 @@ const updateUserPlan = asyncHandler(async (req, res) => {
                     name: schoolName,
                     slug,
                     ownerId: id,
-                    teacherLimit: 15
+                    teacherLimit: 15,
+                    planType: tier
                 }
+            });
+        } else {
+            // Update existing school's plan type
+            existingSchool = await prisma.school.update({
+                where: { id: existingSchool.id },
+                data: { planType: tier }
             });
         }
 
