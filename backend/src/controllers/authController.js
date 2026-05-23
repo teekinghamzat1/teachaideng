@@ -9,11 +9,22 @@ const { sendWelcomeEmail, sendAdminNotification } = require('../utils/emailServi
 // @route   POST /api/auth/register
 // @access  Public
 const registerUser = asyncHandler(async (req, res) => {
-    const { name, email, password, accountType } = req.body;
+    const { name, email, password, accountType, schoolName, schoolAddress } = req.body;
 
     if (!name || !email || !password) {
         res.status(400);
         throw new Error('Please fields are required: name, email, password');
+    }
+
+    if (accountType === 'school') {
+        if (!schoolName || !schoolName.trim()) {
+            res.status(400);
+            throw new Error('School Name is required when registering a school account');
+        }
+        if (!schoolAddress || !schoolAddress.trim()) {
+            res.status(400);
+            throw new Error('School Address is required when registering a school account');
+        }
     }
 
     const userExists = await prisma.user.findUnique({
@@ -36,7 +47,9 @@ const registerUser = asyncHandler(async (req, res) => {
             role: 'user',
             // store accountType for future billing/feature gating; defaults to 'individual'
             accountType: accountType || 'individual',
-            tokens: 2000 // Welcome bonus: 2000 tokens (approx 3-4 lessons)
+            tokens: 2000, // Welcome bonus: 2000 tokens (approx 3-4 lessons)
+            schoolName: accountType === 'school' ? schoolName.trim() : null,
+            schoolAddress: accountType === 'school' ? schoolAddress.trim() : null
         },
     });
 

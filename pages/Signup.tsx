@@ -28,6 +28,7 @@ const Signup: React.FC = () => {
     role: 'Teacher',
     gender: 'Female',
     schoolName: '',
+    schoolAddress: '',
     accountType: 'individual' // 'individual' | 'school' (progressive onboarding flag)
   });
   const [loading, setLoading] = useState(false);
@@ -92,6 +93,17 @@ const Signup: React.FC = () => {
       return;
     }
 
+    if (formData.accountType === 'school') {
+      if (!formData.schoolName.trim()) {
+        setError("School Name is required.");
+        return;
+      }
+      if (!formData.schoolAddress.trim()) {
+        setError("School Address is required.");
+        return;
+      }
+    }
+
     setLoading(true);
 
     try {
@@ -102,7 +114,8 @@ const Signup: React.FC = () => {
         formData.role,
         formData.gender,
         formData.schoolName,
-        formData.accountType
+        formData.accountType,
+        formData.schoolAddress
       );
       navigate('/dashboard');
     } catch (err: any) {
@@ -293,22 +306,46 @@ const Signup: React.FC = () => {
 
               {/* Conditional School Form */}
               {formData.accountType === 'school' && (
-                <div className="space-y-2 animate-in slide-in-from-top-2 duration-300">
-                  <label htmlFor="schoolName" className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-[0.2em] ml-1">School Name</label>
-                  <div className="relative group/field">
-                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                      <Building className="h-5 w-5 text-slate-300 group-focus-within/field:text-[#16A34A] transition-colors" />
+                <div className="space-y-4 animate-in slide-in-from-top-2 duration-300">
+                  {/* School Name */}
+                  <div className="space-y-2">
+                    <label htmlFor="schoolName" className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-[0.2em] ml-1">School Name</label>
+                    <div className="relative group/field">
+                      <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                        <Building className="h-5 w-5 text-slate-300 group-focus-within/field:text-[#16A34A] transition-colors" />
+                      </div>
+                      <input
+                        id="schoolName"
+                        name="schoolName"
+                        type="text"
+                        required={formData.accountType === 'school'}
+                        className="block w-full pl-12 pr-4 py-4 bg-slate-50 dark:bg-slate-800/50 border-2 border-transparent focus:border-[#16A34A] rounded-2xl text-slate-900 dark:text-white font-bold placeholder-slate-300 outline-none transition-all"
+                        placeholder="Enter your school's name"
+                        value={formData.schoolName}
+                        onChange={handleChange}
+                      />
                     </div>
-                    <input
-                      id="schoolName"
-                      name="schoolName"
-                      type="text"
-                      required={formData.accountType === 'school'}
-                      className="block w-full pl-12 pr-4 py-4 bg-slate-50 dark:bg-slate-800/50 border-2 border-transparent focus:border-[#16A34A] rounded-2xl text-slate-900 dark:text-white font-bold placeholder-slate-300 outline-none transition-all"
-                      placeholder="Enter your school's name"
-                      value={formData.schoolName}
-                      onChange={handleChange}
-                    />
+                  </div>
+                  {/* School Address */}
+                  <div className="space-y-2">
+                    <label htmlFor="schoolAddress" className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-[0.2em] ml-1">
+                      School Address <span className="text-red-400">*</span>
+                    </label>
+                    <div className="relative group/field">
+                      <div className="absolute top-4 left-0 pl-4 flex items-start pointer-events-none">
+                        <Building className="h-5 w-5 text-slate-300 group-focus-within/field:text-[#16A34A] transition-colors" />
+                      </div>
+                      <textarea
+                        id="schoolAddress"
+                        name="schoolAddress"
+                        rows={2}
+                        required={formData.accountType === 'school'}
+                        className="block w-full pl-12 pr-4 py-4 bg-slate-50 dark:bg-slate-800/50 border-2 border-transparent focus:border-[#16A34A] rounded-2xl text-slate-900 dark:text-white font-bold placeholder-slate-300 outline-none transition-all resize-none"
+                        placeholder="e.g. 12 School Road, Lagos State"
+                        value={formData.schoolAddress}
+                        onChange={handleChange as any}
+                      />
+                    </div>
                   </div>
                 </div>
               )}

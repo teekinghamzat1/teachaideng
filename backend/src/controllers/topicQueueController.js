@@ -20,40 +20,53 @@ const getTopics = asyncHandler(async (req, res) => {
 // @route   POST /api/topics
 // @access  Private/Admin
 const addTopic = asyncHandler(async (req, res) => {
-    const { topic, audience, category, priority } = req.body;
+    let { topic, audience, category, priority } = req.body;
 
     if (!topic) {
         res.status(400);
         throw new Error('Topic(s) required');
     }
 
-    // Handle multiple topics (split by newline or comma)
+    // Ensure we have an array of strings
     let topicsToAdd = [];
-    if (typeof topic === 'string') {
+    if (Array.isArray(topic)) {
+        topicsToAdd = topic.map(t => String(t).trim()).filter(t => t.length > 0);
+    } else if (typeof topic === 'string') {
         topicsToAdd = topic.split(/[\n,]/).map(t => t.trim()).filter(t => t.length > 0);
-    } else if (Array.isArray(topic)) {
-        topicsToAdd = topic;
     } else {
-        topicsToAdd = [topic];
+        topicsToAdd = [String(topic).trim()];
     }
 
-    console.log(`[TopicQueue] Processing ${topicsToAdd.length} topics:`, topicsToAdd);
-
-    const results = [];
-    for (const t of topicsToAdd) {
-        const newTopic = await prisma.topicQueue.create({
-            data: {
-                topic: t,
-                audience: audience || 'Teachers',
-                category: category || 'General',
-                priority: priority || 0,
-                status: 'QUEUED'
-            }
-        });
-        results.push(newTopic);
+    if (topicsToAdd.length === 0) {
+        res.status(400);
+        throw new Error('No valid topics provided');
     }
 
-    res.status(201).json(results.length === 1 ? results[0] : { count: results.length, topics: results });
+    console.log(`[TopicQueue] Attempting to add ${topicsToAdd.length} topics`);
+
+    try {
+        // Use a transaction for bulk insert to be faster/safer
+        const results = await prisma.$transaction(
+            topicsToAdd.map(t => 
+                prisma.topicQueue.create({
+                    data: {
+                        topic: t,
+                        audience: audience || 'Teachers',
+                        category: category || 'General',
+                        priority: Number(priority) || 0,
+                        status: 'QUEUED'
+                    }
+                })
+            )
+        );
+
+        console.log(`[TopicQueue] Successfully added ${results.length} topics`);
+        res.status(201).json(results.length === 1 ? results[0] : { count: results.length, topics: results });
+    } catch (error) {
+        console.error('[TopicQueue] Failed to add topics:', error);
+        res.status(500);
+        throw new Error(`Database error: ${error.message}`);
+    }
 });
 
 // @desc    Update a topic

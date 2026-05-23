@@ -227,6 +227,24 @@ const getUsers = asyncHandler(async (req, res) => {
         return { ...rest, status: teacherStatus, usage: formattedUsage };
     });
 
+    // Sort: paid users (School plans first, then Pro) first, then Free users. Within each tier, newer users first.
+    const getPlanPriority = (plan) => {
+        if (!plan) return 0;
+        const normalized = plan.toLowerCase();
+        if (normalized.startsWith('school')) return 2;
+        if (normalized === 'pro') return 1;
+        return 0;
+    };
+
+    usersWithUsage.sort((a, b) => {
+        const priorityA = getPlanPriority(a.subscriptionPlan);
+        const priorityB = getPlanPriority(b.subscriptionPlan);
+        if (priorityB !== priorityA) {
+            return priorityB - priorityA;
+        }
+        return new Date(b.createdAt) - new Date(a.createdAt);
+    });
+
     res.json(formatResponse(true, 'Users retrieved', usersWithUsage));
 });
 

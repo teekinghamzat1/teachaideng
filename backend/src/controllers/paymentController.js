@@ -116,6 +116,7 @@ const verifyPayment = asyncHandler(async (req, res) => {
                 let schoolRecord;
                 if (!existingSchool) {
                     const schoolName = updatedUser.schoolName || `${updatedUser.name}'s School`;
+                    const schoolAddress = updatedUser.schoolAddress || null;
                     const slug = schoolName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '') + '-' + Date.now();
 
                     schoolRecord = await prisma.school.create({
@@ -124,7 +125,8 @@ const verifyPayment = asyncHandler(async (req, res) => {
                             slug,
                             ownerId: userId,
                             teacherLimit: 15,
-                            planType: tier
+                            planType: tier,
+                            address: schoolAddress
                         }
                     });
                 } else {

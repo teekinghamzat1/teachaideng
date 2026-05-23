@@ -95,13 +95,13 @@ const handleResponse = async (response: Response) => {
 export const db = {
   // Regular User Auth
   auth: {
-    async register(name: string, email: string, password: string, role: string, gender: string, schoolName: string, accountType: string = 'individual'): Promise<User> {
+    async register(name: string, email: string, password: string, role: string, gender: string, schoolName: string, accountType: string = 'individual', schoolAddress: string = ''): Promise<User> {
       const response = await fetch(`${API_URL}/auth/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ name, email, password, role, gender, schoolName, accountType }),
+        body: JSON.stringify({ name, email, password, role, gender, schoolName, accountType, schoolAddress }),
       });
 
       const user = await handleResponse(response);

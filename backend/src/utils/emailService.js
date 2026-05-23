@@ -47,6 +47,44 @@ const getTransporter = async () => {
             maxMessages: 100
         });
 
+        // Wrap sendMail to auto-clear cache and auto-retry on error
+        if (!transporter._isWrapped) {
+            const originalSendMail = transporter.sendMail.bind(transporter);
+            
+            const doSend = async (mailOptions, attempt = 1) => {
+                try {
+                    return await originalSendMail(mailOptions);
+                } catch (err) {
+                    console.error(`SMTP sendMail error (attempt ${attempt}/3):`, err.message);
+                    cachedTransporter = null;
+                    lastSettingsHash = '';
+                    if (attempt < 3) {
+                        // Wait 1 second before retrying
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                        // Re-fetch a fresh transporter
+                        const freshTransporter = await getTransporter();
+                        if (freshTransporter && freshTransporter._doSend) {
+                            return await freshTransporter._doSend(mailOptions, attempt + 1);
+                        }
+                    }
+                    throw err;
+                }
+            };
+
+            transporter.sendMail = function (mailOptions, callback) {
+                if (typeof callback === 'function') {
+                    doSend(mailOptions)
+                        .then(info => callback(null, info))
+                        .catch(err => callback(err));
+                    return;
+                }
+                return doSend(mailOptions);
+            };
+            transporter._originalSendMail = originalSendMail;
+            transporter._doSend = doSend;
+            transporter._isWrapped = true;
+        }
+
         cachedTransporter = transporter;
         lastSettingsHash = settingsHash;
 

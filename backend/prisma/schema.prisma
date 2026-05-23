@@ -60,6 +60,10 @@ model User {
   // Default 'individual' keeps backward compatibility for existing users
   accountType    String   @default("individual")
 
+  // School Registration Cache (used before payment/provisioning)
+  schoolName     String?
+  schoolAddress  String?
+
   // Relations
   products     Product[]
   orders       Order[]

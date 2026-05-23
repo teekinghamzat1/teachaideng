@@ -18,6 +18,7 @@ const registerSchema = z.object({
         password: z.string().min(6),
         gender: z.string().optional(),
         schoolName: z.string().optional(),
+        schoolAddress: z.string().optional(),
         accountType: z.enum(['individual', 'school']).optional()
     }),
 });
