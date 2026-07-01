@@ -362,3 +362,36 @@ export const generateSEOSummary = async (title: string, textContent: string): Pr
     throw error;
   }
 };
+
+export const suggestSubtopics = async (
+  topic: string,
+  subject: string,
+  classLevel: string
+): Promise<string[]> => {
+  try {
+    const token = db.auth.getToken();
+    if (!token) {
+      throw new Error("Authentication required");
+    }
+
+    const response = await fetch(`${API_URL}/generate/subtopics`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      },
+      body: JSON.stringify({ topic, subject, classLevel }),
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message || "Failed to suggest subtopics");
+    }
+
+    const result = data.data || data;
+    return result.subtopics || [];
+  } catch (error: any) {
+    console.error("Error suggesting subtopics:", error);
+    throw error;
+  }
+};

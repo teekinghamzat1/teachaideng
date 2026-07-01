@@ -517,10 +517,58 @@ Important: Please enforce JSON-only output. ENSURE ALL DOUBLE QUOTES INSIDE THE 
   });
 }
 
+/**
+ * Suggest Subtopics for a given Topic, Subject, and ClassLevel
+ */
+async function suggestSubtopicsViaGenAI(options) {
+  const { topic, subject, classLevel } = options;
+  const apiKey = getApiKey();
+  const model = normalizeModel(process.env.GENAI_MODEL || 'gemini-2.5-flash');
+
+  const systemPrompt = `You are a curriculum expert. Generate exactly 4-5 highly relevant, specific, and age-appropriate subtopics for the following class context.
+  
+  CONTEXT:
+  - Subject: ${subject}
+  - Class Level: ${classLevel}
+  - Main Topic: ${topic}
+  
+  FORMATTING RULES:
+  - DO NOT use markdown. Return raw JSON ONLY.
+  - Return a JSON object with a single field:
+    { "subtopics": ["subtopic 1", "subtopic 2", "subtopic 3", "subtopic 4"] }
+  - Keep each subtopic short, clear, and focused. Do not use numbering or bullet points inside the strings.`;
+
+  const contents = [{
+    role: 'user',
+    parts: [{ text: systemPrompt }]
+  }];
+
+  return withRetry(async () => {
+    try {
+      const res = await axios.post(`${API_BASE}/models/${model}:generateContent?key=${apiKey}`, {
+        contents,
+        generationConfig: {
+          responseMimeType: 'application/json',
+          maxOutputTokens: 2048
+        }
+      }, { timeout: 30000 });
+
+      const candidate = res.data.candidates?.[0];
+      const text = candidate?.content?.parts?.[0]?.text;
+      const usage = res.data.usageMetadata || {};
+
+      return { text, usage };
+    } catch (err) {
+      throw err;
+    }
+  });
+}
+
 module.exports = {
   generateLessonNoteViaGenAI,
   generateAssessmentViaGenAI,
   generateRemarkViaGenAI,
   generateSEOSummaryViaGenAI,
-  generateBlogDraftViaGenAI
+  generateBlogDraftViaGenAI,
+  suggestSubtopicsViaGenAI
 };

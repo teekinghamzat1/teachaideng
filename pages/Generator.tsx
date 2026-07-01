@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { db } from '../database';
 import { Subject, ClassLevel, LessonNote } from '../types';
-import { generateLessonNote } from '../services/geminiService';
+import { generateLessonNote, suggestSubtopics } from '../services/geminiService';
 import { showAlert } from '../utils/alerts';
 import {
   Loader2, Sparkles, WifiOff, ChevronRight, ArrowLeft,
@@ -35,6 +35,8 @@ const Generator: React.FC = () => {
   });
 
   const [activeInput, setActiveInput] = useState<string | null>(null);
+  const [subtopicSuggestions, setSubtopicSuggestions] = useState<string[]>([]);
+  const [suggesting, setSuggesting] = useState(false);
 
   useEffect(() => {
     const handleStatus = () => setIsOnline(navigator.onLine);
@@ -95,6 +97,27 @@ const Generator: React.FC = () => {
       window.removeEventListener('offline', handleStatus);
     };
   }, [location.search]);
+
+  useEffect(() => {
+    if (step !== 2 || !formData.topic.trim()) {
+      setSubtopicSuggestions([]);
+      return;
+    }
+
+    const delayDebounceFn = setTimeout(async () => {
+      setSuggesting(true);
+      try {
+        const suggestions = await suggestSubtopics(formData.topic, formData.subject, formData.classLevel);
+        setSubtopicSuggestions(suggestions);
+      } catch (e) {
+        console.error("Failed to suggest subtopics:", e);
+      } finally {
+        setSuggesting(false);
+      }
+    }, 800);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [formData.topic, formData.subject, formData.classLevel, step]);
 
   const handleSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -402,6 +425,26 @@ const Generator: React.FC = () => {
                       placeholder="e.g., Light and Dark reactions"
                       className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-800 rounded-2xl px-6 py-4 text-lg font-bold text-slate-800 dark:text-white focus:border-[#16A34A] transition-all outline-none"
                     />
+                    {suggesting && (
+                      <div className="flex items-center gap-2 mt-2 ml-1 text-xs font-bold text-[#16A34A] animate-pulse">
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        <span>Suggesting subtopics...</span>
+                      </div>
+                    )}
+                    {!suggesting && subtopicSuggestions.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {subtopicSuggestions.map(st => (
+                          <button
+                            key={st}
+                            type="button"
+                            onClick={() => setFormData({ ...formData, subtopic: st })}
+                            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm border ${formData.subtopic === st ? 'bg-[#16A34A] text-white border-transparent' : 'bg-white dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700 hover:border-[#16A34A] hover:text-[#16A34A]'}`}
+                          >
+                            {st}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

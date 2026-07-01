@@ -550,9 +550,56 @@ const generateSEOSummary = asyncHandler(async (req, res) => {
   }
 });
 
+// @route POST /api/generate/subtopics
+const generateSubtopicSuggestions = asyncHandler(async (req, res) => {
+  const { topic, subject, classLevel } = req.body;
+
+  if (!topic || !subject || !classLevel) {
+    res.status(400);
+    throw new Error('Topic, Subject, and Class Level are required');
+  }
+
+  try {
+    const genResult = await genai.suggestSubtopicsViaGenAI({
+      topic,
+      subject,
+      classLevel
+    });
+
+    const extractJson = (str) => {
+      if (!str || typeof str !== 'string') return str;
+      let s = str.replace(/[\u0000-\u001F\u007F-\u009F]/g, c => {
+        if (c === '\n' || c === '\r' || c === '\t') return c;
+        return '';
+      });
+      const markdownMatch = s.match(/```json\s*([\s\S]*?)\s*```/);
+      if (markdownMatch && markdownMatch[1]) return markdownMatch[1].trim();
+      const first = Math.min(
+        s.indexOf('{') === -1 ? Infinity : s.indexOf('{'),
+        s.indexOf('[') === -1 ? Infinity : s.indexOf('[')
+      );
+      const last = Math.max(s.lastIndexOf('}'), s.lastIndexOf(']'));
+      if (first !== Infinity && last !== -1 && last > first) {
+        return s.substring(first, last + 1);
+      }
+      return s.replace(/```json\s*|\s*```/g, '').trim();
+    };
+
+    const parsed = JSON.parse(extractJson(genResult.text));
+    res.json(formatResponse(true, 'Subtopics suggested', {
+      subtopics: parsed.subtopics || []
+    }));
+  } catch (err) {
+    console.error('generateSubtopicSuggestions ERROR:', err);
+    res.status(err.status || 500);
+    return res.json(formatResponse(false, 'Failed to suggest subtopics: ' + err.message));
+  }
+});
+
 module.exports = {
   generateLesson,
   generateAssessment,
   generateRemark,
-  generateSEOSummary
+  generateSEOSummary,
+  generateSubtopicSuggestions
 };
