@@ -17,7 +17,7 @@ const getEstimates = async () => {
   return {
     lesson: settings.lessonGenerationCost || 600,
     assessment: settings.assessmentGenerationCost || 200,
-    maxTokens: settings.maxTokens || 4096
+    maxTokens: settings.maxTokens || 8192
   };
 };
 
@@ -184,6 +184,7 @@ const generateLesson = asyncHandler(async (req, res) => {
   }
 
   const { sanitizeObjectMarkdown } = require('../utils/markdownUtils');
+  const { jsonrepair } = require('jsonrepair');
 
   // Robust JSON Extraction Helper
   const extractJson = (str) => {
@@ -211,12 +212,23 @@ const generateLesson = asyncHandler(async (req, res) => {
   let cleanJsonText;
   try {
     const cleanedText = extractJson(genResult.text);
-    finalJson = JSON.parse(cleanedText);
+    let jsonToParse = cleanedText;
+    try {
+      finalJson = JSON.parse(jsonToParse);
+    } catch (parseErr) {
+      // Fallback: attempt to repair truncated/malformed JSON
+      console.warn('JSON.parse failed, attempting jsonrepair...', parseErr.message);
+      const repaired = jsonrepair(jsonToParse);
+      finalJson = JSON.parse(repaired);
+      console.info('jsonrepair succeeded.');
+    }
     finalJson = sanitizeObjectMarkdown(finalJson);
     cleanJsonText = JSON.stringify(finalJson);
   } catch (pErr) {
-    console.error('Failed to parse or sanitize AI response', pErr);
-    cleanJsonText = genResult.text;
+    console.error('Failed to parse or repair AI response:', pErr.message);
+    // Return a proper error — do NOT send broken JSON to the frontend
+    res.status(500);
+    return res.json(formatResponse(false, 'The AI response was incomplete or malformed. Please try again.'));
   }
 
   // Update cache entry to store the clean JSON (not raw AI text)
@@ -394,6 +406,7 @@ const generateAssessment = asyncHandler(async (req, res) => {
   }
 
   const { sanitizeObjectMarkdown } = require('../utils/markdownUtils');
+  const { jsonrepair } = require('jsonrepair');
 
   // Robust JSON Extraction Helper
   const extractJson = (str) => {
@@ -419,12 +432,21 @@ const generateAssessment = asyncHandler(async (req, res) => {
   let cleanJsonText;
   try {
     const cleanedText = extractJson(genResult.text);
-    finalJson = JSON.parse(cleanedText);
+    let jsonToParse = cleanedText;
+    try {
+      finalJson = JSON.parse(jsonToParse);
+    } catch (parseErr) {
+      console.warn('Assessment JSON.parse failed, attempting jsonrepair...', parseErr.message);
+      const repaired = jsonrepair(jsonToParse);
+      finalJson = JSON.parse(repaired);
+      console.info('Assessment jsonrepair succeeded.');
+    }
     finalJson = sanitizeObjectMarkdown(finalJson);
     cleanJsonText = JSON.stringify(finalJson);
   } catch (pErr) {
-    console.error('Failed to parse or sanitize AI assessment response', pErr);
-    cleanJsonText = genResult.text;
+    console.error('Failed to parse or repair AI assessment response:', pErr.message);
+    res.status(500);
+    return res.json(formatResponse(false, 'The AI response was incomplete or malformed. Please try again.'));
   }
 
   // Update cache with clean JSON for future hits

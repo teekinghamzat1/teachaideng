@@ -251,8 +251,8 @@ If no written exercise, Step V adapts to oral/guided practice.
 CRITICAL: DO NOT INCLUDE Pupil's Activity in the JSON or as a concept. Focus only on Teacher's Activity to save tokens.
 
 MAXIMUM LENGTH CONSTRAINT:
-You have a hard limit of ${maxTokens || 3000} tokens for this generation.
-${maxTokens && maxTokens < 3000 ? 'This limit is strict. You MUST radically shorten your explanations, provide only critical points, and maintain EXTREMELY brief sections to completely fit within this budget without breaking the JSON.' : 'You must optimize your content length to comfortably fit within this limit without cutting off the JSON.'}
+You have a hard limit of ${maxTokens || 8192} tokens for this generation.
+${maxTokens && maxTokens < 5000 ? 'This limit is strict. You MUST radically shorten your explanations, provide only critical points, and maintain EXTREMELY brief sections to completely fit within this budget without breaking the JSON.' : 'You must optimize your content length to comfortably fit within this limit without cutting off the JSON.'}
 
 ${options.smartHint ? `SMART CONTEXT HINT (PRIORITY):
 ${options.smartHint}` : ''}
@@ -269,9 +269,9 @@ ${options.smartHint}` : ''}
         contents,
         generationConfig: {
           responseMimeType: 'application/json',
-          maxOutputTokens: maxTokens || 3000
+          maxOutputTokens: maxTokens || 8192
         }
-      }, { timeout: 60000 });
+      }, { timeout: 120000 });
 
       const candidate = res.data.candidates?.[0];
       const text = candidate?.content?.parts?.[0]?.text;
@@ -313,9 +313,9 @@ async function generateAssessmentViaGenAI(options) {
         contents,
         generationConfig: {
           responseMimeType: 'application/json',
-          maxOutputTokens: maxTokens || 3000
+          maxOutputTokens: maxTokens || 8192
         }
-      }, { timeout: 60000 });
+      }, { timeout: 120000 });
 
       const candidate = res.data.candidates?.[0];
       const text = candidate?.content?.parts?.[0]?.text;
