@@ -63,31 +63,43 @@ export const generateLessonNote = async (
     const resultData = data.data || data;
 
     // Helper to robustly extract JSON from a string
-    const extractJson = (str: string) => {
+    const extractJson = (str: string): string => {
       if (typeof str !== 'string') return str;
 
-      // 1. Try to find JSON block in markdown
-      const markdownMatch = str.match(/```json\s*([\s\S]*?)\s*```/);
+      // 0. Strip control characters that can silently break JSON.parse
+      let s = str.replace(/[\u0000-\u001F\u007F-\u009F]/g, (c) => {
+        if (c === '\n' || c === '\r' || c === '\t') return c;
+        return '';
+      });
+
+      // 1. Try direct parse first – if it's already clean JSON, return as-is
+      try {
+        JSON.parse(s);
+        return s;
+      } catch (_) { /* fall through */ }
+
+      // 2. Try to find JSON block in markdown
+      const markdownMatch = s.match(/```json\s*([\s\S]*?)\s*```/);
       if (markdownMatch && markdownMatch[1]) {
         return markdownMatch[1].trim();
       }
 
-      // 2. Try to find the first '{' or '[' and the last '}' or ']'
-      const firstCurly = str.indexOf('{');
-      const firstBracket = str.indexOf('[');
+      // 3. Try to find the first '{' or '[' and the last '}' or ']'
+      const firstCurly = s.indexOf('{');
+      const firstBracket = s.indexOf('[');
       const first = (firstCurly !== -1 && (firstBracket === -1 || firstCurly < firstBracket)) ? firstCurly : firstBracket;
 
       if (first !== -1) {
-        const lastCurly = str.lastIndexOf('}');
-        const lastBracket = str.lastIndexOf(']');
+        const lastCurly = s.lastIndexOf('}');
+        const lastBracket = s.lastIndexOf(']');
         const last = Math.max(lastCurly, lastBracket);
 
         if (last > first) {
-          return str.substring(first, last + 1);
+          return s.substring(first, last + 1);
         }
       }
 
-      return str.trim();
+      return s.trim();
     };
 
     let parsedNote: any;
@@ -97,6 +109,7 @@ export const generateLessonNote = async (
         parsedNote = JSON.parse(cleaned);
       } catch (e) {
         console.error("JSON parse error from GenAI. Content was:", cleaned);
+        console.error("Parse error details:", e);
         const parseError = new Error("Failed to parse AI response. Please try again.");
         (parseError as any).rawResponse = cleaned;
         throw parseError;
@@ -249,20 +262,27 @@ export const generateAssessment = async (
     let assessmentData;
     if (resultData.text && typeof resultData.text === 'string') {
       try {
-        const extractJson = (str: string) => {
-          const markdownMatch = str.match(/```json\s*([\s\S]*?)\s*```/);
+        const extractJson = (str: string): string => {
+          // Strip control chars
+          let s = str.replace(/[\u0000-\u001F\u007F-\u009F]/g, (c) => {
+            if (c === '\n' || c === '\r' || c === '\t') return c;
+            return '';
+          });
+          // Try direct parse first
+          try { JSON.parse(s); return s; } catch (_) { /* fall through */ }
+          const markdownMatch = s.match(/```json\s*([\s\S]*?)\s*```/);
           if (markdownMatch && markdownMatch[1]) return markdownMatch[1].trim();
 
           const first = Math.min(
-            str.indexOf('{') === -1 ? Infinity : str.indexOf('{'),
-            str.indexOf('[') === -1 ? Infinity : str.indexOf('[')
+            s.indexOf('{') === -1 ? Infinity : s.indexOf('{'),
+            s.indexOf('[') === -1 ? Infinity : s.indexOf('[')
           );
-          const last = Math.max(str.lastIndexOf('}'), str.lastIndexOf(']'));
+          const last = Math.max(s.lastIndexOf('}'), s.lastIndexOf(']'));
 
           if (first !== Infinity && last !== -1 && last > first) {
-            return str.substring(first, last + 1);
+            return s.substring(first, last + 1);
           }
-          return str.replace(/```json\s*|\s*```/g, '').trim();
+          return s.replace(/```json\s*|\s*```/g, '').trim();
         };
 
         assessmentData = JSON.parse(extractJson(resultData.text));

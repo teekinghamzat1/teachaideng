@@ -18,7 +18,7 @@ const AdminSettings: React.FC = () => {
     const [config, setConfig] = useState<SystemSettings>({
         maintenanceMode: false,
         allowSignup: true,
-        defaultModel: 'gemini-2.5-pro',
+        defaultModel: 'gemini-2.5-flash',
         maxTokens: 4096,
         smtpPort: 587,
         port: 5000,

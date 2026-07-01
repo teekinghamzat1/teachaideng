@@ -1,4 +1,4 @@
-const rateLimit = require('express-rate-limit');
+const { rateLimit, ipKeyGenerator } = require('express-rate-limit');
 const formatResponse = require('../utils/formatResponse');
 const jwt = require('jsonwebtoken');
 const { JWT_SECRET } = require('../config/jwt');
@@ -21,7 +21,7 @@ const getUserIdFromRequest = (req) => {
         }
     }
     
-    return req.ip;
+    return ipKeyGenerator(req.ip);
 };
 
 // General API Rate Limiter

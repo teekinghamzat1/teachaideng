@@ -14,8 +14,7 @@ const getApiKey = () => {
 };
 
 const normalizeModel = (model) => {
-  // Enforce gemini-2.5-pro for all platform generations
-  return 'gemini-2.5-pro';
+  return model || 'gemini-2.5-flash';
 };
 
 /**
@@ -87,7 +86,7 @@ async function generateLessonNoteViaGenAI(options) {
     smartHint, includeEvaluation, includeTeachingAids, nigerianCurriculum, maxTokens
   } = options;
   const apiKey = getApiKey();
-  const model = normalizeModel(process.env.GENAI_MODEL || 'gemini-2.5-pro');
+  const model = normalizeModel(process.env.GENAI_MODEL || 'gemini-2.5-flash');
 
   const today = new Date().toISOString().split('T')[0];
   const systemPrompt = `You are TeachAide, an AI assistant designed specifically for Nigerian schools.
@@ -291,7 +290,7 @@ ${options.smartHint}` : ''}
 async function generateAssessmentViaGenAI(options) {
   const { topic, classLevel, subject, questionCount, maxTokens } = options;
   const apiKey = getApiKey();
-  const model = normalizeModel(options.model || 'gemini-2.5-pro');
+  const model = normalizeModel(options.model || 'gemini-2.5-flash');
 
   const systemPrompt = `You are an expert assessment developer. Generate a high-quality assessment in strict JSON format.
   
@@ -335,7 +334,7 @@ async function generateAssessmentViaGenAI(options) {
 async function generateRemarkViaGenAI(options) {
   const { classLevel, subject, topic, lessonOutcome, students, style, maxTokens } = options;
   const apiKey = getApiKey();
-  const model = normalizeModel(process.env.GENAI_MODEL || 'gemini-2.5-pro');
+  const model = normalizeModel(process.env.GENAI_MODEL || 'gemini-2.5-flash');
 
   const systemPrompt = `You are an expert teacher writing a lesson reflection/remark for your records.
   
@@ -385,7 +384,7 @@ async function generateRemarkViaGenAI(options) {
 async function generateSEOSummaryViaGenAI(options) {
   const { title, textContent, maxTokens } = options;
   const apiKey = getApiKey();
-  const model = normalizeModel(process.env.GENAI_MODEL || 'gemini-2.5-pro');
+  const model = normalizeModel(process.env.GENAI_MODEL || 'gemini-2.5-flash');
 
   const systemPrompt = `You are an expert SEO copywriter and marketer for an educational technology platform.
 Your task is to generate a catchy SEO Meta Description (130 to 155 characters) for the given blog post.
@@ -439,7 +438,7 @@ Discover the 5 top classroom management techniques for Nigerian schools. Read mo
 async function generateBlogDraftViaGenAI(options) {
   const { topic, audience, category, maxTokens } = options;
   const apiKey = getApiKey();
-  const model = normalizeModel(process.env.GENAI_MODEL || 'gemini-2.5-pro');
+  const model = normalizeModel(process.env.GENAI_MODEL || 'gemini-2.5-flash');
 
   const systemPrompt = `You are an educational content writer for Nigerian teachers.
 

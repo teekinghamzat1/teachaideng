@@ -124,7 +124,7 @@ const generateLesson = asyncHandler(async (req, res) => {
   try {
     const metrics = {
       plan: req.user.subscriptionPlan,
-      model: process.env.GENAI_MODEL || 'gemini-2.5-pro',
+      model: process.env.GENAI_MODEL || 'gemini-2.5-flash',
       tokens: usageTokens,
       topic,
       subject,
@@ -188,30 +188,59 @@ const generateLesson = asyncHandler(async (req, res) => {
   // Robust JSON Extraction Helper
   const extractJson = (str) => {
     if (!str || typeof str !== 'string') return str;
-    const markdownMatch = str.match(/```json\s*([\s\S]*?)\s*```/);
+    // Strip control characters that can break JSON.parse
+    let s = str.replace(/[\u0000-\u001F\u007F-\u009F]/g, c => {
+      // Keep safe whitespace
+      if (c === '\n' || c === '\r' || c === '\t') return c;
+      return '';
+    });
+    const markdownMatch = s.match(/```json\s*([\s\S]*?)\s*```/);
     if (markdownMatch && markdownMatch[1]) return markdownMatch[1].trim();
     const first = Math.min(
-      str.indexOf('{') === -1 ? Infinity : str.indexOf('{'),
-      str.indexOf('[') === -1 ? Infinity : str.indexOf('[')
+      s.indexOf('{') === -1 ? Infinity : s.indexOf('{'),
+      s.indexOf('[') === -1 ? Infinity : s.indexOf('[')
     );
-    const last = Math.max(str.lastIndexOf('}'), str.lastIndexOf(']'));
+    const last = Math.max(s.lastIndexOf('}'), s.lastIndexOf(']'));
     if (first !== Infinity && last !== -1 && last > first) {
-      return str.substring(first, last + 1);
+      return s.substring(first, last + 1);
     }
-    return str.replace(/```json\s*|\s*```/g, '').trim();
+    return s.replace(/```json\s*|\s*```/g, '').trim();
   };
 
   let finalJson;
+  let cleanJsonText;
   try {
     const cleanedText = extractJson(genResult.text);
     finalJson = JSON.parse(cleanedText);
     finalJson = sanitizeObjectMarkdown(finalJson);
+    cleanJsonText = JSON.stringify(finalJson);
   } catch (pErr) {
     console.error('Failed to parse or sanitize AI response', pErr);
+    cleanJsonText = genResult.text;
+  }
+
+  // Update cache entry to store the clean JSON (not raw AI text)
+  // This ensures future cache hits also return clean, parseable JSON
+  if (cleanJsonText && cleanJsonText !== genResult.text) {
+    try {
+      await prisma.sharedContent.updateMany({
+        where: {
+          type: 'lesson',
+          subject: subject.trim(),
+          classLevel: classLevel.trim(),
+          topic: { equals: topic.trim(), mode: 'insensitive' },
+          subtopic: { equals: (subtopic || '').trim(), mode: 'insensitive' },
+          content: genResult.text
+        },
+        data: { content: cleanJsonText }
+      });
+    } catch (cacheUpdateErr) {
+      console.warn('Failed to update cache with clean JSON', cacheUpdateErr);
+    }
   }
 
   res.json(formatResponse(true, 'Generated', {
-    text: finalJson ? JSON.stringify(finalJson) : genResult.text,
+    text: cleanJsonText,
     usage: genResult.usage,
     charged: usageTokens
   }));
@@ -271,7 +300,7 @@ const generateAssessment = asyncHandler(async (req, res) => {
     genResult = await genai.generateAssessmentViaGenAI({
       topic, subject, classLevel, questionCount,
       maxTokens: estimates.maxTokens,
-      model: 'gemini-2.5-pro'
+      model: process.env.GENAI_MODEL || 'gemini-2.5-flash'
     });
   } catch (err) {
     console.error('generateAssessment ERROR:', err);
@@ -310,7 +339,7 @@ const generateAssessment = asyncHandler(async (req, res) => {
   try {
     const metrics = {
       plan: req.user.subscriptionPlan,
-      model: 'gemini-2.5-pro',
+      model: process.env.GENAI_MODEL || 'gemini-2.5-flash',
       tokens: usageTokens,
       topic,
       subject,
@@ -366,33 +395,58 @@ const generateAssessment = asyncHandler(async (req, res) => {
 
   const { sanitizeObjectMarkdown } = require('../utils/markdownUtils');
 
-  // Robust JSON Extraction Helper (defined locally for simplicity or could be in utils)
+  // Robust JSON Extraction Helper
   const extractJson = (str) => {
     if (!str || typeof str !== 'string') return str;
-    const markdownMatch = str.match(/```json\s*([\s\S]*?)\s*```/);
+    let s = str.replace(/[\u0000-\u001F\u007F-\u009F]/g, c => {
+      if (c === '\n' || c === '\r' || c === '\t') return c;
+      return '';
+    });
+    const markdownMatch = s.match(/```json\s*([\s\S]*?)\s*```/);
     if (markdownMatch && markdownMatch[1]) return markdownMatch[1].trim();
     const first = Math.min(
-      str.indexOf('{') === -1 ? Infinity : str.indexOf('{'),
-      str.indexOf('[') === -1 ? Infinity : str.indexOf('[')
+      s.indexOf('{') === -1 ? Infinity : s.indexOf('{'),
+      s.indexOf('[') === -1 ? Infinity : s.indexOf('[')
     );
-    const last = Math.max(str.lastIndexOf('}'), str.lastIndexOf(']'));
+    const last = Math.max(s.lastIndexOf('}'), s.lastIndexOf(']'));
     if (first !== Infinity && last !== -1 && last > first) {
-      return str.substring(first, last + 1);
+      return s.substring(first, last + 1);
     }
-    return str.replace(/```json\s*|\s*```/g, '').trim();
+    return s.replace(/```json\s*|\s*```/g, '').trim();
   };
 
   let finalJson;
+  let cleanJsonText;
   try {
     const cleanedText = extractJson(genResult.text);
     finalJson = JSON.parse(cleanedText);
     finalJson = sanitizeObjectMarkdown(finalJson);
+    cleanJsonText = JSON.stringify(finalJson);
   } catch (pErr) {
     console.error('Failed to parse or sanitize AI assessment response', pErr);
+    cleanJsonText = genResult.text;
+  }
+
+  // Update cache with clean JSON for future hits
+  if (cleanJsonText && cleanJsonText !== genResult.text) {
+    try {
+      await prisma.sharedContent.updateMany({
+        where: {
+          type: 'assessment',
+          subject: subject.trim(),
+          classLevel: classLevel.trim(),
+          topic: { equals: topic.trim(), mode: 'insensitive' },
+          content: genResult.text
+        },
+        data: { content: cleanJsonText }
+      });
+    } catch (cacheUpdateErr) {
+      console.warn('Failed to update assessment cache with clean JSON', cacheUpdateErr);
+    }
   }
 
   res.json(formatResponse(true, 'Assessment generated', {
-    text: finalJson ? JSON.stringify(finalJson) : genResult.text,
+    text: cleanJsonText,
     usage: genResult.usage,
     charged: usageTokens
   }));

@@ -244,7 +244,7 @@ const AdminSchools: React.FC = () => {
                                                     </div>
                                                 );
                                             })() : (
-                                                <span className="text-xs text-slate-400 dark:text-slate-505">—</span>
+                                                <span className="text-xs text-brand-600 font-medium">Lifetime / Legacy</span>
                                             )}
                                         </td>
 

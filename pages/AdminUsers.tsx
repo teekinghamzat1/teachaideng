@@ -518,7 +518,11 @@ const AdminUsers: React.FC = () => {
                                                     </div>
                                                 );
                                             })() : (
-                                                <span className="text-xs text-slate-400 dark:text-slate-505">—</span>
+                                                user.subscriptionPlan && user.subscriptionPlan !== 'Free' ? (
+                                                    <span className="text-xs text-brand-600 font-medium">Lifetime / Legacy</span>
+                                                ) : (
+                                                    <span className="text-xs text-slate-400 dark:text-slate-500">—</span>
+                                                )
                                             )}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
