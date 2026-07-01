@@ -1,8 +1,10 @@
 import { User, LessonNote, Assessment, Student, Timetable, AppSettings, AdminLog, SystemSettings, Curriculum, Subject, ClassLevel, School } from './types';
 import { storage as localStorage } from './utils/storage';
 
-// Helper for API calls
-const API_URL = '/api';
+// Helper for API calls — reads VITE_API_URL at build time (set in .env.production for VPS)
+const API_URL: string = (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_API_URL)
+  ? (import.meta as any).env.VITE_API_URL
+  : '/api';
 
 export const getAuthHeader = () => {
   const userStr = localStorage.getItem('teachaide_session');
