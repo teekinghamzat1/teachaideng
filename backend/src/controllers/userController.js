@@ -48,24 +48,6 @@ const updateUserProfile = asyncHandler(async (req, res) => {
         if (req.body.email) updateData.email = req.body.email;
         if (req.body.avatar) updateData.avatar = req.body.avatar;
 
-        // Security: Prevent regular users from assigning themselves admin roles
-        if (req.body.role) {
-            const requestedRole = req.body.role;
-            const isAdminRequest = ['admin', 'superadmin'].includes(requestedRole.toLowerCase());
-            const currentUserIsAdmin = ['admin', 'superadmin'].includes(user.role.toLowerCase());
-
-            if (isAdminRequest) {
-                // Only allow if they are already an admin (keeping existing status)
-                if (currentUserIsAdmin) {
-                    updateData.role = requestedRole;
-                }
-                // Otherwise ignore the role update or throw error - ignoring for now to avoid breaking UI flow
-            } else {
-                // Safe titles for regular users
-                updateData.role = requestedRole;
-            }
-        }
-
         if (req.body.password) {
             const salt = await bcrypt.genSalt(10);
             updateData.password = await bcrypt.hash(req.body.password, salt);
