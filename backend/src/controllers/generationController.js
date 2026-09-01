@@ -484,6 +484,13 @@ const generateRemark = asyncHandler(async (req, res) => {
     throw new Error('Subject, Topic, and Class Level are required');
   }
 
+  // Enforce dynamic generation limit
+  const canGen = await usageService.canGenerateRemark(userId);
+  if (!canGen.canGenerate) {
+    res.status(403);
+    return res.json(formatResponse(false, canGen.reason));
+  }
+
   let genResult;
   try {
     genResult = await genai.generateRemarkViaGenAI({
@@ -514,8 +521,25 @@ const generateRemark = asyncHandler(async (req, res) => {
 
     const parsed = JSON.parse(extractJson(genResult.text));
 
-    // Log usage
-    createUsageLog(userId, 'REMARK_GENERATION', { subject, topic, studentCount: students?.length || 0 }).catch(() => { });
+    // Log usage for successful generation
+    try {
+      await createUsageLog(userId, 'REMARK_GENERATION', {
+        subject,
+        topic,
+        studentCount: students?.length || 0,
+        tokens: genResult.usage?.totalTokenCount || 0
+      });
+
+      // Also log to admin activity
+      await createAdminLog(userId, req.user.schoolId, 'GENERATE_REMARK', {
+        subject,
+        topic,
+        studentCount: students?.length || 0,
+        userName: req.user.name
+      });
+    } catch (logErr) {
+      console.warn('Failed to log remark usage', logErr);
+    }
 
     res.json(formatResponse(true, 'Remark generated', {
       remark: parsed.remark,
