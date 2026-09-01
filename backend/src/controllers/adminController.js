@@ -442,18 +442,6 @@ const updateNoteStatus = asyncHandler(async (req, res) => {
 const createUser = asyncHandler(async (req, res) => {
     const { name, email, password, role, isSchoolAdmin, schoolId, subscriptionPlan } = req.body;
 
-    // Restrict Admin/SuperAdmin creation
-    if (role && (role.toLowerCase() === 'admin' || role.toLowerCase() === 'superadmin')) {
-        res.status(403);
-        throw new Error('Forbidden: Admins cannot create other admins or superadmins.');
-    }
-
-    // Only SuperAdmin can create School Admins
-    if (isSchoolAdmin && req.user.role !== 'superadmin') {
-        res.status(403);
-        throw new Error('Forbidden: Only SuperAdmins can create School Admins.');
-    }
-
     const userExists = await prisma.user.findUnique({
         where: { email },
     });
