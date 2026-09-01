@@ -102,30 +102,7 @@ const loginUser = asyncHandler(async (req, res) => {
 
         const user = await prisma.user.findUnique({ where: { email } });
 
-        // If user is not found, provide precise feedback that account is missing/deleted
-        if (!user) {
-            res.status(404);
-            throw new Error('Account not found or has been deleted');
-        }
-
-        // Ensure password field exists on user record
-        if (!user.password || typeof user.password !== 'string') {
-            // Log for debugging, then return a generic incorrect password
-            console.warn(`User ${user.email} has no password set on record`);
-            res.status(401);
-            throw new Error('Incorrect password');
-        }
-
-        let passwordMatch = false;
-        try {
-            passwordMatch = await bcrypt.compare(password, user.password);
-        } catch (err) {
-            console.error('Error comparing password for user', user.id, err);
-            res.status(500);
-            throw new Error('Internal error while validating credentials');
-        }
-
-        if (user && passwordMatch) {
+        if (user && user.password && (await bcrypt.compare(password, user.password))) {
             // Auto-activate teacher if they're logging in for the first time
             if (user.teacherStatus === 'Invited' && user.schoolId) {
                 await prisma.user.update({
@@ -164,9 +141,8 @@ const loginUser = asyncHandler(async (req, res) => {
                 })
             );
         } else {
-            // At this point the user exists but password did not match
             res.status(401);
-            throw new Error('Incorrect password');
+            throw new Error('Invalid credentials');
         }
     } catch (err) {
         console.error('Login error for', req?.body?.email, err);
