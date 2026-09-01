@@ -440,18 +440,16 @@ const updateNoteStatus = asyncHandler(async (req, res) => {
 // @route   POST /api/admin/users
 // @access  Private/Admin
 const createUser = asyncHandler(async (req, res) => {
-    const { name, email, password, role, isSchoolAdmin, schoolId, subscriptionPlan } = req.body;
+    // Note: Zod validation middleware runs before this, stripping sensitive fields.
+    // This logic provides a second layer of defense.
+    const { name, email, password, subscriptionPlan } = req.body;
+    let { schoolId } = req.body;
 
-    // Restrict Admin/SuperAdmin creation
-    if (role && (role.toLowerCase() === 'admin' || role.toLowerCase() === 'superadmin')) {
-        res.status(403);
-        throw new Error('Forbidden: Admins cannot create other admins or superadmins.');
-    }
-
-    // Only SuperAdmin can create School Admins
-    if (isSchoolAdmin && req.user.role !== 'superadmin') {
-        res.status(403);
-        throw new Error('Forbidden: Only SuperAdmins can create School Admins.');
+    // Security Enhancement: Enforce School Admin's scope
+    if (req.user.isSchoolAdmin && req.user.schoolId) {
+        // A school admin MUST create users within their own school.
+        // Ignore any schoolId provided in the body.
+        schoolId = req.user.schoolId;
     }
 
     const userExists = await prisma.user.findUnique({
@@ -471,8 +469,8 @@ const createUser = asyncHandler(async (req, res) => {
             name,
             email,
             password: hashedPassword,
-            role: role || 'user',
-            isSchoolAdmin: !!isSchoolAdmin,
+            role: 'user', // Default role; cannot be overridden from this endpoint
+            isSchoolAdmin: false, // Default; cannot be overridden from this endpoint
             schoolId: schoolId || null,
             subscriptionPlan: subscriptionPlan || 'Free',
             dailyNoteLimit: (schoolId || isSchoolAdmin) ? 5 : 3
@@ -481,7 +479,7 @@ const createUser = asyncHandler(async (req, res) => {
 
     await createAdminLog(req.user.id, req.user.schoolId, 'CREATE_USER', {
         createdUserId: user.id,
-        role,
+        role: user.role, // Log the actual role created
         email
     });
 
