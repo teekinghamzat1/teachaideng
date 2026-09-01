@@ -579,6 +579,22 @@ const deleteUserPermanently = asyncHandler(async (req, res) => {
         throw new Error('User not found');
     }
 
+    // CRITICAL: Prevent privilege escalation and unauthorized deletion
+    if (user.role === 'superadmin') {
+        res.status(403);
+        throw new Error('Forbidden: Superadmin accounts cannot be deleted.');
+    }
+
+    if (user.role === 'admin' && req.user.role !== 'superadmin') {
+        res.status(403);
+        throw new Error('Forbidden: Only a Superadmin can delete an Admin account.');
+    }
+
+    if (user.id === req.user.id) {
+        res.status(400);
+        throw new Error('Bad Request: You cannot delete your own account.');
+    }
+
     if (req.user.isSchoolAdmin && user.schoolId !== req.user.schoolId) {
         res.status(403);
         throw new Error('Unauthorized: You can only delete users from your own school.');
