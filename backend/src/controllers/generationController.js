@@ -4,7 +4,7 @@ const prisma = require('../config/db');
 const formatResponse = require('../utils/formatResponse');
 const { hasTokens, chargeTokens } = require('../utils/tokens');
 const genai = require('../services/genaiService');
-const { checkWeeklyLessonLimit, createUsageLog } = require('../utils/usage');
+const { createUsageLog } = require('../utils/usage');
 const { createAdminLog } = require('../utils/auditLogger');
 const usageService = require('../services/usageService');
 
@@ -484,6 +484,13 @@ const generateRemark = asyncHandler(async (req, res) => {
     throw new Error('Subject, Topic, and Class Level are required');
   }
 
+  // Enforce fair-use generation limit
+  const canGen = await usageService.canGenerateRemark(userId);
+  if (!canGen.canGenerate) {
+    res.status(403);
+    return res.json(formatResponse(false, canGen.reason));
+  }
+
   let genResult;
   try {
     genResult = await genai.generateRemarkViaGenAI({
@@ -515,7 +522,17 @@ const generateRemark = asyncHandler(async (req, res) => {
     const parsed = JSON.parse(extractJson(genResult.text));
 
     // Log usage
-    createUsageLog(userId, 'REMARK_GENERATION', { subject, topic, studentCount: students?.length || 0 }).catch(() => { });
+    try {
+      await createUsageLog(userId, 'REMARK_GENERATION', {
+        subject,
+        topic,
+        studentCount: students?.length || 0,
+        plan: req.user.subscriptionPlan,
+        tokens: genResult.usage?.totalTokens || 0
+      });
+    } catch (logErr) {
+      console.warn('Failed to log remark usage', logErr);
+    }
 
     res.json(formatResponse(true, 'Remark generated', {
       remark: parsed.remark,
