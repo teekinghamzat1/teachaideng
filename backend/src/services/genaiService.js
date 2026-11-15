@@ -14,7 +14,7 @@ const getApiKey = () => {
 };
 
 const normalizeModel = (model) => {
-  return model || 'gemini-2.5-flash';
+  return model || 'gemini-3.8-flash';
 };
 
 /**
@@ -48,33 +48,51 @@ const extractJson = (str) => {
   return cleanedStr.trim();
 };
 
-const withRetry = async (fn, maxRetries = 5, initialDelay = 2000) => {
-  let lastError;
-  for (let i = 0; i < maxRetries; i++) {
+const getGeminiErrorMessage = (err) =>
+  err.response?.data?.error?.message || err.message || 'Unknown Gemini API error';
+
+const isFallbackEligible = (err) => {
+  const status = err.response?.status;
+  const networkCode = err.code;
+  return [429, 500, 502, 503, 504].includes(status) ||
+    ['ECONNABORTED', 'ETIMEDOUT', 'ECONNRESET', 'EAI_AGAIN'].includes(networkCode);
+};
+
+/**
+ * Use the fallback only for rate limits, temporary Google service errors,
+ * or network failures. Do not hide authentication, permission, or request errors.
+ */
+const withModelFallback = async (requestFn, requestedPrimaryModel) => {
+  const primaryModel = normalizeModel(requestedPrimaryModel || process.env.GENAI_MODEL || 'gemini-3.8-flash');
+  const fallbackModel = normalizeModel(process.env.GENAI_FALLBACK_MODEL || 'gemini-3.5-flash-lite');
+
+  try {
+    const result = await requestFn(primaryModel);
+    console.info('[GenAI] Request succeeded using primary model: ' + primaryModel);
+    return result;
+  } catch (primaryError) {
+    if (!isFallbackEligible(primaryError) || primaryModel === fallbackModel) throw primaryError;
+
+    console.warn('[GenAI] Primary model ' + primaryModel + ' failed (' +
+      (primaryError.response?.status || primaryError.code || 'unknown') +
+      '). Switching to fallback model ' + fallbackModel + '. Reason: ' + getGeminiErrorMessage(primaryError));
+
     try {
-      return await fn();
-    } catch (err) {
-      lastError = err;
-      const status = err.response?.status;
-      const message = err.response?.data?.error?.message || err.message;
-
-      // 429 (Rate Limit), 503 (Busy), 504 (Timeout)
-      const isTransient = status === 429 || status === 503 || status === 504 ||
-        message.includes('UNAVAILABLE') || message.includes('busy') || message.includes('quota') || message.includes('timeout');
-
-      if (!isTransient) {
-        const detailedError = new Error(message);
-        detailedError.status = status;
-        throw detailedError;
-      }
-
-      // Exponential backoff with jitter
-      const delay = initialDelay * Math.pow(2, i) + (Math.random() * 1000);
-      console.warn(`GenAI Rate Limit/Busy (${status}). Retrying in ${Math.round(delay)}ms... (Attempt ${i + 1}/${maxRetries})`);
-      await new Promise(resolve => setTimeout(resolve, delay));
+      const result = await requestFn(fallbackModel);
+      console.info('[GenAI] Request succeeded using fallback model: ' + fallbackModel);
+      return result;
+    } catch (fallbackError) {
+      console.error('[GenAI] Both models failed. Primary: ' + primaryModel + ' — ' +
+        getGeminiErrorMessage(primaryError) + '. Fallback: ' + fallbackModel + ' — ' +
+        getGeminiErrorMessage(fallbackError));
+      fallbackError.message = 'Primary model ' + primaryModel + ' failed: ' +
+        getGeminiErrorMessage(primaryError) + '. Fallback model ' + fallbackModel +
+        ' also failed: ' + getGeminiErrorMessage(fallbackError);
+      fallbackError.primaryModel = primaryModel;
+      fallbackError.fallbackModel = fallbackModel;
+      throw fallbackError;
     }
   }
-  throw lastError;
 };
 
 /**
@@ -86,7 +104,7 @@ async function generateLessonNoteViaGenAI(options) {
     smartHint, includeEvaluation, includeTeachingAids, nigerianCurriculum, maxTokens
   } = options;
   const apiKey = getApiKey();
-  const model = normalizeModel(process.env.GENAI_MODEL || 'gemini-2.5-flash');
+  const model = normalizeModel(process.env.GENAI_MODEL || 'gemini-3.8-flash');
 
   const today = new Date().toISOString().split('T')[0];
   const systemPrompt = `You are TeachAide, an AI assistant designed specifically for Nigerian schools.
@@ -263,9 +281,9 @@ ${options.smartHint}` : ''}
     parts: [{ text: `${systemPrompt}\nUser Topic: ${topic}\nUser Sub-topic: ${subtopic || 'Auto'}\nSubject: ${subject}\nClass: ${classLevel}\nLesson Type: ${lessonType || 'Normal Lesson'}` }]
   }];
 
-  return withRetry(async () => {
+  return withModelFallback(async (activeModel) => {
     try {
-      const res = await axios.post(`${API_BASE}/models/${model}:generateContent?key=${apiKey}`, {
+      const res = await axios.post(`${API_BASE}/models/${activeModel}:generateContent?key=${apiKey}`, {
         contents,
         generationConfig: {
           responseMimeType: 'application/json',
@@ -290,7 +308,7 @@ ${options.smartHint}` : ''}
 async function generateAssessmentViaGenAI(options) {
   const { topic, classLevel, subject, questionCount, maxTokens } = options;
   const apiKey = getApiKey();
-  const model = normalizeModel(options.model || 'gemini-2.5-flash');
+  const model = normalizeModel(options.model || process.env.GENAI_MODEL || 'gemini-3.8-flash');
 
   const systemPrompt = `You are an expert assessment developer. Generate a high-quality assessment in strict JSON format.
   
@@ -307,9 +325,9 @@ async function generateAssessmentViaGenAI(options) {
     parts: [{ text: `${systemPrompt}\nSubject: ${subject}\nClass: ${classLevel}\nTopic: ${topic}\nQuestions: ${questionCount}` }]
   }];
 
-  return withRetry(async () => {
+  return withModelFallback(async (activeModel) => {
     try {
-      const res = await axios.post(`${API_BASE}/models/${model}:generateContent?key=${apiKey}`, {
+      const res = await axios.post(`${API_BASE}/models/${activeModel}:generateContent?key=${apiKey}`, {
         contents,
         generationConfig: {
           responseMimeType: 'application/json',
@@ -334,7 +352,7 @@ async function generateAssessmentViaGenAI(options) {
 async function generateRemarkViaGenAI(options) {
   const { classLevel, subject, topic, lessonOutcome, students, style, maxTokens } = options;
   const apiKey = getApiKey();
-  const model = normalizeModel(process.env.GENAI_MODEL || 'gemini-2.5-flash');
+  const model = normalizeModel(process.env.GENAI_MODEL || 'gemini-3.8-flash');
 
   const systemPrompt = `You are an expert teacher writing a lesson reflection/remark for your records.
   
@@ -362,8 +380,8 @@ async function generateRemarkViaGenAI(options) {
     parts: [{ text: systemPrompt }]
   }];
 
-  return withRetry(async () => {
-    const res = await axios.post(`${API_BASE}/models/${model}:generateContent?key=${apiKey}`, {
+  return withModelFallback(async (activeModel) => {
+    const res = await axios.post(`${API_BASE}/models/${activeModel}:generateContent?key=${apiKey}`, {
       contents,
       generationConfig: {
         responseMimeType: 'application/json',
@@ -384,7 +402,7 @@ async function generateRemarkViaGenAI(options) {
 async function generateSEOSummaryViaGenAI(options) {
   const { title, textContent, maxTokens } = options;
   const apiKey = getApiKey();
-  const model = normalizeModel(process.env.GENAI_MODEL || 'gemini-2.5-flash');
+  const model = normalizeModel(process.env.GENAI_MODEL || 'gemini-3.8-flash');
 
   const systemPrompt = `You are an expert SEO copywriter and marketer for an educational technology platform.
 Your task is to generate a catchy SEO Meta Description (130 to 155 characters) for the given blog post.
@@ -406,8 +424,8 @@ Discover the 5 top classroom management techniques for Nigerian schools. Read mo
     parts: [{ text: `${systemPrompt}\n\nHere is an excerpt of the post content for context: ${slicedContext}` }]
   }];
 
-  return withRetry(async () => {
-    const res = await axios.post(`${API_BASE}/models/${model}:generateContent?key=${apiKey}`, {
+  return withModelFallback(async (activeModel) => {
+    const res = await axios.post(`${API_BASE}/models/${activeModel}:generateContent?key=${apiKey}`, {
       contents,
       generationConfig: {
         maxOutputTokens: maxTokens || 200
@@ -438,7 +456,7 @@ Discover the 5 top classroom management techniques for Nigerian schools. Read mo
 async function generateBlogDraftViaGenAI(options) {
   const { topic, audience, category, maxTokens } = options;
   const apiKey = getApiKey();
-  const model = normalizeModel(process.env.GENAI_MODEL || 'gemini-2.5-flash');
+  const model = normalizeModel(process.env.GENAI_MODEL || 'gemini-3.8-flash');
 
   const systemPrompt = `You are an educational content writer for Nigerian teachers.
 
@@ -486,9 +504,9 @@ Important: Please enforce JSON-only output. ENSURE ALL DOUBLE QUOTES INSIDE THE 
     parts: [{ text: systemPrompt }]
   }];
 
-  return withRetry(async () => {
+  return withModelFallback(async (activeModel) => {
     try {
-      const res = await axios.post(`${API_BASE}/models/${model}:generateContent?key=${apiKey}`, {
+      const res = await axios.post(`${API_BASE}/models/${activeModel}:generateContent?key=${apiKey}`, {
         contents,
         generationConfig: {
           responseMimeType: 'application/json',
@@ -523,7 +541,7 @@ Important: Please enforce JSON-only output. ENSURE ALL DOUBLE QUOTES INSIDE THE 
 async function suggestSubtopicsViaGenAI(options) {
   const { topic, subject, classLevel } = options;
   const apiKey = getApiKey();
-  const model = normalizeModel(process.env.GENAI_MODEL || 'gemini-2.5-flash');
+  const model = normalizeModel(process.env.GENAI_MODEL || 'gemini-3.8-flash');
 
   const systemPrompt = `You are a curriculum expert. Generate exactly 4-5 highly relevant, specific, and age-appropriate subtopics for the following class context.
   
@@ -543,9 +561,9 @@ async function suggestSubtopicsViaGenAI(options) {
     parts: [{ text: systemPrompt }]
   }];
 
-  return withRetry(async () => {
+  return withModelFallback(async (activeModel) => {
     try {
-      const res = await axios.post(`${API_BASE}/models/${model}:generateContent?key=${apiKey}`, {
+      const res = await axios.post(`${API_BASE}/models/${activeModel}:generateContent?key=${apiKey}`, {
         contents,
         generationConfig: {
           responseMimeType: 'application/json',
