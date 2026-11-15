@@ -299,7 +299,7 @@ ${options.smartHint}` : ''}
     } catch (err) {
       throw err;
     }
-  });
+  }, model);
 }
 
 /**
@@ -343,7 +343,7 @@ async function generateAssessmentViaGenAI(options) {
     } catch (err) {
       throw err;
     }
-  });
+  }, model);
 }
 
 /**
@@ -393,7 +393,7 @@ async function generateRemarkViaGenAI(options) {
     const text = candidate?.content?.parts?.[0]?.text;
     const usage = res.data.usageMetadata || {};
     return { text, usage };
-  });
+  }, model);
 }
 
 /**
@@ -447,7 +447,7 @@ Discover the 5 top classroom management techniques for Nigerian schools. Read mo
     finalSummary = finalSummary.replace(/^["']/g, '').replace(/["']$/g, '');
 
     return finalSummary.trim();
-  });
+  }, model);
 }
 
 /**
@@ -532,7 +532,7 @@ Important: Please enforce JSON-only output. ENSURE ALL DOUBLE QUOTES INSIDE THE 
     } catch (err) {
       throw err;
     }
-  });
+  }, model);
 }
 
 /**
@@ -579,7 +579,7 @@ async function suggestSubtopicsViaGenAI(options) {
     } catch (err) {
       throw err;
     }
-  });
+  }, model);
 }
 
 module.exports = {
