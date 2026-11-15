@@ -416,11 +416,17 @@ const AdminSettings: React.FC = () => {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div className="space-y-2">
                                     <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">AI Model Strategy</label>
-                                    <div className="w-full rounded-lg border-slate-200 dark:border-slate-700 dark:bg-slate-900/50 p-2.5 border text-slate-500 dark:text-slate-400 font-medium bg-slate-50">
-                                        Gemini 2.5 Pro (Platform Standard)
-                                    </div>
-                                    <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-1 flex items-center">
-                                        <Shield className="w-3 h-3 mr-1" /> Enforced by system policy for maximum quality.
+                                    <input
+                                        type="text"
+                                        value={config.defaultModel || ''}
+                                        onChange={e => setConfig({ ...config, defaultModel: e.target.value.trim() })}
+                                        placeholder="gemini-2.5-flash"
+                                        autoComplete="off"
+                                        spellCheck={false}
+                                        className="w-full rounded-lg border border-slate-200 dark:border-slate-700 dark:bg-slate-900 p-2.5 text-slate-900 dark:text-white font-mono"
+                                    />
+                                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                        Enter the Gemini model ID used for lesson notes and other AI generation. Recommended: <span className="font-mono">gemini-2.5-flash</span>. The value is saved to the database and backend GENAI_MODEL setting.
                                     </p>
                                 </div>
                                 <div className="space-y-2">
